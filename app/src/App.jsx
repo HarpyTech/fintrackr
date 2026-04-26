@@ -9,6 +9,9 @@ import DashboardPage from './pages/DashboardPage';
 import ReportPage from './pages/ReportPage';
 import AddExpensePage from './pages/AddExpensePage';
 import LandingPage from './pages/LandingPage';
+import FeaturesPage from './pages/FeaturesPage';
+import InsightsPage from './pages/InsightsPage';
+import SupportPage from './pages/SupportPage';
 
 function ProtectedRoute({ children }) {
   const { session, loading } = useAuth();
@@ -31,7 +34,7 @@ function ProtectedRoute({ children }) {
 
 export default function App() {
   const location = useLocation();
-  const showFloatingThemeToggle = ['/', '/login', '/register', '/verify-email'].includes(location.pathname);
+  const showFloatingThemeToggle = ['/', '/login', '/register', '/verify-email', '/features', '/support'].includes(location.pathname);
 
   return (
     <>
@@ -62,6 +65,16 @@ export default function App() {
           element={
             <ProtectedRoute>
               <AddExpensePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/features" element={<FeaturesPage />} />
+        <Route path="/support" element={<SupportPage />} />
+        <Route
+          path="/insights"
+          element={
+            <ProtectedRoute>
+              <InsightsPage />
             </ProtectedRoute>
           }
         />

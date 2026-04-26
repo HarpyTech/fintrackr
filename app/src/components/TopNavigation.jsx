@@ -6,6 +6,7 @@ import ThemeToggle from './ThemeToggle';
 const MENU_ITEMS = [
   { to: '/dashboard', icon: 'DB', label: 'Dashboard' },
   { to: '/report', icon: 'RP', label: 'Report' },
+  { to: '/insights', icon: '✨', label: 'Insights' },
   { to: '/add-expense', icon: '+', label: 'Add Expense' },
 ];
 

@@ -271,3 +271,67 @@
     display: block;
   }
 }
+
+/* --- ≤ 767px: features page responsive --- */
+@media (max-width: 767px) {
+  .features-proto-hero-title {
+    font-size: 2rem;
+  }
+
+  .features-proto-step,
+  .features-proto-step.reversed {
+    flex-direction: column;
+  }
+
+  .features-proto-feat-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .features-proto-story {
+    padding: 24px;
+  }
+
+  .features-proto-story-title {
+    font-size: 1.5rem;
+  }
+
+  .features-proto-cta-title {
+    font-size: 1.75rem;
+  }
+}
+
+/* --- ≤ 767px: insights page responsive --- */
+@media (max-width: 767px) {
+  .insights-proto-stats-inner {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .insights-proto-bubble {
+    max-width: 95%;
+  }
+
+  .insights-proto-quick-pills {
+    gap: 6px;
+  }
+
+  .insights-proto-quick-btn {
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+}
+
+/* --- ≤ 767px: support page responsive --- */
+@media (max-width: 767px) {
+  .support-proto-channels {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .support-proto-main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .support-proto-title {
+    font-size: 1.75rem;
+  }
+}

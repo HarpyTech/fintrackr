@@ -16,6 +16,9 @@
 @import './styles/dashboard.css';
 @import './styles/report.css';
 @import './styles/add-expense.css';
+@import './styles/features.css';
+@import './styles/insights.css';
+@import './styles/support.css';
 
 /* Responsive overrides (kept last so they win) */
 @import './styles/responsive.css';
