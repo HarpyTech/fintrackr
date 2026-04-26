@@ -36,10 +36,6 @@
   box-shadow: 0 8px 18px rgba(13, 31, 62, 0.08);
 }
 
-.theme-toggle-label {
-  font-size: 13px;
-}
-
 .theme-toggle-glyph {
   width: 20px;
   height: 20px;
@@ -58,10 +54,6 @@
   right: calc(12px + env(safe-area-inset-right, 0px));
   z-index: 80;
   box-shadow: var(--panel-shadow);
-}
-
-.theme-toggle-floating .theme-toggle-label {
-  display: none;
 }
 
 .theme-toggle-floating .theme-toggle-option {

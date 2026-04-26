@@ -1,12 +1,13 @@
 import { useTheme } from '../theme/ThemeContext';
+import { Laptop, Moon, Sun } from 'lucide-react';
 
 export default function ThemeToggle({ floating = false }) {
   const { theme, setTheme, effectiveTheme } = useTheme();
 
   const options = [
-    { value: 'light', glyph: 'L', label: 'Light' },
-    { value: 'dark', glyph: 'D', label: 'Dark' },
-    { value: 'system', glyph: 'A', label: 'System' },
+    { value: 'light', icon: Sun, label: 'Light' },
+    { value: 'dark', icon: Moon, label: 'Dark' },
+    { value: 'system', icon: Laptop, label: 'System' },
   ];
 
   const containerLabel =
@@ -21,6 +22,7 @@ export default function ThemeToggle({ floating = false }) {
       aria-label={containerLabel}
     >
       {options.map((option) => {
+        const Icon = option.icon;
         const isActive = option.value === theme;
         const title =
           option.value === 'system'
@@ -43,9 +45,8 @@ export default function ThemeToggle({ floating = false }) {
             title={title}
           >
             <span className="theme-toggle-glyph" aria-hidden="true">
-              {option.glyph}
+              <Icon size={14} />
             </span>
-            <span className="theme-toggle-label">{option.label}</span>
           </button>
         );
       })}
