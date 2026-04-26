@@ -29,11 +29,11 @@ export default function SettingsWidget() {
     const firstName = profile?.first_name?.trim();
     const lastName = profile?.last_name?.trim();
     if (firstName && lastName) {
-      return (${firstName.charAt(0)}).toUpperCase();
+      return (firstName.charAt(0) + lastName.charAt(0)).toUpperCase();
     }
     if (firstName) {
       const fallback = session?.user || '';
-      return (${firstName.charAt(0)}).replace(/\s/g, '').toUpperCase().slice(0, 2) || 'U';
+      return (firstName.charAt(0) + fallback.charAt(0)).replace(/\s/g, '').toUpperCase().slice(0, 2) || 'U';
     }
     const emailCandidate = (session?.user || '').trim();
     if (emailCandidate.includes('@')) {
@@ -63,9 +63,9 @@ export default function SettingsWidget() {
 
   let addressValidationError = '';
   if (trimmedAddress && addressLength < ADDRESS_MIN_LENGTH) {
-    addressValidationError = \Address must be at least \ characters.\;
+    addressValidationError = 'Address must be at least ' + ADDRESS_MIN_LENGTH + ' characters.';
   } else if (addressLength > ADDRESS_MAX_LENGTH) {
-    addressValidationError = \Address must be \ characters or fewer.\;
+    addressValidationError = 'Address must be ' + ADDRESS_MAX_LENGTH + ' characters or fewer.';
   }
 
   const hasValidationErrors = Boolean(phoneValidationError || addressValidationError);
@@ -227,7 +227,7 @@ export default function SettingsWidget() {
                   onChange={(event) => setForm((prev) => ({ ...prev, address: event.target.value }))}
                 />
                 <span className={addressValidationError ? 'error-text' : 'help-text'}>
-                  {addressValidationError || \\/\ characters\}
+                  {addressValidationError || (addressLength + '/' + ADDRESS_MAX_LENGTH + ' characters')}
                 </span>
               </label>
 
