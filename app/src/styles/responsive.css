@@ -43,6 +43,31 @@
     flex-direction: column;
   }
 
+  /* --- ≤ 900px: report prototype --- */
+  .report-proto-container {
+    width: min(1120px, 100% - 24px);
+  }
+
+  .report-proto-title {
+    font-size: 1.65rem;
+  }
+
+  .report-proto-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .report-proto-tabs {
+    overflow-x: auto;
+  }
+
+  .report-proto-tab {
+    white-space: nowrap;
+  }
+
+  .report-proto-summary {
+    gap: 12px;
+  }
+
   .dashboard-header {
     gap: 12px;
     flex-direction: column;

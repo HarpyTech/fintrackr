@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import clsx from 'clsx';
 import { useAuth } from '../auth/AuthContext';
 import TopNavigation from '../components/TopNavigation';
 import { apiRequest } from '../lib/api';
@@ -128,169 +129,204 @@ export default function ReportPage() {
   }
 
   return (
-    <main className="dashboard-layout">
-      <header className="dashboard-header">
-        <div>
-          <h1>Expense Reports</h1>
-        </div>
-        <div className="header-actions">
-          <TopNavigation />
-          <button onClick={handleLogout}>Logout</button>
-        </div>
-      </header>
-
-      <section className="panel">
-        <div className="report-header">
-          <div>
-            <h2>Historical Expense Report</h2>
-            <p className="help-text">
-              Filter by date and category, then switch between expense-level and line-item views.
-            </p>
+    <main className="report-proto">
+      <div className="report-proto-container">
+        {/* ── Header ── */}
+        <header className="dashboard-header">
+          <div className="dashboard-header-title">
+            <img src="/assets/name_logo.svg" alt="FinTrackr" className="dashboard-logo" />
+            <span>Reports</span>
           </div>
-          <div
-            className="report-toggle"
-            role="tablist"
-            aria-label="Historical report view selector"
-          >
+          <div className="header-actions">
+            <TopNavigation />
+            <button className="secondary-button" onClick={handleLogout}>Logout</button>
+          </div>
+        </header>
+
+        <h1 className="report-proto-title">Report</h1>
+
+        <div className="report-proto-card">
+          {/* ── View Toggle Tabs ── */}
+          <div className="report-proto-tabs" role="tablist" aria-label="Report view selector">
             <button
               type="button"
-              className={historyView === 'expense' ? 'toggle-button active' : 'toggle-button'}
+              role="tab"
+              aria-selected={historyView === 'expense'}
+              className={clsx('report-proto-tab', historyView === 'expense' && 'active')}
               onClick={() => setHistoryView('expense')}
             >
               View By Expense
             </button>
             <button
               type="button"
-              className={historyView === 'line_items' ? 'toggle-button active' : 'toggle-button'}
+              role="tab"
+              aria-selected={historyView === 'line_items'}
+              className={clsx('report-proto-tab', historyView === 'line_items' && 'active')}
               onClick={() => setHistoryView('line_items')}
             >
               View By Line Items
             </button>
           </div>
-        </div>
 
-        <div className="report-filters">
-          <label>
-            Start Date
-            <input
-              type="date"
-              value={historyFilters.startDate}
-              onChange={(e) => setHistoryFilters((prev) => ({ ...prev, startDate: e.target.value }))}
-            />
-          </label>
-          <label>
-            End Date
-            <input
-              type="date"
-              value={historyFilters.endDate}
-              onChange={(e) => setHistoryFilters((prev) => ({ ...prev, endDate: e.target.value }))}
-            />
-          </label>
-          <label>
-            Category
-            <select
-              value={historyFilters.category}
-              onChange={(e) => setHistoryFilters((prev) => ({ ...prev, category: e.target.value }))}
-            >
-              {historyCategories.map((category) => (
-                <option key={category} value={category}>
-                  {category === 'all' ? 'All Categories' : toTitleCase(category)}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+          {/* ── Filters ── */}
+          <div className="report-proto-filters">
+            <label className="report-proto-label">
+              Start Date
+              <input
+                type="date"
+                value={historyFilters.startDate}
+                onChange={(e) =>
+                  setHistoryFilters((prev) => ({ ...prev, startDate: e.target.value }))
+                }
+              />
+            </label>
+            <label className="report-proto-label">
+              End Date
+              <input
+                type="date"
+                value={historyFilters.endDate}
+                onChange={(e) =>
+                  setHistoryFilters((prev) => ({ ...prev, endDate: e.target.value }))
+                }
+              />
+            </label>
+            <label className="report-proto-label">
+              Category
+              <select
+                value={historyFilters.category}
+                onChange={(e) =>
+                  setHistoryFilters((prev) => ({ ...prev, category: e.target.value }))
+                }
+              >
+                {historyCategories.map((category) => (
+                  <option key={category} value={category}>
+                    {category === 'all' ? 'All Categories' : toTitleCase(category)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
 
-        <div className="report-summary">
-          <span>{filteredExpenses.length} expenses</span>
-          <span>{filteredLineItems.length} line items</span>
-          <span>{formatInr(filteredSpend)} filtered spend</span>
-        </div>
+          {/* ── Summary Bar ── */}
+          <div className="report-proto-summary">
+            <span className="report-proto-summary-item">
+              <span className="report-proto-summary-label">Expenses:</span>
+              <span className="report-proto-summary-value">{filteredExpenses.length}</span>
+            </span>
+            <span className="report-proto-summary-item">
+              <span className="report-proto-summary-label">Line Items:</span>
+              <span className="report-proto-summary-value">{filteredLineItems.length}</span>
+            </span>
+            <span className="report-proto-summary-item">
+              <span className="report-proto-summary-label">Total:</span>
+              <span className="report-proto-summary-value">{formatInr(filteredSpend)}</span>
+            </span>
+          </div>
 
-        {error ? <p className="error-text">{error}</p> : null}
+          {error ? <p className="error-text">{error}</p> : null}
 
-        <div className="table-wrap">
-          {historyView === 'expense' ? (
-            <table>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Date</th>
-                  <th>Category</th>
-                  <th>Input Type</th>
-                  <th>Invoice No.</th>
-                  <th>Vendor</th>
-                  <th>Description</th>
-                  <th>Line Items</th>
-                  <th>Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredExpenses.length > 0 ? (
-                  filteredExpenses.map((item) => (
-                    <tr key={item.id}>
-                      <td>{item.id}</td>
-                      <td>{String(item.expense_date || '').slice(0, 10)}</td>
-                      <td>{toTitleCase(item.category)}</td>
-                      <td>{toTitleCase(item.input_type || 'manual')}</td>
-                      <td>{item.invoice_number || '-'}</td>
-                      <td>{item.vendor || '-'}</td>
-                      <td>{item.description || '-'}</td>
-                      <td>{item.line_items?.length || 0}</td>
-                      <td>{formatInr(item.amount)}</td>
-                    </tr>
-                  ))
-                ) : (
+          {/* ── Tables ── */}
+          <div className="report-proto-table-wrap">
+            {historyView === 'expense' ? (
+              <table className="report-proto-table">
+                <thead>
                   <tr>
-                    <td colSpan={9} className="empty-state-cell">
-                      No historical expenses matched the selected filters.
-                    </td>
+                    <th>ID</th>
+                    <th>Date</th>
+                    <th>Category</th>
+                    <th>Input Type</th>
+                    <th>Invoice No.</th>
+                    <th>Vendor</th>
+                    <th>Description</th>
+                    <th>Line Items</th>
+                    <th>Amount</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
-          ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>Expense ID</th>
-                  <th>Date</th>
-                  <th>Category</th>
-                  <th>Vendor</th>
-                  <th>Input Type</th>
-                  <th>Item</th>
-                  <th>Qty</th>
-                  <th>Unit Price</th>
-                  <th>Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredLineItems.length > 0 ? (
-                  filteredLineItems.map((item) => (
-                    <tr key={item.id}>
-                      <td>{item.expenseId}</td>
-                      <td>{item.expenseDate}</td>
-                      <td>{toTitleCase(item.category)}</td>
-                      <td>{item.vendor || '-'}</td>
-                      <td>{toTitleCase(item.inputType)}</td>
-                      <td>{item.itemName || '-'}</td>
-                      <td>{item.quantity}</td>
-                      <td>{formatInr(item.unitPrice)}</td>
-                      <td>{formatInr(item.total)}</td>
+                </thead>
+                <tbody>
+                  {filteredExpenses.length > 0 ? (
+                    filteredExpenses.map((item) => (
+                      <tr key={item.id}>
+                        <td>{item.id}</td>
+                        <td>{String(item.expense_date || '').slice(0, 10)}</td>
+                        <td>{toTitleCase(item.category)}</td>
+                        <td>
+                          <span
+                            className={clsx(
+                              'report-proto-badge',
+                              (item.input_type || '').toLowerCase().includes('ai') ? 'ai' : 'manual'
+                            )}
+                          >
+                            {toTitleCase(item.input_type || 'manual')}
+                          </span>
+                        </td>
+                        <td>{item.invoice_number || '—'}</td>
+                        <td>{item.vendor || '—'}</td>
+                        <td>{item.description || '—'}</td>
+                        <td>{item.line_items?.length || 0}</td>
+                        <td className="amount">{formatInr(item.amount)}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={9} className="report-proto-empty">
+                        No expenses matched the selected filters.
+                      </td>
                     </tr>
-                  ))
-                ) : (
+                  )}
+                </tbody>
+              </table>
+            ) : (
+              <table className="report-proto-table">
+                <thead>
                   <tr>
-                    <td colSpan={9} className="empty-state-cell">
-                      No line items matched the selected filters.
-                    </td>
+                    <th>Expense ID</th>
+                    <th>Date</th>
+                    <th>Category</th>
+                    <th>Vendor</th>
+                    <th>Input Type</th>
+                    <th>Item</th>
+                    <th>Qty</th>
+                    <th>Unit Price</th>
+                    <th>Total</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
-          )}
+                </thead>
+                <tbody>
+                  {filteredLineItems.length > 0 ? (
+                    filteredLineItems.map((item) => (
+                      <tr key={item.id}>
+                        <td>{item.expenseId}</td>
+                        <td>{item.expenseDate}</td>
+                        <td>{toTitleCase(item.category)}</td>
+                        <td>{item.vendor || '—'}</td>
+                        <td>
+                          <span
+                            className={clsx(
+                              'report-proto-badge',
+                              (item.inputType || '').toLowerCase().includes('ai') ? 'ai' : 'manual'
+                            )}
+                          >
+                            {toTitleCase(item.inputType)}
+                          </span>
+                        </td>
+                        <td>{item.itemName || '—'}</td>
+                        <td>{item.quantity}</td>
+                        <td>{formatInr(item.unitPrice)}</td>
+                        <td className="amount">{formatInr(item.total)}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={9} className="report-proto-empty">
+                        No line items matched the selected filters.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
-      </section>
+      </div>
     </main>
   );
 }
