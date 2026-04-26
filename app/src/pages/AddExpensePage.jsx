@@ -203,15 +203,7 @@ export default function AddExpensePage() {
     <main className="add-expense-proto">
       <div className="add-expense-proto-container">
         {/* ── Header ── */}
-        <header className="dashboard-header">
-          <div className="dashboard-header-title">
-            <img src="/assets/name_logo.svg" alt="FinTrackr" className="dashboard-logo" />
-          </div>
-          <div className="header-actions">
-            <TopNavigation />
-            <button className="secondary-button" onClick={handleLogout}>Logout</button>
-          </div>
-        </header>
+        <TopNavigation title="Add Expense" />
 
         <h1 className="add-expense-proto-title">Add Expense</h1>
 
@@ -414,3 +406,4 @@ export default function AddExpensePage() {
     </main>
   );
 }
+

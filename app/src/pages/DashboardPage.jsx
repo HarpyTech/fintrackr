@@ -229,16 +229,7 @@ export default function DashboardPage() {
 
       <div className="dashboard-proto-container">
         {/* ── Header ── */}
-        <header className="dashboard-header">
-          <div className="dashboard-header-title">
-            <img src="/assets/name_logo.svg" alt="FinTrackr" className="dashboard-logo" />
-            <span>Dashboard</span>
-          </div>
-          <div className="header-actions">
-            <TopNavigation />
-            <button className="secondary-button" onClick={handleLogout}>Logout</button>
-          </div>
-        </header>
+        <TopNavigation title="Dashboard" />
 
         <h1 className="dashboard-proto-title">Dashboard</h1>
 
@@ -448,3 +439,4 @@ export default function DashboardPage() {
     </main>
   );
 }
+

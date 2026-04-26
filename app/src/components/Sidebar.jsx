@@ -37,9 +37,7 @@ export default function Sidebar() {
       <aside className={sidebarClass} aria-label="Main navigation">
         {/* Logo */}
         <div className="sidebar-proto-logo">
-          <div className="sidebar-proto-logo-icon">
-            <TrendingUp size={22} />
-          </div>
+          <img src="/assets/app_logo.png" alt="App Logo" className="sidebar-proto-logo-icon" style={{ padding: '0', background: 'transparent' }} />
           <img
             src="/assets/name_logo.svg"
             alt="FinTrackr"
@@ -106,3 +104,4 @@ export default function Sidebar() {
     </>
   );
 }
+

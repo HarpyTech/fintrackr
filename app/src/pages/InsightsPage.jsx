@@ -1,10 +1,10 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Send, TrendingUp, Sparkles, BarChart3, DollarSign } from 'lucide-react';
 import TopNavigation from '../components/TopNavigation';
 import { useAuth } from '../auth/AuthContext';
 import { apiRequest } from '../lib/api';
 
-// â”€â”€â”€ Live data derivation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Live data derivation ───────────────────────────────────────────────────
 
 const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -96,9 +96,9 @@ function deriveInsightData(expenses) {
   };
 }
 
-// â”€â”€â”€ Analysis engine (data injected by caller) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Analysis engine (data injected by caller) ────────────────────────────
 
-// â”€â”€â”€ Analysis engine (data injected by caller) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Analysis engine (data injected by caller) ────────────────────────────
 
 function analyzeComplexQuery(query, d) {
   if (!d) {
@@ -119,10 +119,10 @@ function analyzeComplexQuery(query, d) {
     const base = d.lastMonthSpent > 0 ? d.lastMonthSpent : d.currentMonthSpent;
     const pct = base > 0 ? ((diff / base) * 100).toFixed(1) : '0.0';
     return {
-      text: `ðŸ“Š Month-over-Month Analysis\n\nCurrent Month: â‚¹${d.currentMonthSpent.toLocaleString('en-IN', { maximumFractionDigits: 2 })}\nLast Month: â‚¹${d.lastMonthSpent.toLocaleString('en-IN', { maximumFractionDigits: 2 })}\n\nChange: ${diff > 0 ? '+' : ''}â‚¹${Math.abs(diff).toLocaleString('en-IN', { maximumFractionDigits: 2 })} (${pct}%)\n\n${
+      text: `📊 Month-over-Month Analysis\n\nCurrent Month: ₹${d.currentMonthSpent.toLocaleString('en-IN', { maximumFractionDigits: 2 })}\nLast Month: ₹${d.lastMonthSpent.toLocaleString('en-IN', { maximumFractionDigits: 2 })}\n\nChange: ${diff > 0 ? '+' : ''}₹${Math.abs(diff).toLocaleString('en-IN', { maximumFractionDigits: 2 })} (${pct}%)\n\n${
         diff > 0
-          ? `âš ï¸ Your spending increased by ${pct}%. Main categories:\n${topCats.slice(0, 2).map(([c, a]) => `â€¢ ${c}: â‚¹${a.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`).join('\n')}\n\nðŸ’¡ Tip: Review discretionary categories to bring spending back in line.`
-          : `âœ… Great job! You reduced spending by ${Math.abs(parseFloat(pct))}%.`
+          ? `⚠️ Your spending increased by ${pct}%. Main categories:\n${topCats.slice(0, 2).map(([c, a]) => `• ${c}: ₹${a.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`).join('\n')}\n\n💡 Tip: Review discretionary categories to bring spending back in line.`
+          : `✅ Great job! You reduced spending by ${Math.abs(parseFloat(pct))}%.`
       }`,
       sender: 'bot',
       type: 'insight',
@@ -134,7 +134,7 @@ function analyzeComplexQuery(query, d) {
       ? (((d.weekendAvg - d.weekdayAvg) / d.weekdayAvg) * 100).toFixed(0)
       : '0';
     return {
-      text: `ðŸ“… Spending Pattern Analysis\n\nWeekday Average: â‚¹${d.weekdayAvg.toFixed(2)}/day\nWeekend Average: â‚¹${d.weekendAvg.toFixed(2)}/day\n\nDifference: ${diff}% ${parseFloat(diff) >= 0 ? 'higher' : 'lower'} on weekends\n\nðŸŽ¯ Insights:\nâ€¢ You tend to spend more during weekends\nâ€¢ Weekday spending is more consistent\n\nðŸ’¡ Recommendation: Set a weekend budget of â‚¹${(d.weekendAvg * 0.9).toFixed(2)}/day to save â‚¹${((d.weekendAvg - d.weekdayAvg) * 8).toFixed(2)}/month`,
+      text: `📅 Spending Pattern Analysis\n\nWeekday Average: ₹${d.weekdayAvg.toFixed(2)}/day\nWeekend Average: ₹${d.weekendAvg.toFixed(2)}/day\n\nDifference: ${diff}% ${parseFloat(diff) >= 0 ? 'higher' : 'lower'} on weekends\n\n🎯 Insights:\n• You tend to spend more during weekends\n• Weekday spending is more consistent\n\n💡 Recommendation: Set a weekend budget of ₹${(d.weekendAvg * 0.9).toFixed(2)}/day to save ₹${((d.weekendAvg - d.weekdayAvg) * 8).toFixed(2)}/month`,
       sender: 'bot',
       type: 'insight',
     };
@@ -142,7 +142,7 @@ function analyzeComplexQuery(query, d) {
 
   if (q.includes('vendor') || q.includes('where')) {
     return {
-      text: `ðŸª Deep Vendor Analysis\n\nTop Vendor: ${d.topVendor}\n\nVendor Insights:\nâ€¢ You shop at ${d.vendorCount} different vendors\nâ€¢ Your top vendor accounts for a significant share of spending\n\nðŸ“Š Vendor Diversity:\nWith ${d.vendorCount} vendors, your spending is distributed across multiple sources.\n\nðŸ’¡ Money-saving opportunity: Review your most frequent vendors to find bulk or subscription savings.`,
+      text: `🏪 Deep Vendor Analysis\n\nTop Vendor: ${d.topVendor}\n\nVendor Insights:\n• You shop at ${d.vendorCount} different vendors\n• Your top vendor accounts for a significant share of spending\n\n📊 Vendor Diversity:\nWith ${d.vendorCount} vendors, your spending is distributed across multiple sources.\n\n💡 Money-saving opportunity: Review your most frequent vendors to find bulk or subscription savings.`,
       sender: 'bot',
       type: 'summary',
     };
@@ -151,16 +151,16 @@ function analyzeComplexQuery(query, d) {
   if (q.includes('unusual') || q.includes('anomal') || q.includes('outlier')) {
     if (d.unusualExpenses.length === 0) {
       return {
-        text: `ðŸ” Unusual Expense Detection\n\nNo unusual transactions found! Your spending appears consistent.\n\nðŸ“Œ All transactions are within 3Ã— your average transaction amount.\n\nðŸ’¡ Keep up the consistent spending habits!`,
+        text: `🔍 Unusual Expense Detection\n\nNo unusual transactions found! Your spending appears consistent.\n\n📌 All transactions are within 3× your average transaction amount.\n\n💡 Keep up the consistent spending habits!`,
         sender: 'bot',
         type: 'insight',
       };
     }
     return {
-      text: `ðŸ” Unusual Expense Detection\n\nFound ${d.unusualExpenses.length} unusual transaction(s):\n\n${d.unusualExpenses
+      text: `🔍 Unusual Expense Detection\n\nFound ${d.unusualExpenses.length} unusual transaction(s):\n\n${d.unusualExpenses
         .slice(0, 5)
-        .map(e => `âš ï¸ ${e.date}\n   ${e.vendor}: â‚¹${e.amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}\n   Category: ${e.category}\n   This is above your usual transaction range`)
-        .join('\n\n')}\n\nðŸ’¡ One-time purchases are normal, but watch for recurring large expenses.`,
+        .map(e => `⚠️ ${e.date}\n   ${e.vendor}: ₹${e.amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}\n   Category: ${e.category}\n   This is above your usual transaction range`)
+        .join('\n\n')}\n\n💡 One-time purchases are normal, but watch for recurring large expenses.`,
       sender: 'bot',
       type: 'insight',
     };
@@ -171,10 +171,10 @@ function analyzeComplexQuery(query, d) {
     const multipliers = [1.05, 1.03, 1.12, 1.0];
     const labels = ['+5%', '+3%', '+12%', 'stable'];
     const catLines = topCats.map(([cat, amt], i) =>
-      `â€¢ ${cat}: â‚¹${(amt * multipliers[i]).toFixed(2)} (${labels[i]})`
+      `• ${cat}: ₹${(amt * multipliers[i]).toFixed(2)} (${labels[i]})`
     );
     return {
-      text: `ðŸ”® Spending Forecast (Next Month)\n\nPredicted Total: â‚¹${predicted.toFixed(2)}\nBased on current month trend: +8.5%\n\nðŸ“ˆ Category Predictions:\n${catLines.join('\n')}\n\nâš¡ Action Items:\nâ€¢ Review your top spending categories\nâ€¢ Consider setting category budgets now`,
+      text: `🔮 Spending Forecast (Next Month)\n\nPredicted Total: ₹${predicted.toFixed(2)}\nBased on current month trend: +8.5%\n\n📈 Category Predictions:\n${catLines.join('\n')}\n\n⚡ Action Items:\n• Review your top spending categories\n• Consider setting category budgets now`,
       sender: 'bot',
       type: 'insight',
     };
@@ -183,10 +183,10 @@ function analyzeComplexQuery(query, d) {
   if (q.includes('save') || q.includes('cut') || q.includes('reduce')) {
     const pot = d.totalSpent * 0.15;
     const oppLines = topCats.slice(0, 3).map(([cat, amt]) =>
-      `â€¢ ${cat}: -â‚¹${(amt * 0.15).toFixed(2)}\n  Review and reduce by 15%`
+      `• ${cat}: -₹${(amt * 0.15).toFixed(2)}\n  Review and reduce by 15%`
     );
     return {
-      text: `ðŸ’° Savings Opportunity Analysis\n\nPotential Savings: â‚¹${pot.toFixed(2)} (15% of total)\n\nðŸŽ¯ Top Opportunities:\n\n${oppLines.join('\n\n')}\n\nðŸ“Š If you achieve this, you'd save â‚¹${(pot * 12).toFixed(2)}/year!`,
+      text: `💰 Savings Opportunity Analysis\n\nPotential Savings: ₹${pot.toFixed(2)} (15% of total)\n\n🎯 Top Opportunities:\n\n${oppLines.join('\n\n')}\n\n📊 If you achieve this, you'd save ₹${(pot * 12).toFixed(2)}/year!`,
       sender: 'bot',
       type: 'insight',
     };
@@ -196,7 +196,7 @@ function analyzeComplexQuery(query, d) {
     if (q.includes(cat.toLowerCase())) {
       const trendData = d.monthlyTrend.map(m => m.amount * (amount / d.totalSpent));
       return {
-        text: `ðŸ“ˆ ${cat} Deep Dive Analysis\n\nTotal (All-time): â‚¹${amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}\n% of Total: ${((amount / d.totalSpent) * 100).toFixed(1)}%\n\n3-Month Trend:\n${trendData.map((a, i) => `â€¢ ${d.monthlyTrend[i]?.month || ''}: â‚¹${a.toFixed(2)}`).join('\n')}\n\nðŸ’¡ Look for patterns in this category to find savings.`,
+        text: `📈 ${cat} Deep Dive Analysis\n\nTotal (All-time): ₹${amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}\n% of Total: ${((amount / d.totalSpent) * 100).toFixed(1)}%\n\n3-Month Trend:\n${trendData.map((a, i) => `• ${d.monthlyTrend[i]?.month || ''}: ₹${a.toFixed(2)}`).join('\n')}\n\n💡 Look for patterns in this category to find savings.`,
         sender: 'bot',
         type: 'insight',
       };
@@ -204,17 +204,17 @@ function analyzeComplexQuery(query, d) {
   }
 
   return {
-    text: 'I can provide deep analysis on:\n\nðŸ“Š Historical Comparisons\nâ€¢ Month-over-month trends\nâ€¢ Category performance\n\nðŸ” Pattern Detection\nâ€¢ Spending by day of week\nâ€¢ Unusual transactions\nâ€¢ Vendor analysis\n\nðŸ”® Predictions\nâ€¢ Next month forecast\nâ€¢ Savings opportunities\n\nWhat would you like to explore?',
+    text: 'I can provide deep analysis on:\n\n📊 Historical Comparisons\n• Month-over-month trends\n• Category performance\n\n🔍 Pattern Detection\n• Spending by day of week\n• Unusual transactions\n• Vendor analysis\n\n🔮 Predictions\n• Next month forecast\n• Savings opportunities\n\nWhat would you like to explore?',
     sender: 'bot',
     type: 'summary',
   };
 }
 
-// â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Constants ────────────────────────────────────────────────────────────
 
 const INITIAL_MESSAGES = [
   {
-    text: 'ðŸ‘‹ Welcome to Personalized Insights!\n\nI can help you understand your expense history in depth. Try asking:\n\nâ€¢ "Compare my spending from last month to this month"\nâ€¢ "What are my spending patterns on weekends?"\nâ€¢ "Which vendor did I spend most with?"\nâ€¢ "Show me unusual expenses this month"\nâ€¢ "Predict my spending for next month"',
+    text: '👋 Welcome to Personalized Insights!\n\nI can help you understand your expense history in depth. Try asking:\n\n• "Compare my spending from last month to this month"\n• "What are my spending patterns on weekends?"\n• "Which vendor did I spend most with?"\n• "Show me unusual expenses this month"\n• "Predict my spending for next month"',
     sender: 'bot',
     type: 'summary',
   },
@@ -230,7 +230,7 @@ const QUICK_INSIGHTS = [
 
 const inrFmt = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 });
 
-// â”€â”€â”€ Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Component ────────────────────────────────────────────────────────────
 
 export default function InsightsPage() {
   const { logout } = useAuth();
@@ -283,29 +283,21 @@ export default function InsightsPage() {
     return 'insights-proto-bubble insights-proto-bubble-bot';
   }
 
-  // Stats bar values â€” show dash while loading
-  const statTotal = expensesLoading ? 'â€”' : liveData ? inrFmt.format(liveData.totalSpent) : 'â€”';
+  // Stats bar values — show dash while loading
+  const statTotal = expensesLoading ? '—' : liveData ? inrFmt.format(liveData.totalSpent) : '—';
   const statGrowth = (() => {
-    if (expensesLoading || !liveData) return 'â€”';
+    if (expensesLoading || !liveData) return '—';
     if (liveData.lastMonthSpent === 0) return 'N/A';
     const pct = ((liveData.currentMonthSpent - liveData.lastMonthSpent) / liveData.lastMonthSpent * 100).toFixed(1);
     return `${parseFloat(pct) >= 0 ? '+' : ''}${pct}%`;
   })();
-  const statCategories = expensesLoading ? 'â€”' : liveData ? `${liveData.activeCategories} Active` : 'â€”';
-  const statInsights = expensesLoading ? 'â€”' : liveData ? `${Math.min(liveData.totalTransactions + 2, 20)}+` : 'â€”';
+  const statCategories = expensesLoading ? '—' : liveData ? `${liveData.activeCategories} Active` : '—';
+  const statInsights = expensesLoading ? '—' : liveData ? `${Math.min(liveData.totalTransactions + 2, 20)}+` : '—';
 
   return (
     <div className="insights-proto">
       {/* App navigation header */}
-      <header className="dashboard-header">
-        <div className="dashboard-header-title">
-          <img src="/assets/name_logo.svg" alt="FinTrackr" className="dashboard-logo" />
-        </div>
-        <div className="header-actions">
-          <TopNavigation />
-          <button className="secondary-button" onClick={handleLogout}>Logout</button>
-        </div>
-      </header>
+      <TopNavigation title="Insights" />
 
       {/* Page body fills remaining viewport height */}
       <div className="insights-proto-body">
@@ -368,7 +360,7 @@ export default function InsightsPage() {
 
         {expensesError && (
           <div className="insights-proto-error">
-            âš ï¸ Could not load expense data: {expensesError}. Insights will use limited context.
+            ⚠️ Could not load expense data: {expensesError}. Insights will use limited context.
           </div>
         )}
 
@@ -401,7 +393,7 @@ export default function InsightsPage() {
           </div>
         </div>
 
-        {/* Quick insight chips â€” visible only until first user message */}
+        {/* Quick insight chips — visible only until first user message */}
         {messages.length === 1 && (
           <div className="insights-proto-quick-bar">
             <div className="insights-proto-quick-inner">
@@ -453,4 +445,5 @@ export default function InsightsPage() {
     </div>
   );
 }
+
 

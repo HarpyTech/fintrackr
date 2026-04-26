@@ -132,16 +132,7 @@ export default function ReportPage() {
     <main className="report-proto">
       <div className="report-proto-container">
         {/* ── Header ── */}
-        <header className="dashboard-header">
-          <div className="dashboard-header-title">
-            <img src="/assets/name_logo.svg" alt="FinTrackr" className="dashboard-logo" />
-            <span>Reports</span>
-          </div>
-          <div className="header-actions">
-            <TopNavigation />
-            <button className="secondary-button" onClick={handleLogout}>Logout</button>
-          </div>
-        </header>
+        <TopNavigation title="Reports" />
 
         <h1 className="report-proto-title">Report</h1>
 
@@ -330,3 +321,4 @@ export default function ReportPage() {
     </main>
   );
 }
+
