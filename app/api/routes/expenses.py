@@ -13,7 +13,11 @@ import logging
 from starlette.concurrency import run_in_threadpool
 
 from app.api.deps import get_current_user
-from app.models.expense import ExpenseCreate, ExpenseInputType
+from app.models.expense import (
+    ExpenseChatCreateRequest,
+    ExpenseCreate,
+    ExpenseInputType,
+)
 from app.services.expense_service import (
     add_expense,
     category_summary,
@@ -27,7 +31,15 @@ from app.services.expense_service import (
     yearly_summary,
     SessionExpenseLimitError,
 )
-from app.services.expense_extraction_service import extract_expense_payload
+from app.services.expense_chat_service import (
+    answer_expense_analysis_query,
+    looks_like_expense_analysis_request,
+)
+from app.services.expense_extraction_service import (
+    ExpenseExtractionValidationError,
+    extract_expense_payload,
+    extract_text_chat_expense_payload,
+)
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -57,7 +69,11 @@ def create_expense(
         logger.info("Expense created successfully")
         return result
     except SessionExpenseLimitError as exc:
-        logger.warning(f"Session expense limit reached for user {user}: {str(exc)}")
+        logger.warning(
+            "Session expense limit reached for user %s: %s",
+            user,
+            str(exc),
+        )
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=str(exc),
@@ -130,7 +146,11 @@ async def extract_and_create_expense(
             detail=str(exc),
         ) from exc
     except SessionExpenseLimitError as exc:
-        logger.warning(f"Session expense limit reached for user {user}: {str(exc)}")
+        logger.warning(
+            "Session expense limit reached for user %s: %s",
+            user,
+            str(exc),
+        )
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=str(exc),
@@ -150,6 +170,94 @@ async def extract_and_create_expense(
     finally:
         if image is not None:
             await image.close()
+
+
+@router.post("/chat-create", status_code=201)
+async def create_expense_from_chat(
+    payload: ExpenseChatCreateRequest,
+    user: str = Depends(get_current_user),
+):
+    """Extract expense fields from free-form text and create the expense."""
+    logger.info("Chat expense create request received")
+    try:
+        if looks_like_expense_analysis_request(payload.message):
+            logger.info("Handling chat request as expense analysis query")
+            return await run_in_threadpool(
+                answer_expense_analysis_query,
+                username=user,
+                message=payload.message,
+            )
+
+        check_session_expense_limit(user)
+        extracted, used_llm_model = await run_in_threadpool(
+            extract_text_chat_expense_payload,
+            payload.message,
+        )
+
+        result = await run_in_threadpool(
+            add_expense,
+            username=user,
+            amount=extracted["amount"],
+            category=extracted["category"],
+            bill_type=extracted["bill_type"],
+            input_type="text",
+            invoice_number=extracted["invoice_number"],
+            vendor=extracted["vendor"],
+            description=extracted["description"],
+            expense_date=date.fromisoformat(extracted["expense_date"]),
+            llm_model=used_llm_model,
+            line_items=[],
+        )
+
+        logger.info("Expense created successfully from chat")
+        return {
+            "expense": result,
+            "extracted": extracted,
+            "llm_model": used_llm_model,
+            "message": (
+                f"Saved {result['vendor']} for {result['amount']:.2f} "
+                f"on {result['expense_date']}."
+            ),
+        }
+    except ExpenseExtractionValidationError as exc:
+        logger.warning(
+            "Chat extraction needs more detail for user %s: %s",
+            user,
+            str(exc),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    except ValueError as exc:
+        logger.warning("Invalid chat expense request: %s", str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    except SessionExpenseLimitError as exc:
+        logger.warning(
+            "Session expense limit reached for user %s: %s",
+            user,
+            str(exc),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=str(exc),
+        ) from exc
+    except RuntimeError as exc:
+        logger.error("Service error in chat expense create: %s", str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except Exception as exc:
+        logger.error(
+            "Unexpected error in chat expense create: %s",
+            str(exc),
+            exc_info=True,
+        )
+        raise
 
 
 def _infer_input_type(
@@ -328,14 +436,18 @@ def get_categories_monthly_summary(
         logger.info(f"Categories monthly summary retrieved for {year}-{month}")
         return result
     except RuntimeError as exc:
-        logger.error(f"Service error fetching categories monthly summary: {str(exc)}")
+        logger.error(
+            "Service error fetching categories monthly summary: %s",
+            str(exc),
+        )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(exc),
         ) from exc
     except Exception as exc:
         logger.error(
-            f"Unexpected error fetching categories monthly summary: {str(exc)}",
+            "Unexpected error fetching categories monthly summary: %s",
+            str(exc),
             exc_info=True,
         )
         raise
@@ -354,7 +466,10 @@ def get_vendors_monthly_summary(
         logger.info(f"Vendors monthly summary retrieved for {year}-{month}")
         return result
     except RuntimeError as exc:
-        logger.error(f"Service error fetching vendors monthly summary: {str(exc)}")
+        logger.error(
+            "Service error fetching vendors monthly summary: %s",
+            str(exc),
+        )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(exc),

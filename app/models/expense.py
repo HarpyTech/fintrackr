@@ -34,6 +34,10 @@ class ExpenseCreate(BaseModel):
     line_items: list[ExpenseLineItem] = Field(default_factory=list)
 
 
+class ExpenseChatCreateRequest(BaseModel):
+    message: str = Field(min_length=5, max_length=1000)
+
+
 class ExpenseItem(BaseModel):
     id: str
     amount: float

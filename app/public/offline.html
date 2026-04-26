@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0057ff" />
+    <title>FinTrackr Offline</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --ink: #111827;
+            --brand: #0057ff;
+            --line: #dbe2f0;
+            --surface: rgba(255, 255, 255, 0.92);
+            --muted: #516079;
+            --bg: radial-gradient(circle at 10% 10%, #e8edff, #f6f8ff 50%, #ffffff);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 24px;
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--ink);
+            background: var(--bg);
+        }
+
+        main {
+            width: min(560px, 100%);
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 20px;
+            padding: 32px;
+            box-shadow: 0 20px 46px rgba(12, 32, 68, 0.14);
+        }
+
+        img {
+            width: 88px;
+            height: 88px;
+            display: block;
+            margin-bottom: 18px;
+        }
+
+        h1 {
+            margin: 0 0 10px;
+            font-size: clamp(2rem, 5vw, 2.5rem);
+        }
+
+        p {
+            margin: 0 0 14px;
+            line-height: 1.6;
+            color: var(--muted);
+        }
+
+        ul {
+            margin: 18px 0 0;
+            padding-left: 18px;
+            color: var(--muted);
+        }
+
+        a {
+            color: var(--brand);
+            font-weight: 600;
+            text-decoration: none;
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <img src="/assets/app_logo.png" alt="FinTrackr icon" />
+        <h1>You are offline.</h1>
+        <p>FinTrackr can still open cached screens and keep queued expense entries ready for background sync once the
+            network returns.</p>
+        <p><a href="/">Return to the app shell</a></p>
+        <ul>
+            <li>Previously visited pages remain available from cache.</li>
+            <li>Manual expense submissions created offline sync automatically when connectivity returns.</li>
+            <li>Charts and reports refresh the next time the app reaches the API.</li>
+        </ul>
+    </main>
+</body>
+
+</html>

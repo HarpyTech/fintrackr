@@ -1,3 +1,5 @@
+import { queueOfflineRequest } from '../pwa/offlineQueue';
+
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '/api/v1').replace(/\/$/, '');
 
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
@@ -33,6 +35,8 @@ function buildUrl(path) {
 export async function apiRequest(path, options = {}) {
   const method = (options.method || 'GET').toUpperCase();
   const headers = new Headers(options.headers || {});
+  const shouldQueueOffline = Boolean(options.offlineQueue);
+  const url = buildUrl(path);
 
   if (!headers.has('Content-Type') && options.body !== undefined && !(options.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
@@ -45,12 +49,50 @@ export async function apiRequest(path, options = {}) {
     }
   }
 
-  const response = await fetch(buildUrl(path), {
-    ...options,
-    method,
-    headers,
-    credentials: 'include',
-  });
+  if (shouldQueueOffline && options.body instanceof FormData) {
+    throw new Error('Offline queueing currently supports JSON requests only.');
+  }
+
+  if (shouldQueueOffline && MUTATING_METHODS.has(method) && !navigator.onLine) {
+    await queueOfflineRequest({
+      url,
+      method,
+      headers,
+      body: typeof options.body === 'string' ? options.body : JSON.stringify(options.body || {}),
+    });
+
+    return {
+      queued: true,
+      offline: true,
+      message: 'Expense saved locally and will sync automatically when you are back online.',
+    };
+  }
+
+  let response;
+  try {
+    response = await fetch(url, {
+      ...options,
+      method,
+      headers,
+      credentials: 'include',
+    });
+  } catch (error) {
+    if (shouldQueueOffline && MUTATING_METHODS.has(method)) {
+      await queueOfflineRequest({
+        url,
+        method,
+        headers,
+        body: typeof options.body === 'string' ? options.body : JSON.stringify(options.body || {}),
+      });
+
+      return {
+        queued: true,
+        offline: true,
+        message: 'Network unavailable. FinTrackr queued this expense and will retry in the background.',
+      };
+    }
+    throw error;
+  }
 
   const contentType = response.headers.get('content-type') || '';
   const isJson = contentType.includes('application/json');

@@ -210,3 +210,6 @@ marimo/_lsp/
 __marimo__/
 !app/src/**
 app/static/**
+
+# Misc
+design_code

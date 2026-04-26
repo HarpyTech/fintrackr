@@ -132,4 +132,13 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             path in PUBLIC_PATHS
             or path.startswith("/static/")
             or path.startswith("/assets/")
+            or path.startswith("/pwa/")
+            or path
+            in {
+                "/favicon.ico",
+                "/manifest.json",
+                "/service-worker.js",
+                "/browserconfig.xml",
+                "/offline.html",
+            }
         )

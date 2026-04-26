@@ -25,6 +25,19 @@ _GEMINI_MODEL = "gemini-2.5-flash"
 _gemini_models: dict[str, genai.GenerativeModel] = {}
 
 
+class ExpenseExtractionValidationError(ValueError):
+    """Raised when chat extraction is missing required fields."""
+
+    def __init__(self, missing_fields: list[str]):
+        self.missing_fields = missing_fields
+        fields_text = ", ".join(missing_fields)
+        super().__init__(
+            "I couldn't confidently extract the "
+            f"{fields_text}. Please include the merchant, amount, "
+            "date, and what the expense was for."
+        )
+
+
 PROMPT_TEMPLATE = """
                 Help me organize this purchase info.
                 I need it in JSON format so I can track my spending.
@@ -107,6 +120,30 @@ def extract_expense_payload(
 
     logger.info(
         "Expense extraction completed successfully using model '%s'",
+        model_name,
+    )
+    return normalized, model_name
+
+
+def extract_text_chat_expense_payload(
+    text_input: str,
+) -> tuple[dict[str, Any], str]:
+    """Extract a strict expense payload from plain text."""
+    if not text_input or not text_input.strip():
+        raise ValueError("message is required")
+
+    model_name = _resolve_model_name()
+    model = _get_model(model_name)
+    prompt_parts: list[Any] = [
+        PROMPT_TEMPLATE,
+        f"Source text:\n{text_input.strip()}",
+    ]
+
+    parsed = _generate_and_parse_json_with_retries(model, prompt_parts)
+    normalized = _normalize_text_chat_payload(parsed, text_input=text_input)
+
+    logger.info(
+        "Text chat expense extraction completed successfully using model '%s'",
         model_name,
     )
     return normalized, model_name
@@ -289,6 +326,63 @@ def _normalize_payload(
         raise RuntimeError("Extracted data failed validation") from exc
 
 
+def _normalize_text_chat_payload(
+    raw: dict[str, Any],
+    text_input: str,
+) -> dict[str, Any]:
+    amount = _to_float(raw.get("amount"))
+    if amount is None:
+        amount = _to_float(raw.get("total"))
+
+    vendor = str(raw.get("vendor") or raw.get("merchant") or "").strip()[:128]
+    description = str(raw.get("description") or raw.get("purpose") or "").strip()[:255]
+    expense_date = _normalize_date(
+        raw.get("expense_date") or raw.get("date"),
+        default_to_today=False,
+    )
+
+    missing_fields: list[str] = []
+    if amount is None or amount <= 0:
+        missing_fields.append("amount")
+    if not vendor:
+        missing_fields.append("vendor")
+    if expense_date is None:
+        missing_fields.append("expense date")
+    if not description:
+        missing_fields.append("description")
+
+    if missing_fields:
+        raise ExpenseExtractionValidationError(missing_fields)
+
+    category = str(raw.get("category") or "other").strip().lower()
+    if len(category) < 2:
+        category = "other"
+
+    bill_type = str(raw.get("bill_type") or "other").strip().lower()
+    if bill_type not in _ALLOWED_BILL_TYPES:
+        bill_type = "other"
+
+    payload = {
+        "amount": round(amount, 2),
+        "category": category,
+        "bill_type": bill_type,
+        "invoice_number": _normalize_invoice_number(
+            raw,
+            text_input=text_input,
+            description=description,
+        ),
+        "vendor": vendor,
+        "description": description,
+        "expense_date": expense_date.isoformat(),
+        "line_items": [],
+    }
+
+    try:
+        return ExpenseCreate(**payload).model_dump(mode="json")
+    except ValidationError as exc:
+        raise RuntimeError("Extracted data failed validation") from exc
+
+
 def _normalize_line_items(raw_items: Any) -> list[dict[str, Any]]:
     if not isinstance(raw_items, list):
         return []
@@ -332,13 +426,13 @@ def _normalize_line_items(raw_items: Any) -> list[dict[str, Any]]:
     return normalized
 
 
-def _normalize_date(value: Any) -> date:
+def _normalize_date(value: Any, default_to_today: bool = True) -> date | None:
     if not value:
-        return date.today()
+        return date.today() if default_to_today else None
 
     raw = str(value).strip()
     if not raw:
-        return date.today()
+        return date.today() if default_to_today else None
 
     try:
         return date.fromisoformat(raw[:10])
@@ -346,7 +440,7 @@ def _normalize_date(value: Any) -> date:
         try:
             return datetime.fromisoformat(raw).date()
         except ValueError:
-            return date.today()
+            return date.today() if default_to_today else None
 
 
 def _to_float(value: Any) -> float | None:

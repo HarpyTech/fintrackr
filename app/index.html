@@ -4,14 +4,24 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <!-- <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" /> -->
-  <link rel="icon" href="/favicon.ico" sizes="any" />
+  <meta name="theme-color" content="#0057ff" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="FinTrackr" />
+  <meta name="application-name" content="FinTrackr" />
+  <meta name="msapplication-TileColor" content="#0057ff" />
+  <meta name="msapplication-config" content="/browserconfig.xml" />
+  <link rel="icon" href="/assets/app_logo.png" sizes="any" />
+  <link rel="manifest" href="/manifest.json" crossorigin="use-credentials" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/app_logo.png" />
 
   <title>FinTrackr</title>
 </head>
 
 <body>
   <div id="root"></div>
+  <script type="module" src="/src/pwa/register.js"></script>
   <script type="module" src="/src/main.jsx"></script>
 </body>
 

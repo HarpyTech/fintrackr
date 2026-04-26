@@ -1,0 +1,450 @@
+/* ============================================================
+   COMPONENTS — Shared UI components used across multiple pages:
+   ThemeToggle, TopNavigation, ProfileMenu, PWA install prompt,
+   and ExpenseChatWidget.
+   ============================================================ */
+
+/* --- ThemeToggle --- */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--brand-soft-border);
+  background: var(--surface-soft);
+  color: var(--accent-text);
+  font-weight: 700;
+  padding: 4px;
+  border-radius: 14px;
+}
+
+.theme-toggle-option {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted-strong);
+  padding: 6px 10px;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 10px;
+}
+
+.theme-toggle-option[data-active='true'] {
+  background: var(--surface);
+  border-color: var(--line-strong);
+  color: var(--brand);
+  box-shadow: 0 8px 18px rgba(13, 31, 62, 0.08);
+}
+
+.theme-toggle-glyph {
+  width: 20px;
+  height: 20px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.theme-toggle-floating {
+  position: fixed;
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  right: calc(12px + env(safe-area-inset-right, 0px));
+  z-index: 80;
+  box-shadow: var(--panel-shadow);
+}
+
+.theme-toggle-floating .theme-toggle-option {
+  min-width: 38px;
+  justify-content: center;
+  padding: 6px 8px;
+}
+
+/* --- TopNavigation (dashboard header shell) --- */
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 18px;
+}
+
+.dashboard-header-title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.dashboard-logo {
+  height: 36px;
+  width: auto;
+}
+
+.dashboard-header-title h1,
+.dashboard-header-title span {
+  margin: 0;
+  font-size: 1.4rem;
+  color: var(--ink);
+}
+
+.dashboard-header-subtitle {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.top-menu {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.top-menu-links {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.top-menu-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: var(--brand);
+  background: var(--brand-soft);
+  border: 1px solid var(--brand-soft-border);
+  border-radius: 999px;
+  padding: 9px 12px;
+  font-weight: 600;
+}
+
+.top-menu-icon {
+  display: inline-grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(35, 64, 142, 0.16);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.top-menu-link.active {
+  color: #fff;
+  background: linear-gradient(120deg, var(--brand), var(--brand-strong));
+  border-color: transparent;
+}
+
+.top-menu-link.active .top-menu-icon {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* --- Profile menu --- */
+.profile-menu {
+  position: relative;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.profile-icon-button {
+  width: 42px;
+  height: 42px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--brand-soft-border);
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.profile-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  width: min(290px, 86vw);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: var(--panel-shadow);
+  z-index: 30;
+}
+
+.profile-name {
+  margin: 0;
+  font-weight: 700;
+}
+
+.profile-email {
+  margin: 4px 0 10px;
+  color: var(--muted);
+  font-size: 14px;
+  word-break: break-word;
+}
+
+.profile-dropdown-action {
+  width: 100%;
+}
+
+.profile-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay);
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  z-index: 50;
+}
+
+.profile-modal {
+  width: min(560px, 100%);
+  background: var(--surface);
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  box-shadow: var(--raised-shadow);
+  padding: 20px;
+}
+
+.profile-modal h2 {
+  margin: 0 0 4px;
+}
+
+.profile-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* --- PWA install prompt --- */
+.pwa-install {
+  display: grid;
+  gap: 4px;
+  align-items: start;
+}
+
+.pwa-install-hero {
+  min-width: min(280px, 100%);
+}
+
+.pwa-install-button {
+  white-space: nowrap;
+}
+
+.pwa-install-copy,
+.pwa-install-feedback {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.pwa-install-feedback {
+  color: var(--accent-text);
+}
+
+/* --- Expense Chat Widget --- */
+.expense-chat-widget {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 60;
+  display: grid;
+  justify-items: end;
+  gap: 12px;
+}
+
+.expense-chat-launcher {
+  width: 58px;
+  height: 58px;
+  border-radius: 999px;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  box-shadow: 0 16px 34px rgba(0, 56, 166, 0.28);
+}
+
+.expense-chat-launcher-icon {
+  width: 30px;
+  height: 30px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.expense-chat-panel {
+  width: min(437px, calc(100vw - 24px));
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: var(--raised-shadow);
+  overflow: hidden;
+}
+
+.expense-chat-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--surface-alt), var(--surface));
+}
+
+.expense-chat-header h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.expense-chat-header p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.expense-chat-close {
+  background: var(--brand-soft);
+  color: var(--brand);
+  border: 1px solid var(--brand-soft-border);
+}
+
+.expense-chat-body {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  min-height: 170px;
+  max-height: 320px;
+  overflow: auto;
+  background: var(--surface-alt);
+}
+
+.expense-chat-message {
+  max-width: 92%;
+  padding: 10px 12px;
+  border-radius: 14px;
+  line-height: 1.45;
+}
+
+.expense-chat-message p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.expense-chat-message.user {
+  justify-self: end;
+  background: linear-gradient(120deg, var(--brand), #0038a6);
+  color: #fff;
+  border-bottom-right-radius: 6px;
+}
+
+.expense-chat-message.assistant {
+  justify-self: start;
+  background: var(--brand-soft);
+  color: var(--accent-text);
+  border: 1px solid var(--brand-soft-border);
+  border-bottom-left-radius: 6px;
+}
+
+.expense-chat-message.assistant.success {
+  background: var(--teal-soft);
+  border-color: var(--success-soft-border);
+  color: var(--success);
+}
+
+.expense-chat-message.assistant.error {
+  background: var(--danger-soft);
+  border-color: var(--danger-soft-border);
+  color: var(--danger);
+}
+
+.expense-chat-message.assistant.missing {
+  background: var(--warning-soft);
+  border-color: var(--warning-soft-border);
+  color: var(--warning-text);
+  border-width: 2px;
+  box-shadow: 0 10px 24px rgba(243, 200, 123, 0.35);
+  font-weight: 600;
+}
+
+.expense-chat-form {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px 16px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.expense-chat-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.expense-chat-reset {
+  background: var(--surface-soft);
+  color: var(--muted-strong);
+  border: 1px solid var(--line-strong);
+}
+
+.expense-chat-label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* --- Settings Widget --- */
+.settings-widget-container {
+  position: fixed;
+  right: 20px;
+  bottom: 90px;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.settings-widget-launcher {
+  width: 58px;
+  height: 58px;
+  border-radius: 999px;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  box-shadow: 0 16px 34px rgba(13, 31, 62, 0.16);
+  background: var(--surface);
+  color: var(--brand);
+  border: 1px solid var(--brand-soft-border);
+  cursor: pointer;
+}
+
+/* Base adjustment for mobile bottom-nav stack */
+@media (max-width: 768px) {
+  .expense-chat-widget {
+    bottom: 80px;
+  }
+  .settings-widget-container {
+    bottom: 150px;
+  }
+}
+

@@ -1,0 +1,259 @@
+/* ============================================================
+   REPORT — Styles for ReportPage.
+   Includes legacy report classes and the prototype
+   (report-proto-*) layout that matches the design spec.
+   ============================================================ */
+
+/* ============================================================
+   REPORT — Prototype layout (report-proto-*)
+   ============================================================ */
+
+.report-proto {
+  min-height: 100vh;
+  padding-bottom: 80px;
+}
+
+@media (min-width: 768px) {
+  .report-proto {
+    padding-bottom: 0;
+  }
+}
+
+.report-proto-container {
+  width: min(1280px, 100% - 48px);
+  margin: 0 auto;
+  padding-top: 32px;
+}
+
+.report-proto-title {
+  margin: 0 0 32px;
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: var(--heading);
+}
+
+/* --- Main card --- */
+.report-proto-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  margin-bottom: 24px;
+}
+
+:root[data-theme='dark'] .report-proto-card {
+  background: #1f2937;
+}
+
+/* --- View toggle tabs --- */
+.report-proto-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 24px;
+}
+
+.report-proto-tab {
+  padding: 12px 24px;
+  font-weight: 500;
+  font-size: 14px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  color: var(--muted);
+  border-radius: 0;
+  cursor: pointer;
+  transition: color 150ms ease, border-color 150ms ease;
+}
+
+.report-proto-tab:hover {
+  color: var(--heading);
+  box-shadow: none;
+}
+
+.report-proto-tab.active {
+  color: #2563eb;
+  border-bottom-color: #2563eb;
+  background: transparent;
+  box-shadow: none;
+}
+
+:root[data-theme='dark'] .report-proto-tab.active {
+  color: #60a5fa;
+  border-bottom-color: #60a5fa;
+}
+
+/* --- Filters --- */
+.report-proto-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.report-proto-label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted-strong);
+}
+
+.report-proto-label input,
+.report-proto-label select {
+  height: 38px;
+  padding: 0 12px;
+  font-size: 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+/* --- Summary bar --- */
+.report-proto-summary {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding: 14px 18px;
+  background: #eff6ff;
+  border-radius: 10px;
+  margin-bottom: 24px;
+}
+
+:root[data-theme='dark'] .report-proto-summary {
+  background: rgba(37, 99, 235, 0.12);
+}
+
+.report-proto-summary-item {
+  font-size: 14px;
+}
+
+.report-proto-summary-label {
+  color: var(--muted);
+}
+
+.report-proto-summary-value {
+  font-weight: 600;
+  color: var(--heading);
+  margin-left: 4px;
+}
+
+/* --- Input-type badges --- */
+.report-proto-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.6;
+}
+
+.report-proto-badge.ai {
+  background: #f3e8ff;
+  color: #7e22ce;
+}
+
+.report-proto-badge.manual {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+:root[data-theme='dark'] .report-proto-badge.ai {
+  background: rgba(107, 33, 168, 0.28);
+  color: #c4b5fd;
+}
+
+:root[data-theme='dark'] .report-proto-badge.manual {
+  background: rgba(75, 85, 99, 0.3);
+  color: #d1d5db;
+}
+
+/* --- Table --- */
+.report-proto-table-wrap {
+  overflow-x: auto;
+}
+
+.report-proto-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.report-proto-table th {
+  text-align: left;
+  padding: 10px 14px;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--muted-strong);
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+  background: transparent;
+}
+
+.report-proto-table td {
+  padding: 12px 14px;
+  font-size: 14px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+}
+
+.report-proto-table tbody tr:hover td {
+  background: var(--surface-alt);
+}
+
+.report-proto-table td.amount {
+  font-weight: 600;
+}
+
+.report-proto-empty {
+  text-align: center;
+  color: var(--muted);
+  padding: 40px 14px;
+  font-size: 14px;
+}
+
+/* ============================================================
+   REPORT — Legacy classes (kept for backward compat)
+   ============================================================ */
+
+.report-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.report-toggle {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.toggle-button {
+  background: var(--brand-soft);
+  color: var(--brand);
+  border: 1px solid var(--brand-soft-border);
+}
+
+.toggle-button.active {
+  background: linear-gradient(120deg, var(--brand), var(--brand-strong));
+  color: #fff;
+}
+
+.report-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.report-summary {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  color: var(--muted);
+  font-size: 14px;
+}
