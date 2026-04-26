@@ -2,7 +2,7 @@
 <browserconfig>
   <msapplication>
     <tile>
-      <square150x150logo src="/assets/FinTrackr_App_Logo-2.png" />
+      <square150x150logo src="/assets/app_logo.png" />
       <TileColor>#0057ff</TileColor>
     </tile>
   </msapplication>

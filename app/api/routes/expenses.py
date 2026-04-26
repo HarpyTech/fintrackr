@@ -31,6 +31,10 @@ from app.services.expense_service import (
     yearly_summary,
     SessionExpenseLimitError,
 )
+from app.services.expense_chat_service import (
+    answer_expense_analysis_query,
+    looks_like_expense_analysis_request,
+)
 from app.services.expense_extraction_service import (
     ExpenseExtractionValidationError,
     extract_expense_payload,
@@ -120,9 +124,7 @@ async def extract_and_create_expense(
             amount=extracted["amount"],
             category=extracted["category"],
             bill_type=extracted["bill_type"],
-            input_type=(
-                input_type or _infer_input_type(text_input, image is not None)
-            ),
+            input_type=(input_type or _infer_input_type(text_input, image is not None)),
             invoice_number=extracted["invoice_number"],
             vendor=extracted["vendor"],
             description=extracted["description"],
@@ -178,6 +180,14 @@ async def create_expense_from_chat(
     """Extract expense fields from free-form text and create the expense."""
     logger.info("Chat expense create request received")
     try:
+        if looks_like_expense_analysis_request(payload.message):
+            logger.info("Handling chat request as expense analysis query")
+            return await run_in_threadpool(
+                answer_expense_analysis_query,
+                username=user,
+                message=payload.message,
+            )
+
         check_session_expense_limit(user)
         extracted, used_llm_model = await run_in_threadpool(
             extract_text_chat_expense_payload,

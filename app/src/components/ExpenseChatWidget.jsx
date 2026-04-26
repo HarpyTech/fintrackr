@@ -41,6 +41,35 @@ function parseMissingFields(message) {
     .filter(Boolean);
 }
 
+function looksLikeAnalysisMessage(message) {
+  const lower = String(message || '').trim().toLowerCase();
+  if (!lower) {
+    return false;
+  }
+
+  const analysisHints = [
+    'top ',
+    'summary',
+    'summarize',
+    'analysis',
+    'analyze',
+    'breakdown',
+    'report',
+    'show me',
+    'list',
+    'how much',
+  ];
+
+  if (analysisHints.some((hint) => lower.includes(hint))) {
+    return true;
+  }
+
+  return (lower.includes('spent') || lower.includes('spend'))
+    && ['what', 'which', 'where', 'give me', 'tell me', 'most', 'total'].some((hint) =>
+      lower.includes(hint)
+    );
+}
+
 export default function ExpenseChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [draft, setDraft] = useState('');
@@ -68,7 +97,8 @@ export default function ExpenseChatWidget() {
       return;
     }
 
-    const composedMessage = pendingExpenseContext
+    const isAnalysisMessage = looksLikeAnalysisMessage(latestUserMessage);
+    const composedMessage = pendingExpenseContext && !isAnalysisMessage
       ? `${pendingExpenseContext}\n${latestUserMessage}`
       : latestUserMessage;
 
@@ -82,18 +112,27 @@ export default function ExpenseChatWidget() {
         body: JSON.stringify({ message: composedMessage }),
       });
 
+      const isExpenseCreated = Boolean(response?.expense);
+      const assistantTone = isExpenseCreated ? 'success' : 'default';
+
       setMessages((prev) => [
         ...prev,
-        createEntry('assistant', response.message || 'Expense saved successfully.', 'success'),
+        createEntry(
+          'assistant',
+          response.message || 'Expense saved successfully.',
+          assistantTone
+        ),
       ]);
       setPendingExpenseContext('');
       setPendingMissingFields([]);
 
-      window.dispatchEvent(
-        new CustomEvent('expense:created', {
-          detail: response.expense,
-        })
-      );
+      if (isExpenseCreated) {
+        window.dispatchEvent(
+          new CustomEvent('expense:created', {
+            detail: response.expense,
+          })
+        );
+      }
     } catch (err) {
       const missingFields = parseMissingFields(err.message || '');
       if (missingFields.length > 0) {
@@ -137,7 +176,7 @@ export default function ExpenseChatWidget() {
           <header className="expense-chat-header">
             <div>
               <h2>Expense Chat</h2>
-              <p>Log an expense from plain text.</p>
+              <p>Log an expense or ask for a spending summary.</p>
             </div>
             <button
               type="button"
@@ -168,13 +207,13 @@ export default function ExpenseChatWidget() {
             <label className="expense-chat-label">
               {pendingMissingFields.length > 0
                 ? `Reply with only: ${pendingMissingFields.join(', ')}`
-                : 'Describe the expense'}
+                : 'Describe an expense or ask about past spending'}
               <textarea
                 rows={3}
                 placeholder={
                   pendingMissingFields.length > 0
                     ? `Provide only ${pendingMissingFields.join(', ')}.`
-                    : 'Paid 320 at Starbucks on 2026-04-20 for coffee with client.'
+                    : 'Paid 320 at Starbucks on 2026-04-20 for coffee, or ask: top 5 items I spent most on in Apr.'
                 }
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
@@ -190,7 +229,7 @@ export default function ExpenseChatWidget() {
                 Start new expense
               </button>
             <button type="submit" disabled={submitting || !draft.trim()}>
-              {submitting ? 'Saving...' : 'Send'}
+              {submitting ? 'Working...' : 'Send'}
             </button>
             </div>
           </form>

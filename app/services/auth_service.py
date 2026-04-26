@@ -124,7 +124,7 @@ def _build_signup_otp_email_html(recipient: str, otp: str) -> str:
                                     <td align=\"left\" style=\"width:40%;\">
                                         <img
                                             class=\"brand-logo\"
-                                            src="https://fintrackr.harpytechco.in/assets/FinTrackr_App_Logo-3.png"
+                                            src="https://fintrackr.harpytechco.in/assets/app_logo.png"
                                             alt=\"FinTrackr Brand Logo\"
                                             style=\"display:block;height:36px;width:auto;\"
                                         />

@@ -29,52 +29,57 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="auth-layout">
-      <section className="auth-card">
-        <div className="auth-brand-block" aria-label="FinTrackr brand">
-          <div className="auth-brand-lockup">
-            <img src="/assets/FinTrackr_App_Logo-3.png" alt="FinTrackr icon" className="auth-brand-icon" />
-            <img
-              src="/assets/name_logo.svg"
-              alt="FinTrackr"
-              className="auth-brand-wordmark"
-            />
+    <main className="auth-layout auth-layout-login">
+      <div className="auth-login-shell">
+        <div className="auth-login-brand" aria-label="FinTrackr brand">
+          <div className="auth-login-brand-badge">
+            <img src="/assets/app_logo.png" alt="FinTrackr icon" className="auth-login-brand-icon" />
           </div>
-          <p className="auth-brand-tagline">Track. Grow. Simplify your finances.</p>
+          <img
+            src="/assets/name_logo.svg"
+            alt="FinTrackr"
+            className="auth-login-brand-wordmark"
+          />
         </div>
-        <h1>Welcome back</h1>
-        <p>Sign in to track daily expenses and monitor monthly and yearly trends.</p>
-        <form onSubmit={handleSubmit} className="stack-form">
-          <label>
-            Email
-            <input
-              type="email"
-              required
-              value={form.username}
-              onChange={(e) => setForm((prev) => ({ ...prev, username: e.target.value }))}
-            />
-          </label>
-          <label>
-            Password
-            <input
-              type="password"
-              required
-              value={form.password}
-              onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
-            />
-          </label>
-          {error ? <p className="error-text">{error}</p> : null}
-          <button disabled={submitting} type="submit">
-            {submitting ? 'Signing in...' : 'Sign in'}
-          </button>
-        </form>
-        <p>
-          New user? <Link to="/register">Create an account</Link>
-        </p>
-        <p>
-          Already registered but not verified? <Link to="/verify-email">Verify now</Link>
-        </p>
-      </section>
+        <p className="auth-login-kicker">Your smart expense tracking companion</p>
+        <section className="auth-card auth-card-login">
+          <h1 className="auth-login-title">Sign in</h1>
+          <form onSubmit={handleSubmit} className="stack-form">
+            <label>
+              Email
+              <input
+                type="email"
+                required
+                autoComplete="email"
+                placeholder="you@example.com"
+                value={form.username}
+                onChange={(e) => setForm((prev) => ({ ...prev, username: e.target.value }))}
+              />
+            </label>
+            <label>
+              Password
+              <input
+                type="password"
+                required
+                autoComplete="current-password"
+                placeholder="********"
+                value={form.password}
+                onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
+              />
+            </label>
+            {error ? (
+              <p className="error-text auth-inline-error" role="alert" aria-live="polite">{error}</p>
+            ) : null}
+            <button disabled={submitting} type="submit">
+              {submitting ? 'Signing in...' : 'Sign in'}
+            </button>
+          </form>
+          <div className="auth-login-links">
+            <Link to="/register">Create account</Link>
+            <Link to="/verify-email">Verify account</Link>
+          </div>
+        </section>
+      </div>
     </main>
   );
 }

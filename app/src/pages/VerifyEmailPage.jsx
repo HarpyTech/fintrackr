@@ -19,6 +19,12 @@ export default function VerifyEmailPage() {
     event.preventDefault();
     setError('');
     setMessage('');
+
+    if (!email || !otp) {
+      setError('Please enter both email and verification code');
+      return;
+    }
+
     setVerifying(true);
 
     try {
@@ -52,51 +58,66 @@ export default function VerifyEmailPage() {
   }
 
   return (
-    <main className="auth-layout">
-      <section className="auth-card">
-        <h1>Verify your account</h1>
-        <p>
-          Enter the OTP sent to your email to activate your account and complete login.
-        </p>
-        <form onSubmit={handleVerify} className="stack-form">
-          <label>
-            Email
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </label>
-          <label>
-            OTP
-            <input
-              type="text"
-              inputMode="numeric"
-              maxLength={8}
-              required
-              value={otp}
-              onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-            />
-          </label>
-          {message ? <p>{message}</p> : null}
-          {error ? <p className="error-text">{error}</p> : null}
-          <button disabled={verifying} type="submit">
-            {verifying ? 'Verifying...' : 'Verify account'}
-          </button>
-          <button
-            type="button"
-            className="secondary-button"
-            disabled={resending}
-            onClick={handleResendOtp}
-          >
-            {resending ? 'Resending OTP...' : 'Resend OTP'}
-          </button>
-        </form>
-        <p>
-          Remembered your password? <Link to="/login">Back to sign in</Link>
-        </p>
-      </section>
+    <main className="auth-layout auth-layout-register">
+      <div className="auth-login-shell">
+        <div className="auth-register-brand" aria-label="FinTrackr brand">
+          <div className="auth-register-brand-row">
+            <div className="auth-login-brand-badge">
+              <img src="/assets/app_logo.png" alt="FinTrackr icon" className="auth-login-brand-icon" />
+            </div>
+            <h1 className="auth-register-brand-title">FinTrackr</h1>
+          </div>
+          <p className="auth-login-kicker">Verify your email address</p>
+        </div>
+
+        <section className="auth-card auth-card-login">
+          <h1 className="auth-login-title">Verify your account</h1>
+          <p className="auth-register-copy">
+            Enter the verification code sent to your email to activate your account and continue.
+          </p>
+          <form onSubmit={handleVerify} className="stack-form">
+            <label>
+              Email
+              <input
+                type="email"
+                required
+                autoComplete="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </label>
+            <label>
+              Verification Code
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                required
+                placeholder="Enter 6-digit code"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+              />
+            </label>
+            {message ? <p className="auth-inline-info" role="status" aria-live="polite">{message}</p> : null}
+            {error ? <p className="error-text auth-inline-error" role="alert" aria-live="polite">{error}</p> : null}
+            <button disabled={verifying} type="submit">
+              {verifying ? 'Verifying...' : 'Verify account'}
+            </button>
+            <button
+              type="button"
+              className="secondary-button"
+              disabled={resending}
+              onClick={handleResendOtp}
+            >
+              {resending ? 'Resending OTP...' : 'Resend OTP'}
+            </button>
+          </form>
+          <div className="auth-login-links">
+            <Link to="/login">Back to sign in</Link>
+          </div>
+        </section>
+      </div>
     </main>
   );
 }

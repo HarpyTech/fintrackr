@@ -14,11 +14,11 @@ const CORE_ASSETS = [
   '/manifest.json',
   '/browserconfig.xml',
   '/favicon.ico',
-  '/assets/FinTrackr_App_Logo-3.png',
+  '/assets/app_logo.png',
   '/assets/name_logo.svg',
-  '/pwa/icon-192.png',
-  '/pwa/icon-512.png',
-  '/pwa/apple-touch-icon.png'
+  '/assets/app_logo.png',
+  '/assets/app_logo.png',
+  '/assets/app_logo.png'
 ];
 
 self.addEventListener('install', (event) => {
@@ -123,8 +123,8 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(payload.title, {
       body: payload.body,
-      icon: '/pwa/icon-192.png',
-      badge: '/pwa/icon-192.png',
+      icon: '/assets/app_logo.png',
+      badge: '/assets/app_logo.png',
       data: { url: payload.url || '/dashboard' },
       tag: payload.tag || 'fintrackr-notification',
       renotify: true,
@@ -316,8 +316,8 @@ async function syncQueuedRequests() {
   if (self.registration?.showNotification && Notification.permission === 'granted') {
     await self.registration.showNotification('FinTrackr synced offline changes', {
       body: 'Queued expense updates are now stored on the server.',
-      icon: '/pwa/icon-192.png',
-      badge: '/pwa/icon-192.png',
+      icon: '/assets/app_logo.png',
+      badge: '/assets/app_logo.png',
       tag: 'fintrackr-sync-success',
     });
   }

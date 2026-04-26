@@ -3,34 +3,40 @@ import InstallAppButton from '../components/InstallAppButton';
 
 const highlights = [
   {
-    title: 'See Where Money Goes',
-    text: 'Get a clear view of your spending habits so you can make smarter daily decisions with confidence.',
+    icon: 'AI',
+    title: 'AI-Powered Insights',
+    text: 'Automatically extract expense details from receipts and get intelligent spending recommendations.',
   },
   {
-    title: 'Stay in Control',
-    text: 'Track bills, purchases, and recurring costs in one place to avoid surprises and protect your monthly goals.',
+    icon: 'AN',
+    title: 'Visual Analytics',
+    text: 'Beautiful charts and reports that make it easy to understand your spending patterns at a glance.',
   },
   {
-    title: 'Build Better Habits',
-    text: 'Understand patterns over time and make small changes that create long-term financial stability.',
+    icon: 'RT',
+    title: 'Real-Time Tracking',
+    text: 'Capture expenses on the go with our mobile-friendly interface and instant updates.',
   },
 ];
 
 const outcomes = [
-  'Helps you to understand & reduce unnecessary spending with better day-to-day visibility',
-  'Make faster budgeting decisions for family and personal goals',
-  'Keep every expense organized and easy to understand',
-  'Feel more confident during salary cycles and bill due dates',
+  'Reduce manual data entry with AI-assisted expense extraction',
+  'Gain clear visibility into spending patterns across categories and vendors',
+  'Build better financial habits with data-driven insights',
+  'Access your financial data anytime, anywhere',
 ];
 
 export default function LandingPage() {
   return (
     <main className="landing-layout">
       <section className="landing-hero">
-        <div className="landing-badge">Personal Finance Companion</div>
+        <div className="landing-badge">
+          <span className="landing-badge-icon" aria-hidden="true">✦</span>
+          Financial Clarity Made Simple
+        </div>
         <div className="landing-brand-row">
           <img
-            src="/assets/FinTrackr_App_Logo-3.png"
+            src="/assets/app_logo.png"
             alt="FinTrackr icon"
             className="landing-brand-icon"
           />
@@ -40,24 +46,27 @@ export default function LandingPage() {
             className="landing-brand-name"
           />
         </div>
-        <h1>Manage money with clarity, confidence, and less stress.</h1>
+        <h1>Take Control of Your Expenses</h1>
         <p>
-          FinTrackr helps individuals and families stay aware of spending,
-          understand financial behavior, and make confident choices for everyday
-          life and future plans.
+          Smart expense tracking with AI-powered receipt scanning, real-time analytics,
+          and insights that help you make better financial decisions.
         </p>
         <div className="landing-cta-row">
-          <Link to="/register" className="landing-primary-cta">Get Started</Link>
-          <Link to="/login" className="landing-secondary-cta">I Already Have an Account</Link>
+          <Link to="/features" className="landing-secondary-cta">See How It Works</Link>
+          <Link to="/register" className="landing-primary-cta">Get Started Free</Link>
+          <Link to="/login" className="landing-tertiary-cta">Sign In</Link>
+        </div>
+        <div className="landing-install-row">
           <InstallAppButton variant="hero" />
         </div>
       </section>
 
-      <section className="landing-section">
-        <h2>Why people choose FinTrackr</h2>
+      <section id="landing-benefits" className="landing-section">
+        <h2>Why Choose FinTrackr?</h2>
         <div className="landing-cards">
           {highlights.map((item) => (
             <article key={item.title} className="landing-card">
+              <div className="landing-card-icon" aria-hidden="true">{item.icon}</div>
               <h3>{item.title}</h3>
               <p>{item.text}</p>
             </article>
@@ -66,19 +75,21 @@ export default function LandingPage() {
       </section>
 
       <section className="landing-section landing-outcomes">
-        <h2>How it benefits you</h2>
+        <h2>What You'll Achieve</h2>
         <ul>
           {outcomes.map((item) => (
-            <li key={item}>{item}</li>
+            <li key={item}>
+              <span className="landing-check" aria-hidden="true">✓</span>
+              <span>{item}</span>
+            </li>
           ))}
         </ul>
       </section>
 
       <section className="landing-section landing-bottom-cta">
-        <h2>Ready to take charge of your finances?</h2>
+        <h2>Ready to Take Control?</h2>
         <p>
-          Start today and turn financial tracking into a simple habit that supports
-          your goals.
+          Join users transforming how they track and understand money with FinTrackr.
         </p>
         <Link to="/register" className="landing-primary-cta">Create Free Account</Link>
       </section>
