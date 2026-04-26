@@ -12,6 +12,7 @@ import LandingPage from './pages/LandingPage';
 import FeaturesPage from './pages/FeaturesPage';
 import InsightsPage from './pages/InsightsPage';
 import SupportPage from './pages/SupportPage';
+import { isSupportPageEnabled } from './lib/featureFlags';
 
 function ProtectedRoute({ children }) {
   const { session, loading } = useAuth();
@@ -29,7 +30,11 @@ function ProtectedRoute({ children }) {
 
 export default function App() {
   const location = useLocation();
-  const showFloatingThemeToggle = ['/', '/login', '/register', '/verify-email', '/features', '/support'].includes(location.pathname);
+  const floatingThemeRoutes = ['/', '/login', '/register', '/verify-email', '/features'];
+  if (isSupportPageEnabled) {
+    floatingThemeRoutes.push('/support');
+  }
+  const showFloatingThemeToggle = floatingThemeRoutes.includes(location.pathname);
 
   return (
     <>
@@ -64,7 +69,7 @@ export default function App() {
           }
         />
         <Route path="/features" element={<FeaturesPage />} />
-        <Route path="/support" element={<SupportPage />} />
+        {isSupportPageEnabled ? <Route path="/support" element={<SupportPage />} /> : null}
         <Route
           path="/insights"
           element={

@@ -12,13 +12,16 @@ import {
   LogOut,
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
+import { isSupportPageEnabled } from '../lib/featureFlags';
 
 const MENU_ITEMS = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/insights', icon: MessageSquare, label: 'Insights' },
   { to: '/report', icon: FileText, label: 'Report' },
   { to: '/add-expense', icon: PlusCircle, label: 'Add Expense' },
-  { to: '/support', icon: HelpCircle, label: 'Support' },
+  ...(isSupportPageEnabled
+    ? [{ to: '/support', icon: HelpCircle, label: 'Support' }]
+    : []),
 ];
 
 export default function Sidebar() {
