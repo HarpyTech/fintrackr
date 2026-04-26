@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AlertCircle, Camera, Upload } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import TopNavigation from '../components/TopNavigation';
 import { apiRequest } from '../lib/api';
@@ -26,7 +27,6 @@ const SUPPORT_MAILTO_LINK =
 export default function AddExpensePage() {
   const { logout } = useAuth();
   const navigate = useNavigate();
-  const isMobileDevice = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 
   const [expenseForm, setExpenseForm] = useState({
     amount: '',
@@ -43,6 +43,7 @@ export default function AddExpensePage() {
   const [message, setMessage] = useState('');
   const [sessionLimitReached, setSessionLimitReached] = useState(false);
   const [expenseLimit, setExpenseLimit] = useState(10);
+  const [aiPreviewUrl, setAiPreviewUrl] = useState('');
 
   useEffect(() => {
     syncExpenseLimitState();
@@ -58,6 +59,19 @@ export default function AddExpensePage() {
       window.removeEventListener('expense:created', handleExpenseCreated);
     };
   }, []);
+
+  useEffect(() => {
+    const file = cameraImageFile || aiImageFile;
+    if (!file) {
+      setAiPreviewUrl('');
+      return undefined;
+    }
+    const url = URL.createObjectURL(file);
+    setAiPreviewUrl(url);
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [aiImageFile, cameraImageFile]);
 
   async function syncExpenseLimitState() {
     try {
@@ -186,133 +200,217 @@ export default function AddExpensePage() {
   }
 
   return (
-    <main className="dashboard-layout">
-      <header className="dashboard-header">
-        <div>
-          <h1>Add Expense</h1>
-        </div>
-        <div className="header-actions">
-          <TopNavigation />
-          <button onClick={handleLogout}>Logout</button>
-        </div>
-      </header>
+    <main className="add-expense-proto">
+      <div className="add-expense-proto-container">
+        {/* ── Header ── */}
+        <header className="dashboard-header">
+          <div className="dashboard-header-title">
+            <img src="/assets/name_logo.svg" alt="FinTrackr" className="dashboard-logo" />
+          </div>
+          <div className="header-actions">
+            <TopNavigation />
+            <button className="secondary-button" onClick={handleLogout}>Logout</button>
+          </div>
+        </header>
 
-      {sessionLimitReached && (
-        <div className="session-limit-banner" role="alert">
-          <strong>Expense limit reached.</strong> You have added the maximum of{' '}
-          {expenseLimit} expenses allowed on your plan.{' '}
-          <a href={SUPPORT_MAILTO_LINK}>Contact our support team</a> to
-          upgrade your plan or get help.
-        </div>
-      )}
+        <h1 className="add-expense-proto-title">Add Expense</h1>
 
-      <section className="panel-grid">
-        <article className="panel">
-          <h2>Add Daily Expense</h2>
-          <form onSubmit={addExpense} className="stack-form">
-            <label>
-              Amount
-              <input
-                type="number"
-                min="0.01"
-                step="0.01"
-                required
-                value={expenseForm.amount}
-                onChange={(e) => setExpenseForm((prev) => ({ ...prev, amount: e.target.value }))}
-              />
-            </label>
-            <label>
-              Category
-              <select
-                value={expenseForm.category}
-                onChange={(e) => setExpenseForm((prev) => ({ ...prev, category: e.target.value }))}
-              >
-                {CATEGORIES.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Date
-              <input
-                type="date"
-                required
-                value={expenseForm.expense_date}
-                onChange={(e) => setExpenseForm((prev) => ({ ...prev, expense_date: e.target.value }))}
-              />
-            </label>
-            <label>
-              Note
-              <input
-                type="text"
-                value={expenseForm.description}
-                onChange={(e) => setExpenseForm((prev) => ({ ...prev, description: e.target.value }))}
-              />
-            </label>
-            <button type="submit" disabled={sessionLimitReached}>Save Expense</button>
-            {message ? <p className="success-text">{message}</p> : null}
-            {error ? <p className="error-text">{error}</p> : null}
-          </form>
-        </article>
+        {/* ── Limit Banner ── */}
+        {sessionLimitReached && (
+          <div className="add-expense-proto-limit" role="alert">
+            <span className="add-expense-proto-limit-icon">
+              <AlertCircle />
+            </span>
+            <div>
+              <p className="add-expense-proto-limit-title">Expense Limit Reached</p>
+              <p className="add-expense-proto-limit-text">
+                You have reached the maximum of {expenseLimit} expenses on your plan.{' '}
+                <a href={SUPPORT_MAILTO_LINK}>Contact our support team</a> to upgrade.
+              </p>
+            </div>
+          </div>
+        )}
 
-        <article className="panel">
-          <h2>Add Expense From Text or Image</h2>
-          <form onSubmit={addExpenseFromAi} className="stack-form">
-            <label>
-              Text Input
-              <textarea
-                rows={4}
-                placeholder="Paste receipt text or describe the expense"
-                value={aiInputText}
-                onChange={(e) => setAiInputText(e.target.value)}
-              />
-            </label>
-            <label>
-              Receipt Image
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  setAiImageFile(e.target.files?.[0] || null);
-                  setCameraImageFile(null);
-                }}
-              />
-            </label>
-            {isMobileDevice ? (
-              <label>
-                Capture With Camera
+        {/* ── Two-column grid ── */}
+        <div className="add-expense-proto-grid">
+
+          {/* ── Left: Manual Entry ── */}
+          <div className="add-expense-proto-card">
+            <h2 className="add-expense-proto-card-title">Manual Entry</h2>
+            <form onSubmit={addExpense} className="add-expense-proto-fields">
+              <label className="add-expense-proto-label">
+                Amount
                 <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  onChange={(e) => {
-                    setCameraImageFile(e.target.files?.[0] || null);
-                    setAiImageFile(null);
-                  }}
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  required
+                  placeholder="0.00"
+                  value={expenseForm.amount}
+                  disabled={sessionLimitReached}
+                  onChange={(e) =>
+                    setExpenseForm((prev) => ({ ...prev, amount: e.target.value }))
+                  }
                 />
               </label>
+
+              <label className="add-expense-proto-label">
+                Category
+                <select
+                  value={expenseForm.category}
+                  disabled={sessionLimitReached}
+                  onChange={(e) =>
+                    setExpenseForm((prev) => ({ ...prev, category: e.target.value }))
+                  }
+                >
+                  {CATEGORIES.map((cat) => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="add-expense-proto-label">
+                Date
+                <input
+                  type="date"
+                  required
+                  value={expenseForm.expense_date}
+                  disabled={sessionLimitReached}
+                  onChange={(e) =>
+                    setExpenseForm((prev) => ({ ...prev, expense_date: e.target.value }))
+                  }
+                />
+              </label>
+
+              <label className="add-expense-proto-label">
+                Note
+                <textarea
+                  rows={3}
+                  placeholder="Optional description…"
+                  value={expenseForm.description}
+                  disabled={sessionLimitReached}
+                  onChange={(e) =>
+                    setExpenseForm((prev) => ({ ...prev, description: e.target.value }))
+                  }
+                />
+              </label>
+
+              <button
+                type="submit"
+                className="add-expense-proto-submit"
+                disabled={sessionLimitReached}
+              >
+                Save Expense
+              </button>
+
+              {message ? <p className="add-expense-proto-success">{message}</p> : null}
+              {error ? <p className="add-expense-proto-error">{error}</p> : null}
+            </form>
+          </div>
+
+          {/* ── Right: AI Extraction ── */}
+          <div className="add-expense-proto-card">
+            <h2 className="add-expense-proto-card-title">AI-Powered Extraction</h2>
+            <form onSubmit={addExpenseFromAi} className="add-expense-proto-fields">
+              <label className="add-expense-proto-label">
+                Describe Expense
+                <textarea
+                  rows={3}
+                  placeholder="E.g., Lunch at Restaurant ABC for ₹1250…"
+                  value={aiInputText}
+                  disabled={sessionLimitReached}
+                  onChange={(e) => setAiInputText(e.target.value)}
+                />
+              </label>
+
+              {/* Upload Receipt */}
+              <div>
+                <p className="add-expense-proto-label" style={{ marginBottom: 6 }}>
+                  Upload Receipt
+                </p>
+                {aiPreviewUrl && (aiImageFile || cameraImageFile) ? (
+                  <div className="add-expense-proto-upload-zone">
+                    <div className="add-expense-proto-preview-wrap">
+                      <img
+                        src={aiPreviewUrl}
+                        alt="Receipt preview"
+                        className="add-expense-proto-preview"
+                      />
+                      <button
+                        type="button"
+                        className="add-expense-proto-preview-remove"
+                        onClick={() => {
+                          setAiImageFile(null);
+                          setCameraImageFile(null);
+                        }}
+                        disabled={sessionLimitReached}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="add-expense-proto-upload-zone">
+                    <span className="add-expense-proto-upload-icon">
+                      <Upload />
+                    </span>
+                    <span style={{ fontSize: 14 }}>Click to upload</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      disabled={sessionLimitReached}
+                      onChange={(e) => {
+                        setAiImageFile(e.target.files?.[0] || null);
+                        setCameraImageFile(null);
+                      }}
+                    />
+                  </label>
+                )}
+              </div>
+
+              {/* Camera — mobile only (CSS-driven) */}
+              <div className="add-expense-proto-mobile-only">
+                <p className="add-expense-proto-label" style={{ marginBottom: 6 }}>
+                  Or Capture Photo
+                </p>
+                <label className="add-expense-proto-camera-btn">
+                  <Camera style={{ width: 20, height: 20 }} />
+                  <span>Open Camera</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    disabled={sessionLimitReached}
+                    onChange={(e) => {
+                      setCameraImageFile(e.target.files?.[0] || null);
+                      setAiImageFile(null);
+                    }}
+                  />
+                </label>
+              </div>
+
+              <button
+                type="submit"
+                className="add-expense-proto-submit"
+                disabled={extracting || sessionLimitReached}
+              >
+                {extracting ? 'Extracting…' : 'Extract + Save Expense'}
+              </button>
+
+              {message ? <p className="add-expense-proto-success">{message}</p> : null}
+              {error ? <p className="add-expense-proto-error">{error}</p> : null}
+            </form>
+
+            {lastExtracted ? (
+              <div className="add-expense-proto-extracted">
+                <h3>Last Extracted</h3>
+                <pre>{JSON.stringify(lastExtracted, null, 2)}</pre>
+              </div>
             ) : null}
-            <p className="help-text">
-              {isMobileDevice
-                ? 'On mobile you can either upload an image or open the camera directly.'
-                : 'Upload a receipt image or paste text for AI extraction.'}
-            </p>
-            <button type="submit" disabled={extracting || sessionLimitReached}>
-              {extracting ? 'Extracting...' : 'Extract + Save Expense'}
-            </button>
-          </form>
-          {lastExtracted ? (
-            <div className="extract-output">
-              <h3>Last Extracted JSON</h3>
-              <pre>{JSON.stringify(lastExtracted, null, 2)}</pre>
-            </div>
-          ) : null}
-          {message ? <p className="success-text">{message}</p> : null}
-          {error ? <p className="error-text">{error}</p> : null}
-        </article>
-      </section>
+          </div>
+
+        </div>
+      </div>
     </main>
   );
 }

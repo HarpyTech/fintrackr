@@ -15,6 +15,7 @@
 @import './styles/auth.css';
 @import './styles/dashboard.css';
 @import './styles/report.css';
+@import './styles/add-expense.css';
 
 /* Responsive overrides (kept last so they win) */
 @import './styles/responsive.css';

@@ -1,0 +1,282 @@
+/* ============================================================
+   ADD EXPENSE — Styles for AddExpensePage.
+   Includes prototype layout (add-expense-proto-*) matching
+   design_code/src/app/pages/AddExpensePage.tsx exactly.
+   ============================================================ */
+
+/* --- Page shell --- */
+.add-expense-proto {
+  min-height: 100vh;
+  padding-bottom: 80px;
+}
+
+@media (min-width: 768px) {
+  .add-expense-proto {
+    padding-bottom: 0;
+  }
+}
+
+.add-expense-proto-container {
+  width: min(1280px, 100% - 48px);
+  margin: 0 auto;
+  padding-top: 32px;
+}
+
+.add-expense-proto-title {
+  margin: 0 0 32px;
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: var(--heading);
+}
+
+/* --- Limit reached banner --- */
+.add-expense-proto-limit {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+:root[data-theme='dark'] .add-expense-proto-limit {
+  background: rgba(185, 28, 28, 0.12);
+  border-color: rgba(248, 113, 113, 0.35);
+}
+
+.add-expense-proto-limit-icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  color: #dc2626;
+}
+
+.add-expense-proto-limit-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.add-expense-proto-limit-title {
+  margin: 0;
+  font-weight: 600;
+  color: #991b1b;
+}
+
+:root[data-theme='dark'] .add-expense-proto-limit-title {
+  color: #fca5a5;
+}
+
+.add-expense-proto-limit-text {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: #b91c1c;
+  line-height: 1.5;
+}
+
+:root[data-theme='dark'] .add-expense-proto-limit-text {
+  color: #f87171;
+}
+
+.add-expense-proto-limit-text a {
+  color: #b91c1c;
+  text-decoration: underline;
+}
+
+/* --- Two-column grid --- */
+.add-expense-proto-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+
+/* --- Card --- */
+.add-expense-proto-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+:root[data-theme='dark'] .add-expense-proto-card {
+  background: #1f2937;
+}
+
+.add-expense-proto-card-title {
+  margin: 0 0 24px;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--heading);
+}
+
+/* --- Form field stack --- */
+.add-expense-proto-fields {
+  display: grid;
+  gap: 18px;
+}
+
+.add-expense-proto-label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted-strong);
+}
+
+.add-expense-proto-label input,
+.add-expense-proto-label select,
+.add-expense-proto-label textarea {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.add-expense-proto-label textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
+/* --- Submit button --- */
+.add-expense-proto-submit {
+  width: 100%;
+  margin-top: 6px;
+}
+
+/* --- Upload zone --- */
+.add-expense-proto-upload-zone {
+  border: 2px dashed var(--line-strong);
+  border-radius: 12px;
+  padding: 24px;
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  text-align: center;
+  cursor: pointer;
+  color: var(--muted);
+  background: var(--surface);
+  transition: border-color 150ms ease;
+}
+
+.add-expense-proto-upload-zone:hover {
+  border-color: #3b82f6;
+}
+
+.add-expense-proto-upload-zone input {
+  display: none;
+}
+
+.add-expense-proto-upload-icon {
+  color: var(--muted);
+}
+
+.add-expense-proto-upload-icon svg {
+  width: 32px;
+  height: 32px;
+}
+
+/* --- Image preview inside upload zone --- */
+.add-expense-proto-preview-wrap {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  text-align: center;
+}
+
+.add-expense-proto-preview {
+  max-height: 128px;
+  max-width: 100%;
+  border-radius: 8px;
+  object-fit: cover;
+  margin: 0 auto;
+}
+
+.add-expense-proto-preview-remove {
+  font-size: 13px;
+  font-weight: 500;
+  color: #dc2626;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* --- Mobile camera button --- */
+.add-expense-proto-mobile-only {
+  display: none;
+}
+
+.add-expense-proto-camera-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.add-expense-proto-camera-btn input {
+  display: none;
+}
+
+/* --- Extracted data preview --- */
+.add-expense-proto-extracted {
+  margin-top: 20px;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+
+.add-expense-proto-extracted h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted-strong);
+}
+
+.add-expense-proto-extracted pre {
+  margin: 0;
+  background: var(--surface-alt);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 12px;
+  overflow: auto;
+  max-height: 200px;
+}
+
+/* --- Inline feedback text --- */
+.add-expense-proto-success {
+  margin-top: 8px;
+  font-size: 14px;
+  color: var(--success);
+}
+
+.add-expense-proto-error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #b91c1c;
+  margin-top: 8px;
+}
+
+:root[data-theme='dark'] .add-expense-proto-error {
+  background: rgba(185, 28, 28, 0.14);
+  border-color: rgba(248, 113, 113, 0.3);
+  color: #fca5a5;
+}

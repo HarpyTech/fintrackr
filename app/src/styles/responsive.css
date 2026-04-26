@@ -252,3 +252,22 @@
     padding-bottom: 0;
   }
 }
+
+/* --- ≤ 767px: add expense prototype responsive --- */
+@media (max-width: 767px) {
+  .add-expense-proto-container {
+    width: min(1120px, 100% - 24px);
+  }
+
+  .add-expense-proto-title {
+    font-size: 1.65rem;
+  }
+
+  .add-expense-proto-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .add-expense-proto-mobile-only {
+    display: block;
+  }
+}
