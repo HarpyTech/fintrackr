@@ -52,7 +52,7 @@ export default function LandingPage() {
           and insights that help you make better financial decisions.
         </p>
         <div className="landing-cta-row">
-          <a href="#landing-benefits" className="landing-secondary-cta">See How It Works</a>
+          <Link to="/features" className="landing-secondary-cta">See How It Works</Link>
           <Link to="/register" className="landing-primary-cta">Get Started Free</Link>
           <Link to="/login" className="landing-tertiary-cta">Sign In</Link>
         </div>

@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from './auth/AuthContext';
-import ExpenseChatWidget from './components/ExpenseChatWidget';
+import ProtectedLayout from './layouts/ProtectedLayout';
 import ThemeToggle from './components/ThemeToggle';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -24,12 +24,7 @@ function ProtectedRoute({ children }) {
     return <Navigate to="/login" replace />;
   }
 
-  return (
-    <>
-      {children}
-      <ExpenseChatWidget />
-    </>
-  );
+  return <ProtectedLayout>{children}</ProtectedLayout>;
 }
 
 export default function App() {
