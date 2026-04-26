@@ -139,6 +139,29 @@
   color: #f9fafb;
 }
 
+/* Loading skeleton for stat values */
+.insights-proto-stat-loading {
+  color: #9ca3af !important;
+}
+
+/* Error banner */
+.insights-proto-error {
+  margin: 0 24px;
+  padding: 10px 16px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #b91c1c;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+:root[data-theme='dark'] .insights-proto-error {
+  background: #2d1a1a;
+  border-color: #7f1d1d;
+  color: #fca5a5;
+}
+
 /* Chat area */
 .insights-proto-chat-area {
   flex: 1;

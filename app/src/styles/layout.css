@@ -1,0 +1,30 @@
+/* ===========================
+   PROTECTED LAYOUT
+   Flex row: sidebar + scrollable main content
+   =========================== */
+
+.protected-layout {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--color-bg, #f9fafb);
+}
+
+:root[data-theme='dark'] .protected-layout {
+  background: var(--color-bg-dark, #111827);
+}
+
+.protected-layout-main {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  /* Bottom padding on mobile so the fixed bottom nav doesn't overlap content */
+  padding-bottom: 64px;
+}
+
+@media (min-width: 768px) {
+  .protected-layout-main {
+    padding-bottom: 0;
+  }
+}
