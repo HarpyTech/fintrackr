@@ -1,0 +1,201 @@
+/* ============================================================
+   AUTH — Styles for LoginPage, RegisterPage, and VerifyEmailPage.
+   ============================================================ */
+
+.auth-layout {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.auth-card {
+  width: min(560px, 96vw);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 28px;
+  box-shadow: 0 14px 40px rgba(13, 31, 62, 0.08);
+}
+
+.auth-layout-login {
+  background: linear-gradient(160deg, rgba(35, 64, 142, 0.08), transparent 36%), var(--page-bg);
+}
+
+.auth-layout-register {
+  background: linear-gradient(160deg, rgba(24, 79, 153, 0.09), transparent 42%), var(--page-bg);
+}
+
+/* --- Register brand block --- */
+.auth-register-brand {
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+}
+
+.auth-register-brand-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.auth-register-brand-title {
+  margin: 0;
+  color: var(--heading);
+  font-size: 1.9rem;
+  line-height: 1;
+}
+
+/* --- Login shell --- */
+.auth-login-shell {
+  width: min(420px, 100%);
+}
+
+.auth-card-login {
+  width: 100%;
+  margin-top: 16px;
+}
+
+/* --- Login brand --- */
+.auth-login-brand {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.auth-login-brand-badge {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(120deg, var(--brand), var(--brand-strong));
+  box-shadow: 0 12px 26px rgba(35, 64, 142, 0.24);
+}
+
+.auth-login-brand-icon {
+  width: 32px;
+  height: 32px;
+}
+
+.auth-login-brand-wordmark {
+  width: min(220px, 100%);
+  height: auto;
+  display: block;
+}
+
+/* --- Login copy --- */
+.auth-login-kicker,
+.auth-login-copy {
+  margin: 0;
+  text-align: center;
+}
+
+.auth-login-kicker {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.auth-card-login h1 {
+  margin: 0 0 12px;
+  text-align: center;
+  color: var(--heading);
+}
+
+.auth-login-title {
+  font-size: 1.45rem;
+}
+
+.auth-login-copy {
+  margin-bottom: 14px;
+  color: var(--muted-strong);
+  line-height: 1.55;
+}
+
+.auth-register-copy {
+  margin: 0 0 14px;
+  text-align: center;
+  color: var(--muted-strong);
+  line-height: 1.55;
+}
+
+/* --- Inline alerts --- */
+.auth-inline-info {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--brand-soft-border);
+  background: var(--brand-soft);
+  color: var(--accent-text);
+  border-radius: 10px;
+}
+
+.auth-inline-error {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--danger-soft-border);
+  background: var(--danger-soft);
+  border-radius: 10px;
+}
+
+/* --- Auth links --- */
+.auth-login-links {
+  margin-top: 14px;
+  display: grid;
+  gap: 8px;
+  text-align: center;
+}
+
+.auth-login-links a {
+  color: var(--brand);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.auth-login-links a:hover {
+  text-decoration: underline;
+}
+
+/* --- Register brand lockup --- */
+.auth-brand-block {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.auth-brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.auth-brand-icon {
+  width: clamp(74px, 12vw, 106px);
+  height: auto;
+  flex: 0 0 auto;
+}
+
+.auth-brand-wordmark {
+  width: min(100%, 360px);
+  height: auto;
+  display: block;
+}
+
+.auth-brand-tagline {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  letter-spacing: 0.01em;
+  line-height: 1.45;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.auth-brand-tagline::before,
+.auth-brand-tagline::after {
+  content: '';
+  height: 1px;
+  background: var(--line-strong);
+  flex: 1;
+}

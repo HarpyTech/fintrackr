@@ -1,0 +1,44 @@
+/* ============================================================
+   REPORT — Styles for ReportPage.
+   ============================================================ */
+
+.report-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.report-toggle {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.toggle-button {
+  background: var(--brand-soft);
+  color: var(--brand);
+  border: 1px solid var(--brand-soft-border);
+}
+
+.toggle-button.active {
+  background: linear-gradient(120deg, var(--brand), var(--brand-strong));
+  color: #fff;
+}
+
+.report-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.report-summary {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  color: var(--muted);
+  font-size: 14px;
+}

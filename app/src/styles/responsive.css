@@ -1,0 +1,229 @@
+/* ============================================================
+   RESPONSIVE — Media query overrides for all pages/components.
+   Kept together so breakpoint behaviour is easy to review.
+   ============================================================ */
+
+/* --- ≤ 900px: auth, navigation, landing --- */
+@media (max-width: 900px) {
+  .auth-card {
+    width: min(480px, 96vw);
+  }
+
+  .auth-card-login {
+    width: 100%;
+  }
+
+  .auth-brand-lockup {
+    gap: 10px;
+  }
+
+  .auth-brand-icon {
+    width: clamp(64px, 18vw, 84px);
+  }
+
+  .auth-brand-wordmark {
+    width: min(100%, 270px);
+  }
+
+  .auth-brand-tagline {
+    font-size: 13px;
+    gap: 8px;
+  }
+
+  .stats-grid,
+  .panel-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .report-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .report-header {
+    flex-direction: column;
+  }
+
+  .dashboard-header {
+    gap: 12px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .dashboard-page-heading {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .dashboard-page-actions {
+    width: 100%;
+  }
+
+  .header-actions {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .top-menu {
+    align-items: stretch;
+    width: 100%;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .top-menu-links {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
+  }
+
+  .top-menu-link {
+    justify-content: center;
+    padding: 10px 8px;
+  }
+
+  .top-menu-label {
+    font-size: 12px;
+  }
+
+  .profile-menu {
+    margin-left: 0;
+    align-self: flex-end;
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .theme-toggle {
+    justify-content: center;
+    width: fit-content;
+  }
+
+  .profile-icon-button {
+    width: 40px;
+    height: 40px;
+  }
+
+  .profile-modal {
+    padding: 16px;
+  }
+
+  .profile-modal-actions {
+    flex-direction: column;
+  }
+
+  .camera-preview-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .landing-layout {
+    width: min(1120px, 100% - 22px);
+    padding-top: 16px;
+  }
+
+  .theme-toggle-floating {
+    top: calc(10px + env(safe-area-inset-top, 0px));
+    right: calc(10px + env(safe-area-inset-right, 0px));
+  }
+
+  .landing-hero,
+  .landing-section {
+    border-radius: 18px;
+    padding: 20px;
+  }
+
+  .landing-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-cta-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .landing-primary-cta,
+  .landing-secondary-cta,
+  .landing-tertiary-cta {
+    text-align: center;
+  }
+
+  .landing-install-row {
+    margin-top: 10px;
+  }
+
+  .pwa-install-hero {
+    width: 100%;
+  }
+
+  .panel[style*="span 2"] {
+    grid-column: span 1;
+  }
+
+  .expense-chat-widget {
+    right: 12px;
+    bottom: 12px;
+  }
+
+  .expense-chat-panel {
+    width: min(100vw - 24px, 437px);
+  }
+}
+
+/* --- ≤ 767px: dashboard prototype responsive --- */
+@media (max-width: 767px) {
+  .dashboard-proto-container {
+    width: min(1120px, 100% - 24px);
+  }
+
+  .dashboard-proto-title {
+    font-size: 1.65rem;
+  }
+
+  .dashboard-proto-stats,
+  .dashboard-proto-grid,
+  .dashboard-proto-legend {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-proto-mobile-only {
+    display: block;
+    margin-bottom: 32px;
+  }
+
+  .dashboard-proto-desktop-only {
+    display: none;
+  }
+
+  .dashboard-proto-filter-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .dashboard-proto-span-2 {
+    grid-column: span 1;
+  }
+
+  .quick-add-mobile {
+    display: grid;
+  }
+
+  .quick-add-desktop {
+    display: none;
+  }
+
+  .quick-add-mobile-card {
+    display: block;
+  }
+
+  .quick-add-desktop-card {
+    display: none;
+  }
+}
+
+/* --- ≥ 768px: dashboard prototype desktop --- */
+@media (min-width: 768px) {
+  .dashboard-proto {
+    padding-bottom: 0;
+  }
+}

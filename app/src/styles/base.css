@@ -1,0 +1,216 @@
+/* ============================================================
+   BASE — CSS custom properties, reset, global element styles,
+   form elements, and shared utility classes.
+   ============================================================ */
+
+/* --- Design tokens (light mode) --- */
+:root {
+  --ink: #12213d;
+  --mist: #f3f5fb;
+  --brand: #23408e;
+  --brand-strong: #162d71;
+  --brand-soft: #edf3ff;
+  --brand-soft-border: #c9d9ff;
+  --teal: #2b8a3e;
+  --teal-soft: #e8faf3;
+  --warm: #ff7a00;
+  --surface: #ffffff;
+  --surface-alt: #f8fbff;
+  --surface-soft: #f1f6ff;
+  --line: #dbe2f0;
+  --line-strong: #c8d2e4;
+  --muted: #516079;
+  --muted-strong: #344561;
+  --heading: #13213a;
+  --accent-text: #183054;
+  --page-bg: radial-gradient(circle at 12% 8%, #e8edff, #f7f9ff 55%, #ffffff);
+  --panel-shadow: 0 18px 42px rgba(13, 31, 62, 0.08);
+  --raised-shadow: 0 24px 50px rgba(7, 18, 38, 0.2);
+  --focus-ring: 0 0 0 3px rgba(35, 64, 142, 0.18);
+  --overlay: rgba(7, 18, 38, 0.42);
+  --success: #0d6b4f;
+  --success-strong: #0b7d5a;
+  --success-soft-border: #b7e9d3;
+  --danger: #b42339;
+  --danger-soft: #fff2f4;
+  --danger-soft-border: #f2c6ce;
+  --warning-text: #7a4a00;
+  --warning-soft: #fff7e8;
+  --warning-soft-border: #f3c87b;
+}
+
+/* --- Design tokens (dark mode) --- */
+:root[data-theme='dark'] {
+  --ink: #edf4ff;
+  --mist: #0c1220;
+  --surface: #121a2b;
+  --surface-alt: #172134;
+  --surface-soft: #1b2740;
+  --line: #29354c;
+  --line-strong: #34445f;
+  --muted: #a8b6cf;
+  --muted-strong: #d0dcf1;
+  --heading: #f4f7fd;
+  --accent-text: #d8e5ff;
+  --brand-soft: rgba(35, 64, 142, 0.24);
+  --brand-soft-border: rgba(93, 133, 224, 0.4);
+  --teal-soft: rgba(43, 138, 62, 0.18);
+  --page-bg: radial-gradient(circle at 12% 8%, #18213a, #0d1424 55%, #09101c);
+  --panel-shadow: 0 22px 54px rgba(0, 0, 0, 0.34);
+  --raised-shadow: 0 28px 58px rgba(0, 0, 0, 0.42);
+  --focus-ring: 0 0 0 3px rgba(116, 151, 230, 0.22);
+  --overlay: rgba(2, 6, 14, 0.68);
+  --success-soft-border: rgba(54, 165, 112, 0.45);
+  --danger-soft: rgba(120, 29, 47, 0.28);
+  --danger-soft-border: rgba(226, 98, 125, 0.38);
+  --warning-soft: rgba(138, 94, 26, 0.22);
+  --warning-soft-border: rgba(234, 177, 86, 0.4);
+}
+
+/* --- Reset --- */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: var(--page-bg);
+  color: var(--ink);
+  transition: background 180ms ease, color 180ms ease;
+}
+
+a {
+  color: var(--brand);
+}
+
+/* --- Global transition targets --- */
+button,
+input,
+textarea,
+select,
+.auth-card,
+.panel,
+.stat-card,
+.top-menu-link,
+.profile-dropdown,
+.profile-modal,
+.landing-hero,
+.landing-section,
+.expense-chat-panel {
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+/* --- Focus ring --- */
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+a:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* --- Form elements --- */
+.stack-form {
+  display: grid;
+  gap: 12px;
+}
+
+label {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+}
+
+input,
+textarea,
+select,
+button {
+  font: inherit;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  padding: 10px 12px;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 96px;
+}
+
+button {
+  border: none;
+  background: linear-gradient(120deg, var(--brand), var(--brand-strong));
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.secondary-button {
+  border: 1px solid var(--brand-soft-border);
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+/* --- Utility text states --- */
+.error-text {
+  color: #d0293f;
+  margin: 4px 0;
+}
+
+.success-text {
+  color: var(--success);
+  margin: 4px 0;
+}
+
+.help-text {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* --- Session / info banners --- */
+.session-limit-banner {
+  background: #fff4e5;
+  border: 1px solid #f5a623;
+  border-left: 4px solid #f5a623;
+  border-radius: 6px;
+  color: #7a4a00;
+  padding: 12px 16px;
+  margin: 0 0 16px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.session-limit-banner a {
+  color: #c45c00;
+  font-weight: 600;
+}
+
+/* --- Tables --- */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  padding: 10px 6px;
+}
+
+.empty-state-cell {
+  text-align: center;
+  color: var(--muted);
+  padding: 20px 8px;
+}
