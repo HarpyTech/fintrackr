@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import PasswordInput from '../components/PasswordInput';
 
 const STEP_OTP = 'otp';
 const STEP_PASSWORD = 'password';
@@ -21,7 +22,6 @@ export default function ResetPasswordPage() {
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [resending, setResending] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
 
   async function handleVerifyOtp(event) {
     event.preventDefault();
@@ -185,42 +185,18 @@ export default function ResetPasswordPage() {
               <form onSubmit={handleResetPassword} className="stack-form">
                 <label>
                   New password
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      required
-                      minLength={8}
-                      autoComplete="new-password"
-                      placeholder="At least 8 characters"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      style={{ paddingRight: '44px' }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((v) => !v)}
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                      style={{
-                        position: 'absolute',
-                        right: '10px',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer',
-                        padding: '0',
-                        color: 'var(--muted)',
-                        fontSize: '13px',
-                      }}
-                    >
-                      {showPassword ? 'Hide' : 'Show'}
-                    </button>
-                  </div>
+                  <PasswordInput
+                    required
+                    minLength={8}
+                    autoComplete="new-password"
+                    placeholder="At least 8 characters"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                  />
                 </label>
                 <label>
                   Confirm new password
-                  <input
-                    type={showPassword ? 'text' : 'password'}
+                  <PasswordInput
                     required
                     minLength={8}
                     autoComplete="new-password"

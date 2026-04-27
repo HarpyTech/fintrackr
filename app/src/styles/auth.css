@@ -199,3 +199,45 @@
   background: var(--line-strong);
   flex: 1;
 }
+
+/* --- Password input with show/hide toggle --- */
+.pw-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.pw-input-wrap input {
+  width: 100%;
+  padding-right: 44px;
+}
+
+.pw-toggle-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--muted);
+  border-radius: 6px;
+  transition: color 120ms ease, background 120ms ease;
+}
+
+.pw-toggle-btn:hover {
+  color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.pw-toggle-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  color: var(--brand);
+}
