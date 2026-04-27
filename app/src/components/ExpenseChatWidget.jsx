@@ -176,10 +176,6 @@ export default function ExpenseChatWidget() {
     setPendingMissingFields([]);
     setPendingVendorConfirmMode(false);
     setDraft('');
-    setMessages((prev) => [
-      ...prev,
-      createEntry('assistant', 'Ready for a new expense. Share the next one in one sentence.'),
-    ]);
   }
 
   function handleProceedWithoutVendor() {
@@ -227,7 +223,7 @@ export default function ExpenseChatWidget() {
                 ? 'Type the vendor name below, or click "Proceed without vendor"'
                 : pendingMissingFields.length > 0
                 ? `Reply with only: ${pendingMissingFields.join(', ')}`
-                : 'Describe an expense or ask about past spending'}
+                : 'Message'}
               <textarea
                 rows={3}
                 placeholder={
@@ -235,7 +231,7 @@ export default function ExpenseChatWidget() {
                     ? 'e.g. Amazon, Swiggy, DMart…'
                     : pendingMissingFields.length > 0
                     ? `Provide only ${pendingMissingFields.join(', ')}.`
-                    : 'Paid 320 at Starbucks on 2026-04-20 for coffee, or ask: top 5 items I spent most on in Apr.'
+                    : 'Paid 320 at Starbucks on 2026-04-20 for coffee. Example question: What did I spend most on this month?'
                 }
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
