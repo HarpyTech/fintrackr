@@ -77,6 +77,7 @@ export default function ExpenseChatWidget() {
   const [messages, setMessages] = useState([]);
   const [pendingExpenseContext, setPendingExpenseContext] = useState('');
   const [pendingMissingFields, setPendingMissingFields] = useState([]);
+  const [pendingVendorConfirmMode, setPendingVendorConfirmMode] = useState(false);
   const scrollRef = useRef(null);
 
   useEffect(() => {
@@ -113,20 +114,31 @@ export default function ExpenseChatWidget() {
       });
 
       const isExpenseCreated = Boolean(response?.expense);
-      const assistantTone = isExpenseCreated ? 'success' : 'default';
 
-      setMessages((prev) => [
-        ...prev,
-        createEntry(
-          'assistant',
-          response.message || 'Expense saved successfully.',
-          assistantTone
-        ),
-      ]);
-      setPendingExpenseContext('');
-      setPendingMissingFields([]);
+      if (response?.needs_vendor_confirm) {
+        // Back-end wants vendor confirmation before saving
+        setPendingExpenseContext(composedMessage);
+        setPendingVendorConfirmMode(true);
+        setMessages((prev) => [
+          ...prev,
+          createEntry('assistant', response.message, 'missing'),
+        ]);
+      } else {
+        const assistantTone = isExpenseCreated ? 'success' : 'default';
+        setMessages((prev) => [
+          ...prev,
+          createEntry(
+            'assistant',
+            response.message || 'Expense saved successfully.',
+            assistantTone
+          ),
+        ]);
+        setPendingExpenseContext('');
+        setPendingMissingFields([]);
+        setPendingVendorConfirmMode(false);
+      }
 
-      if (isExpenseCreated) {
+      if (isExpenseCreated && !response?.needs_vendor_confirm) {
         window.dispatchEvent(
           new CustomEvent('expense:created', {
             detail: response.expense,
@@ -162,11 +174,17 @@ export default function ExpenseChatWidget() {
   function handleStartNewExpense() {
     setPendingExpenseContext('');
     setPendingMissingFields([]);
+    setPendingVendorConfirmMode(false);
     setDraft('');
     setMessages((prev) => [
       ...prev,
       createEntry('assistant', 'Ready for a new expense. Share the next one in one sentence.'),
     ]);
+  }
+
+  function handleProceedWithoutVendor() {
+    setDraft('no vendor');
+    setPendingVendorConfirmMode(false);
   }
 
   return (
@@ -205,13 +223,17 @@ export default function ExpenseChatWidget() {
 
           <form className="expense-chat-form" onSubmit={handleSubmit}>
             <label className="expense-chat-label">
-              {pendingMissingFields.length > 0
+              {pendingVendorConfirmMode
+                ? 'Type the vendor name below, or click "Proceed without vendor"'
+                : pendingMissingFields.length > 0
                 ? `Reply with only: ${pendingMissingFields.join(', ')}`
                 : 'Describe an expense or ask about past spending'}
               <textarea
                 rows={3}
                 placeholder={
-                  pendingMissingFields.length > 0
+                  pendingVendorConfirmMode
+                    ? 'e.g. Amazon, Swiggy, DMart…'
+                    : pendingMissingFields.length > 0
                     ? `Provide only ${pendingMissingFields.join(', ')}.`
                     : 'Paid 320 at Starbucks on 2026-04-20 for coffee, or ask: top 5 items I spent most on in Apr.'
                 }
@@ -220,6 +242,16 @@ export default function ExpenseChatWidget() {
               />
             </label>
             <div className="expense-chat-actions">
+              {pendingVendorConfirmMode && (
+                <button
+                  type="button"
+                  className="expense-chat-reset"
+                  onClick={handleProceedWithoutVendor}
+                  disabled={submitting}
+                >
+                  Proceed without vendor
+                </button>
+              )}
               <button
                 type="button"
                 className="expense-chat-reset"

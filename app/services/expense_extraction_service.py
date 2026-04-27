@@ -38,12 +38,27 @@ class ExpenseExtractionValidationError(ValueError):
         )
 
 
-PROMPT_TEMPLATE = """
+# Sentinel text users can include to confirm they want no vendor
+_NO_VENDOR_PHRASES = frozenset(
+    {"no vendor", "without vendor", "no merchant", "skip vendor"}
+)
+
+
+def _build_prompt() -> str:
+    """Build the extraction prompt with today's date injected."""
+    today = date.today().isoformat()
+    today_year = date.today().year
+    return f"""
                 Help me organize this purchase info.
                 I need it in JSON format so I can track my spending.
 
+                Today's date is {today}. Use this to resolve any partial or
+                relative dates (e.g. "2nd Apr" means {today_year}-04-02,
+                "yesterday" means the day before {today}).
+                If no date is mentioned at all, use {today}.
+
                 Here's the structure I need:
-                {
+                {{
                     "amount": the total amount paid only,
                     "category": what type of purchase,
                     "bill_type": one of:
@@ -53,19 +68,20 @@ PROMPT_TEMPLATE = """
                     "description": what was purchased short description,
                     "expense_date": the date in YYYY-MM-DD format,
                     "line_items": [
-                        {
+                        {{
                             "name": item name,
                             "quantity": item quantity,
                             "price": item price
-                        }
+                        }}
                     ]
-                }
+                }}
 
                 Do not include tax fields.
                 Just give me back the JSON.
                 If you're not sure about a value,
                 use 0 for numbers or empty string for text.
 """.strip()
+
 
 _JSON_REPAIR_TEMPLATE = """
     That output didn't quite work. Can you try again? Here's what I need:
@@ -106,7 +122,7 @@ def extract_expense_payload(
     model_name = _resolve_model_name()
     model = _get_model(model_name)
 
-    prompt_parts: list[Any] = [PROMPT_TEMPLATE]
+    prompt_parts: list[Any] = [_build_prompt()]
     if text_input:
         prompt_parts.append(f"Source text:\n{text_input.strip()}")
 
@@ -135,7 +151,7 @@ def extract_text_chat_expense_payload(
     model_name = _resolve_model_name()
     model = _get_model(model_name)
     prompt_parts: list[Any] = [
-        PROMPT_TEMPLATE,
+        _build_prompt(),
         f"Source text:\n{text_input.strip()}",
     ]
 
@@ -335,19 +351,21 @@ def _normalize_text_chat_payload(
         amount = _to_float(raw.get("total"))
 
     vendor = str(raw.get("vendor") or raw.get("merchant") or "").strip()[:128]
+    # Treat Gemini echoing common "no vendor" placeholders as empty
+    if vendor.lower() in {"no vendor", "no merchant", "none", "n/a", "unknown", ""}:
+        vendor = ""
+
     description = str(raw.get("description") or raw.get("purpose") or "").strip()[:255]
-    expense_date = _normalize_date(
-        raw.get("expense_date") or raw.get("date"),
-        default_to_today=False,
-    )
+    # Date: always default to today if not extractable
+    expense_date = _normalize_date(raw.get("expense_date") or raw.get("date"))
+
+    # Check whether the user explicitly confirmed they want no vendor
+    text_lower = text_input.lower()
+    no_vendor_confirmed = any(phrase in text_lower for phrase in _NO_VENDOR_PHRASES)
 
     missing_fields: list[str] = []
     if amount is None or amount <= 0:
         missing_fields.append("amount")
-    if not vendor:
-        missing_fields.append("vendor")
-    if expense_date is None:
-        missing_fields.append("expense date")
     if not description:
         missing_fields.append("description")
 
@@ -373,12 +391,17 @@ def _normalize_text_chat_payload(
         ),
         "vendor": vendor,
         "description": description,
-        "expense_date": expense_date.isoformat(),
+        "expense_date": (expense_date or date.today()).isoformat(),
         "line_items": [],
     }
 
     try:
-        return ExpenseCreate(**payload).model_dump(mode="json")
+        validated = ExpenseCreate(
+            **{k: v for k, v in payload.items() if not k.startswith("_")}
+        ).model_dump(mode="json")
+        # Signal to the route that vendor was absent and user hasn't confirmed yet
+        validated["_vendor_missing"] = not vendor and not no_vendor_confirmed
+        return validated
     except ValidationError as exc:
         raise RuntimeError("Extracted data failed validation") from exc
 
