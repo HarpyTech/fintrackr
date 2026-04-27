@@ -40,11 +40,12 @@ export default function ForgotPasswordPage() {
         <section className="auth-card auth-card-login">
           <h1 className="auth-login-title">Forgot password</h1>
           <p className="auth-register-copy">
-            Enter your account email and we&apos;ll send you a one-time code to reset your password.
+            Enter your User ID (email address). We&apos;ll send a one-time password (OTP) to that
+            address so you can reset your password.
           </p>
           <form onSubmit={handleSubmit} className="stack-form">
             <label>
-              Email
+              User ID (Email)
               <input
                 type="email"
                 required
@@ -58,7 +59,7 @@ export default function ForgotPasswordPage() {
               <p className="error-text auth-inline-error" role="alert" aria-live="polite">{error}</p>
             ) : null}
             <button disabled={submitting} type="submit">
-              {submitting ? 'Sending code...' : 'Send reset code'}
+              {submitting ? 'Sending OTP...' : 'Send OTP'}
             </button>
           </form>
           <div className="auth-login-links">
