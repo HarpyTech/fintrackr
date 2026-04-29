@@ -125,7 +125,6 @@ export default function FeaturesPage() {
                   <div className="features-proto-step-image-wrap">
                     <img src={wf.imageSrc} alt={wf.imageAlt} className="features-proto-step-image" loading="lazy" />
                   </div>
-                  <span className="features-proto-step-card-label">Interactive Demo</span>
                 </div>
               </div>
             </div>
