@@ -145,8 +145,7 @@ export default function SettingsWidget() {
 
   return (
     <>
-      {!isChatOpen ? (
-      <div className="settings-widget-container" ref={widgetRef}>
+      <div className={`settings-widget-container${isChatOpen ? ' is-chat-open' : ''}`} ref={widgetRef}>
         {isOpen && !isProfileOpen ? (
           <div className="profile-dropdown" role="menu" aria-label="Settings menu" style={{ position: 'static', width: '260px', marginBottom: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
@@ -193,7 +192,6 @@ export default function SettingsWidget() {
           </button>
         )}
       </div>
-      ) : null}
 
       {isProfileOpen ? (
         <div className="profile-modal-backdrop" role="presentation" onClick={() => setIsProfileOpen(false)}>
