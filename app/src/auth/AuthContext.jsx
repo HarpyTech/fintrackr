@@ -76,6 +76,20 @@ export function AuthProvider({ children }) {
     });
   };
 
+  const requestPasswordReset = async (username) => {
+    await apiRequest('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ username }),
+    });
+  };
+
+  const resetPassword = async (username, otp, new_password) => {
+    await apiRequest('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ username, otp, new_password }),
+    });
+  };
+
   const logout = async () => {
     await apiRequest('/auth/logout', { method: 'POST' });
     setSession({ authenticated: false, user: null, role: null });
@@ -100,6 +114,8 @@ export function AuthProvider({ children }) {
       requestSignupOtp,
       verifySignupOtp,
       resendSignupOtp,
+      requestPasswordReset,
+      resetPassword,
       logout,
       refreshSession,
       refreshProfile,

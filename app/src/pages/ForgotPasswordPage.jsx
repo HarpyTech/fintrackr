@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import PasswordInput from '../components/PasswordInput';
 
-export default function LoginPage() {
-  const { login } = useAuth();
+export default function ForgotPasswordPage() {
+  const { requestPasswordReset } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ username: '', password: '' });
+  const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -15,15 +14,10 @@ export default function LoginPage() {
     setError('');
     setSubmitting(true);
     try {
-      await login(form.username, form.password);
-      navigate('/dashboard');
+      await requestPasswordReset(email);
+      navigate(`/reset-password?email=${encodeURIComponent(email)}`);
     } catch (err) {
-      if ((err.message || '').toLowerCase().includes('email not verified')) {
-        const encodedEmail = encodeURIComponent(form.username);
-        navigate(`/verify-email?email=${encodedEmail}`);
-        return;
-      }
-      setError(err.message);
+      setError(err.message || 'Something went wrong. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -44,40 +38,32 @@ export default function LoginPage() {
         </div>
         <p className="auth-login-kicker">Your smart expense tracking companion</p>
         <section className="auth-card auth-card-login">
-          <h1 className="auth-login-title">Sign in</h1>
+          <h1 className="auth-login-title">Forgot password</h1>
+          <p className="auth-register-copy">
+            Enter your User ID (email address). We&apos;ll send a one-time password (OTP) to that
+            address so you can reset your password.
+          </p>
           <form onSubmit={handleSubmit} className="stack-form">
             <label>
-              Email
+              User ID (Email)
               <input
                 type="email"
                 required
                 autoComplete="email"
                 placeholder="you@example.com"
-                value={form.username}
-                onChange={(e) => setForm((prev) => ({ ...prev, username: e.target.value }))}
-              />
-            </label>
-            <label>
-              Password
-              <PasswordInput
-                required
-                autoComplete="current-password"
-                placeholder="********"
-                value={form.password}
-                onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </label>
             {error ? (
               <p className="error-text auth-inline-error" role="alert" aria-live="polite">{error}</p>
             ) : null}
             <button disabled={submitting} type="submit">
-              {submitting ? 'Signing in...' : 'Sign in'}
+              {submitting ? 'Sending OTP...' : 'Send OTP'}
             </button>
           </form>
           <div className="auth-login-links">
-            <Link to="/register">Create account</Link>
-            <Link to="/verify-email">Verify account</Link>
-            <Link to="/forgot-password">Forgot password?</Link>
+            <Link to="/login">Back to sign in</Link>
           </div>
         </section>
       </div>

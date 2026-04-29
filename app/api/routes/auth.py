@@ -8,12 +8,16 @@ from app.services.auth_service import (
     register_user,
     resend_signup_otp,
     verify_user_signup_otp,
+    request_password_reset,
+    reset_password_with_otp,
 )
 from app.models.user import (
     UserCreate,
     UserLogin,
     UserResendOtp,
     UserVerifySignup,
+    ForgotPasswordRequest,
+    ResetPasswordPayload,
 )
 
 router = APIRouter()
@@ -214,6 +218,63 @@ def api_logout(request: Request, response: Response):
     logger.info(f"User logged out: {user}")
     response.delete_cookie(key=COOKIE_NAME)
     return {"message": "Logged out"}
+
+
+@router.post("/forgot-password", status_code=status.HTTP_200_OK)
+def api_forgot_password(payload: ForgotPasswordRequest):
+    """Request a password-reset OTP. Always returns 200 to prevent user enumeration."""
+    logger.info("Password reset OTP request received")
+    try:
+        request_password_reset(payload.username)
+    except OtpRateLimitError as exc:
+        logger.warning(f"Rate limit exceeded for password reset: {payload.username}")
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many password reset attempts. Please try again later.",
+            headers={"Retry-After": str(exc.retry_after_seconds)},
+        ) from exc
+    except RuntimeError as exc:
+        logger.error(f"Service unavailable during password reset: {str(exc)}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+
+    return {"message": "If that email is registered, a reset code has been sent."}
+
+
+@router.post("/reset-password", status_code=status.HTTP_200_OK)
+def api_reset_password(payload: ResetPasswordPayload):
+    """Verify OTP and set a new password."""
+    logger.info("Password reset attempt received")
+    try:
+        result = reset_password_with_otp(payload.username, payload.otp, payload.new_password)
+    except RuntimeError as exc:
+        logger.error(f"Service unavailable during password reset: {str(exc)}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+
+    if not result or result.get("error") == "not_found":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    if result.get("error") == "OTP expired":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="OTP expired. Please request a new password reset code.",
+        )
+
+    if result.get("error") == "Invalid OTP":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid OTP. Please check the code and try again.",
+        )
+
+    return {"message": "Password has been reset successfully. You can now log in."}
 
 
 @router.get("/session")

@@ -44,3 +44,13 @@ class UserProfileUpdate(BaseModel):
     last_name: str | None = Field(default=None, max_length=80)
     phone: str | None = Field(default=None, max_length=30)
     address: str | None = Field(default=None, max_length=250)
+
+
+class ForgotPasswordRequest(BaseModel):
+    username: EmailStr
+
+
+class ResetPasswordPayload(BaseModel):
+    username: EmailStr
+    otp: str = Field(min_length=4, max_length=8)
+    new_password: str = Field(min_length=8)

@@ -17,7 +17,9 @@ const WORKFLOWS = [
     title: 'Capture Your Receipt',
     description: 'Simply snap a photo of your receipt using your phone camera or upload an image',
     color: 'blue',
-    image: '📸',
+    Icon: Camera,
+    imageSrc: '/assets/Capture_Recipt.png',
+    imageAlt: 'Receipt capture workflow preview',
     details: ['Works with any receipt format', 'Mobile-friendly camera capture', 'Drag & drop file upload'],
   },
   {
@@ -25,7 +27,9 @@ const WORKFLOWS = [
     title: 'AI Extracts Data',
     description: 'Our AI automatically reads and extracts all expense details in seconds',
     color: 'purple',
-    image: '🤖',
+    Icon: Zap,
+    imageSrc: '/assets/Extract_Recipt_Info.png',
+    imageAlt: 'AI extraction workflow preview',
     details: ['Vendor name detection', 'Line-item extraction', 'Date and amount parsing'],
   },
   {
@@ -33,7 +37,9 @@ const WORKFLOWS = [
     title: 'Review & Save',
     description: 'Quickly review the extracted data and save to your expense tracker',
     color: 'green',
-    image: '✅',
+    Icon: CheckCircle,
+    imageSrc: '/assets/Save_Recipt.png',
+    imageAlt: 'Save receipt workflow preview',
     details: ['Auto-categorization', 'Edit if needed', 'One-click save'],
   },
   {
@@ -41,7 +47,9 @@ const WORKFLOWS = [
     title: 'Instant Insights',
     description: 'View real-time analytics, trends, and personalized spending insights',
     color: 'indigo',
-    image: '📊',
+    Icon: BarChart3,
+    imageSrc: '/assets/View_Insights.png',
+    imageAlt: 'Insights dashboard workflow preview',
     details: ['Visual dashboards', 'Category breakdowns', 'Monthly trends'],
   },
 ];
@@ -95,7 +103,7 @@ export default function FeaturesPage() {
               <div className="features-proto-step-content">
                 <div className="features-proto-step-meta">
                   <div className={`features-proto-step-icon features-proto-step-icon-${wf.color}`}>
-                    <span>{wf.image}</span>
+                    <wf.Icon size={20} />
                   </div>
                   <span className={`features-proto-step-tag features-proto-step-tag-${wf.color}`}>
                     STEP {wf.step}
@@ -114,8 +122,9 @@ export default function FeaturesPage() {
               </div>
               <div className="features-proto-step-visual">
                 <div className="features-proto-step-card">
-                  <span className="features-proto-step-emoji">{wf.image}</span>
-                  <span className="features-proto-step-card-label">Interactive Demo</span>
+                  <div className="features-proto-step-image-wrap">
+                    <img src={wf.imageSrc} alt={wf.imageAlt} className="features-proto-step-image" loading="lazy" />
+                  </div>
                 </div>
               </div>
             </div>
