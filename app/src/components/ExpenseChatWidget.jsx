@@ -81,6 +81,22 @@ export default function ExpenseChatWidget() {
   const scrollRef = useRef(null);
 
   useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent('expense-chat:visibility-change', {
+        detail: { isOpen },
+      })
+    );
+
+    return () => {
+      window.dispatchEvent(
+        new CustomEvent('expense-chat:visibility-change', {
+          detail: { isOpen: false },
+        })
+      );
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
     if (!isOpen) {
       return;
     }
