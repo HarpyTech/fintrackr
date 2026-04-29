@@ -611,3 +611,259 @@ def update_user_profile(
             exc_info=True,
         )
         raise
+
+
+# ---------------------------------------------------------------------------
+# Forgot / Reset Password
+# ---------------------------------------------------------------------------
+
+def _build_reset_otp_email_html(recipient: str, otp: str) -> str:
+    expiry_minutes = settings.SIGNUP_OTP_EXPIRY_MINUTES
+    return f"""<!doctype html>
+<html>
+<head>
+    <meta charset=\"utf-8\" />
+    <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />
+    <title>Reset your FinTrackr password</title>
+    <style>
+        @media only screen and (max-width: 620px) {{
+            .email-shell {{ width: 100% !important; }}
+            .email-header {{ padding: 14px 16px !important; }}
+            .email-body {{ padding: 20px 16px !important; font-size: 15px !important; }}
+            .brand-logo {{ height: 32px !important; }}
+            .name-logo {{ height: 25px !important; }}
+            .otp-value {{ font-size: 34px !important; letter-spacing: 4px !important; }}
+        }}
+        @media only screen and (max-width: 420px) {{
+            .email-body {{ padding: 18px 12px !important; }}
+            .otp-value {{ font-size: 30px !important; letter-spacing: 2px !important; }}
+            .brand-logo {{ height: 28px !important; }}
+            .name-logo {{ height: 22px !important; }}
+        }}
+    </style>
+</head>
+<body style=\"margin:0;padding:24px 12px;background:#eef3f9;\">
+    <table width=\"100%\" role=\"presentation\" cellspacing=\"0\" cellpadding=\"0\">
+        <tr>
+            <td align=\"center\">
+                <table width=\"100%\" class=\"email-shell\" role=\"presentation\" cellspacing=\"0\" cellpadding=\"0\"
+                    style=\"max-width:620px;background:#ffffff;border:1px solid #d7e0ea;border-radius:12px;\">
+                    <tr>
+                        <td class=\"email-header\"
+                            style=\"padding:16px 20px;background:#1b3774;border-bottom:4px solid #1d9e5f;border-radius:12px 12px 0 0;\">
+                            <table width=\"100%\" role=\"presentation\" cellspacing=\"0\" cellpadding=\"0\">
+                                <tr>
+                                    <td align=\"left\" style=\"width:40%;\">
+                                        <img class=\"brand-logo\"
+                                            src=\"https://fintrackr.harpytechco.in/assets/app_logo.png\"
+                                            alt=\"FinTrackr Brand Logo\"
+                                            style=\"display:block;height:36px;width:auto;\" />
+                                    </td>
+                                    <td align=\"right\" style=\"width:60%;\">
+                                        <img class=\"name-logo\"
+                                            src=\"https://fintrackr.harpytechco.in/assets/name_logo.svg\"
+                                            alt=\"FinTrackr Name Logo\"
+                                            style=\"display:inline-block;height:30px;width:auto;\" />
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class=\"email-body\"
+                            style=\"padding:26px 24px 24px 24px;font:16px/1.55 Arial,Helvetica,sans-serif;color:#1f2b3a;\">
+                            <p style=\"margin:0 0 14px 0;color:#13213a;\">Hello {recipient},</p>
+                            <p style=\"margin:0 0 14px 0;color:#2f3f53;\">
+                                We received a request to reset the password for your FinTrackr account.
+                                Use the OTP below to set a new password.
+                            </p>
+                            <table width=\"100%\" role=\"presentation\" cellspacing=\"0\" cellpadding=\"0\"
+                                style=\"margin:0 0 16px 0;background:#f4f8ff;border:1px solid #dbe8ff;border-left:4px solid #e05b00;border-radius:8px;\">
+                                <tr>
+                                    <td style=\"padding:14px 14px 6px 14px;color:#2e4569;font-size:14px;\">
+                                        <strong>Your password reset OTP is:</strong>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class=\"otp-value\"
+                                        style=\"padding:0 14px 6px 14px;color:#c24200;font-size:40px;line-height:1.05;font-weight:800;letter-spacing:6px;\">
+                                        {otp}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style=\"padding:0 14px 14px 14px;color:#4f5f73;font-size:13px;\">
+                                        This OTP expires in {expiry_minutes} minutes.
+                                    </td>
+                                </tr>
+                            </table>
+                            <p style=\"margin:0 0 16px 0;color:#435366;\">
+                                If you did not request a password reset, please ignore this email.
+                                Your password will remain unchanged.
+                            </p>
+                            <p style=\"margin:0 0 8px 0;color:#1f2b3a;\">Thanks &amp; Regards,</p>
+                            <p style=\"margin:0;color:#1b3774;font-weight:700;\">Support Team</p>
+                            <p style=\"margin:6px 0 0 0;color:#1d9e5f;font-size:13px;font-weight:700;\">FinTrackr</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+"""
+
+
+def _deliver_reset_otp(email: str, otp: str) -> None:
+    subject = "Reset your FinTrackr password"
+    body = (
+        "Your FinTrackr password reset code is: "
+        f"{otp}. "
+        "This code expires in "
+        f"{settings.SIGNUP_OTP_EXPIRY_MINUTES} minutes. "
+        "If you did not request this, please ignore this email."
+    )
+
+    if not settings.SMTP_HOST:
+        logger.warning(
+            "SMTP is not configured. Password reset OTP for %s is %s (development fallback).",
+            email,
+            otp,
+        )
+        return
+
+    message = EmailMessage()
+    message["Subject"] = subject
+    message["From"] = settings.SMTP_FROM_EMAIL
+    message["To"] = email
+    if settings.SMTP_BCC_EMAILS:
+        message["Bcc"] = ", ".join(settings.SMTP_BCC_EMAILS)
+    message.set_content(body)
+    message.add_alternative(_build_reset_otp_email_html(email, otp), subtype="html")
+
+    try:
+        smtp_client = smtplib.SMTP_SSL if settings.SMTP_USE_SSL else smtplib.SMTP
+        with smtp_client(settings.SMTP_HOST, settings.SMTP_PORT, timeout=settings.SMTP_TIMEOUT_SECONDS) as server:
+            if not settings.SMTP_USE_SSL:
+                server.ehlo()
+                if settings.SMTP_USE_TLS:
+                    if not server.has_extn("STARTTLS"):
+                        raise RuntimeError(
+                            "SMTP server does not support STARTTLS. "
+                            "Disable SMTP_USE_TLS or use a TLS-capable server."
+                        )
+                    server.starttls()
+                    server.ehlo()
+            if settings.SMTP_USERNAME and settings.SMTP_PASSWORD:
+                server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
+            server.send_message(message)
+        logger.info("Password reset OTP email sent to %s", email)
+    except (TimeoutError, socket.timeout, smtplib.SMTPServerDisconnected) as exc:
+        logger.error(
+            "Failed to send reset OTP email to %s due to SMTP timeout/disconnect: %s",
+            email, str(exc), exc_info=True,
+        )
+        mode = "ssl" if settings.SMTP_USE_SSL else "plain/starttls"
+        raise RuntimeError(
+            "SMTP connection timed out or was closed by server. "
+            f"host={settings.SMTP_HOST} port={settings.SMTP_PORT} mode={mode}."
+        ) from exc
+    except Exception as exc:
+        logger.error("Failed to send reset OTP email to %s: %s", email, str(exc), exc_info=True)
+        raise RuntimeError("Failed to send password reset email") from exc
+
+
+def request_password_reset(username: str):
+    """Generate a password-reset OTP, store its hash, and email it to the user.
+
+    Always returns a generic success indicator even when the user is not found,
+    to prevent user-enumeration attacks.
+    """
+    logger.info("Password reset OTP request initiated for %s", username)
+    try:
+        check_and_record_otp_request(username)
+        users = get_users_collection()
+        user = users.find_one({"username": username})
+
+        if not user or not user.get("email_verified", False):
+            # Do not reveal whether the account exists or is unverified.
+            logger.warning(
+                "Password reset requested for unknown/unverified account: %s", username
+            )
+            return {"sent": True}
+
+        otp = _generate_signup_otp()
+        otp_expires_at = _utcnow() + timedelta(minutes=settings.SIGNUP_OTP_EXPIRY_MINUTES)
+
+        users.update_one(
+            {"_id": user["_id"]},
+            {
+                "$set": {
+                    "reset_otp_hash": hash_password(otp),
+                    "reset_otp_expires_at": otp_expires_at,
+                    "updated_at": _utcnow(),
+                }
+            },
+        )
+
+        _deliver_reset_otp(username, otp)
+        logger.info("Password reset OTP sent to %s", username)
+        return {"sent": True}
+
+    except OtpRateLimitError:
+        logger.warning("OTP rate limit exceeded for password reset: %s", username)
+        raise
+    except PyMongoError as exc:
+        logger.error("Database error during password reset request: %s", str(exc), exc_info=True)
+        raise RuntimeError("Failed to process password reset due to database error") from exc
+    except Exception as exc:
+        logger.error("Unexpected error during password reset request: %s", str(exc), exc_info=True)
+        raise
+
+
+def reset_password_with_otp(username: str, otp: str, new_password: str):
+    """Verify the password-reset OTP and update the user's password."""
+    logger.info("Password reset attempt for %s", username)
+    try:
+        users = get_users_collection()
+        user = users.find_one({"username": username})
+
+        if not user:
+            logger.warning("Password reset failed: user not found %s", username)
+            return {"error": "not_found"}
+
+        otp_hash = user.get("reset_otp_hash")
+        otp_expires_at = user.get("reset_otp_expires_at")
+
+        if not otp_hash or _is_otp_expired(otp_expires_at):
+            logger.warning("Password reset failed: OTP expired or missing for %s", username)
+            return {"error": "OTP expired"}
+
+        if not verify_password(otp, otp_hash):
+            logger.warning("Password reset failed: invalid OTP for %s", username)
+            return {"error": "Invalid OTP"}
+
+        users.update_one(
+            {"_id": user["_id"]},
+            {
+                "$set": {
+                    "password_hash": hash_password(new_password),
+                    "updated_at": _utcnow(),
+                },
+                "$unset": {
+                    "reset_otp_hash": "",
+                    "reset_otp_expires_at": "",
+                },
+            },
+        )
+
+        clear_otp_attempts(username)
+        logger.info("Password reset successful for %s", username)
+        return {"reset": True}
+
+    except PyMongoError as exc:
+        logger.error("Database error during password reset: %s", str(exc), exc_info=True)
+        raise RuntimeError("Failed to reset password due to database error") from exc
+    except Exception as exc:
+        logger.error("Unexpected error during password reset: %s", str(exc), exc_info=True)
+        raise

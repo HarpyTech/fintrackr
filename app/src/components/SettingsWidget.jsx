@@ -11,6 +11,7 @@ export default function SettingsWidget() {
   const { session, profile, updateProfile } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -99,6 +100,22 @@ export default function SettingsWidget() {
     };
   }, [isOpen]);
 
+  useEffect(() => {
+    function handleChatVisibility(event) {
+      const nextIsOpen = Boolean(event?.detail?.isOpen);
+      setIsChatOpen(nextIsOpen);
+      if (nextIsOpen) {
+        setIsOpen(false);
+        setIsProfileOpen(false);
+      }
+    }
+
+    window.addEventListener('expense-chat:visibility-change', handleChatVisibility);
+    return () => {
+      window.removeEventListener('expense-chat:visibility-change', handleChatVisibility);
+    };
+  }, []);
+
   async function handleSaveProfile(event) {
     event.preventDefault();
     if (hasValidationErrors) {
@@ -128,7 +145,7 @@ export default function SettingsWidget() {
 
   return (
     <>
-      <div className="settings-widget-container" ref={widgetRef}>
+      <div className={`settings-widget-container${isChatOpen ? ' is-chat-open' : ''}`} ref={widgetRef}>
         {isOpen && !isProfileOpen ? (
           <div className="profile-dropdown" role="menu" aria-label="Settings menu" style={{ position: 'static', width: '260px', marginBottom: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>

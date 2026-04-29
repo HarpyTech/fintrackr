@@ -1,4 +1,5 @@
 import Sidebar from '../components/Sidebar';
+import MobileHeader from '../components/MobileHeader';
 import ExpenseChatWidget from '../components/ExpenseChatWidget';
 import SettingsWidget from '../components/SettingsWidget';
 
@@ -14,7 +15,10 @@ export default function ProtectedLayout({ children }) {
     <div className="protected-layout">
       <Sidebar />
       <div className="protected-layout-main">
-        {children}
+        <MobileHeader />
+        <div className="protected-layout-content">
+          {children}
+        </div>
       </div>
       <ExpenseChatWidget />
       <SettingsWidget />

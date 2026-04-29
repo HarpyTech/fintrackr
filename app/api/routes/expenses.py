@@ -194,6 +194,17 @@ async def create_expense_from_chat(
             payload.message,
         )
 
+        # If vendor was not found and user hasn't confirmed, ask before saving
+        if extracted.pop("_vendor_missing", False):
+            logger.info("Chat expense missing vendor — asking user for confirmation")
+            return {
+                "needs_vendor_confirm": True,
+                "message": (
+                    "No vendor/merchant name was found. "
+                    "Would you like to log this without a vendor, or provide the vendor name?"
+                ),
+            }
+
         result = await run_in_threadpool(
             add_expense,
             username=user,
@@ -210,12 +221,13 @@ async def create_expense_from_chat(
         )
 
         logger.info("Expense created successfully from chat")
+        vendor_label = result.get("vendor") or "no vendor"
         return {
             "expense": result,
             "extracted": extracted,
             "llm_model": used_llm_model,
             "message": (
-                f"Saved {result['vendor']} for {result['amount']:.2f} "
+                f"Saved {vendor_label} for {result['amount']:.2f} "
                 f"on {result['expense_date']}."
             ),
         }

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import PasswordInput from '../components/PasswordInput';
 
 export default function RegisterPage() {
   const { requestSignupOtp, verifySignupOtp } = useAuth();
@@ -88,12 +89,11 @@ export default function RegisterPage() {
               </label>
               <label>
                 Password
-                <input
-                  type="password"
+                <PasswordInput
                   minLength={8}
                   required
                   autoComplete="new-password"
-                  placeholder="********"
+                  placeholder="Min. 8 characters"
                   value={form.password}
                   onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
                 />
@@ -101,12 +101,11 @@ export default function RegisterPage() {
               </label>
               <label>
                 Confirm Password
-                <input
-                  type="password"
+                <PasswordInput
                   minLength={8}
                   required
                   autoComplete="new-password"
-                  placeholder="********"
+                  placeholder="Re-enter your password"
                   value={form.confirmPassword}
                   onChange={(e) => setForm((prev) => ({ ...prev, confirmPassword: e.target.value }))}
                 />
