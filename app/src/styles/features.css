@@ -258,8 +258,25 @@
   border-color: #374151;
 }
 
-.features-proto-step-emoji {
-  font-size: 4rem;
+.features-proto-step-image-wrap {
+  width: min(100% - 40px, 320px);
+  height: 210px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  background: #f8fafc;
+}
+
+.features-proto-step-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+:root[data-theme='dark'] .features-proto-step-image-wrap {
+  border-color: #4b5563;
+  background: #111827;
 }
 
 .features-proto-step-card-label {
