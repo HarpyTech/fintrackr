@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Send, TrendingUp, Sparkles, BarChart3, DollarSign } from 'lucide-react';
 import TopNavigation from '../components/TopNavigation';
 import { useAuth } from '../auth/AuthContext';
@@ -230,6 +230,38 @@ const QUICK_INSIGHTS = [
 
 const inrFmt = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 });
 
+// ─── Rich message renderer ────────────────────────────────────────────────
+
+function isSectionHead(line) {
+  const cp = line.trimStart().codePointAt(0);
+  return cp != null && ((cp >= 0x1F300 && cp <= 0x1FFFF) || (cp >= 0x2600 && cp <= 0x27BF));
+}
+
+function renderBotText(text) {
+  return text.split('\n').map((line, i) => {
+    if (!line.trim()) return <div key={i} className="insights-rich-spacer" />;
+    if (isSectionHead(line)) return <p key={i} className="insights-rich-head">{line}</p>;
+    if (line.trimStart().startsWith('•')) {
+      return (
+        <div key={i} className="insights-rich-bullet">
+          <span className="insights-rich-bullet-dot" aria-hidden="true" />
+          <span>{line.trimStart().slice(1).trim()}</span>
+        </div>
+      );
+    }
+    const kvMatch = line.match(/^([A-Z][^:\n]{0,28}):\s(.+)/);
+    if (kvMatch) {
+      return (
+        <div key={i} className="insights-rich-kv">
+          <span className="insights-rich-kv-label">{kvMatch[1]}:</span>
+          <span className="insights-rich-kv-value"> {kvMatch[2]}</span>
+        </div>
+      );
+    }
+    return <p key={i} className="insights-rich-line">{line}</p>;
+  });
+}
+
 // ─── Component ────────────────────────────────────────────────────────────
 
 export default function InsightsPage() {
@@ -237,11 +269,16 @@ export default function InsightsPage() {
   const [messages, setMessages] = useState(INITIAL_MESSAGES);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const messagesEndRef = useRef(null);
 
   // Live expenses
   const [expenses, setExpenses] = useState([]);
   const [expensesLoading, setExpensesLoading] = useState(true);
   const [expensesError, setExpensesError] = useState('');
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isTyping]);
 
   useEffect(() => {
     async function loadExpenses() {
@@ -293,6 +330,9 @@ export default function InsightsPage() {
   })();
   const statCategories = expensesLoading ? '—' : liveData ? `${liveData.activeCategories} Active` : '—';
   const statInsights = expensesLoading ? '—' : liveData ? `${Math.min(liveData.totalTransactions + 2, 20)}+` : '—';
+  const topCategoryEntry = liveData
+    ? (Object.entries(liveData.categorySpending).sort((a, b) => b[1] - a[1])[0] ?? null)
+    : null;
 
   return (
     <div className="insights-proto">
@@ -364,6 +404,46 @@ export default function InsightsPage() {
           </div>
         )}
 
+        {/* At-a-glance insight cards — visible whenever live data is ready */}
+        {!expensesLoading && liveData && (
+          <div className="insights-proto-cards-strip">
+            <div className="insights-proto-cards-inner">
+              <div className="insights-proto-card insights-proto-card--blue">
+                <div className="insights-proto-card-label">This Month</div>
+                <div className="insights-proto-card-value">{inrFmt.format(liveData.currentMonthSpent)}</div>
+                <div className={`insights-proto-card-badge ${
+                  liveData.currentMonthSpent >= liveData.lastMonthSpent
+                    ? 'insights-proto-card-badge--up'
+                    : 'insights-proto-card-badge--down'
+                }`}>
+                  {statGrowth} vs last mo
+                </div>
+              </div>
+              {topCategoryEntry && (
+                <div className="insights-proto-card insights-proto-card--purple">
+                  <div className="insights-proto-card-label">Top Category</div>
+                  <div className="insights-proto-card-value">{topCategoryEntry[0]}</div>
+                  <div className="insights-proto-card-meta">
+                    {((topCategoryEntry[1] / liveData.totalSpent) * 100).toFixed(0)}% of total
+                  </div>
+                </div>
+              )}
+              <div className="insights-proto-card insights-proto-card--green">
+                <div className="insights-proto-card-label">Weekday Avg / day</div>
+                <div className="insights-proto-card-value">{inrFmt.format(liveData.weekdayAvg)}</div>
+                <div className="insights-proto-card-meta">
+                  Weekend: {inrFmt.format(liveData.weekendAvg)} / day
+                </div>
+              </div>
+              <div className="insights-proto-card insights-proto-card--orange">
+                <div className="insights-proto-card-label">Transactions</div>
+                <div className="insights-proto-card-value">{liveData.totalTransactions}</div>
+                <div className="insights-proto-card-meta">{liveData.activeCategories} categories</div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Chat area */}
         <div className="insights-proto-chat-area">
           <div className="insights-proto-messages">
@@ -375,7 +455,10 @@ export default function InsightsPage() {
                 }`}
               >
                 <div className={getBubbleClass(msg)}>
-                  <div className="insights-proto-bubble-text">{msg.text}</div>
+                  {msg.sender === 'user'
+                    ? <div className="insights-proto-bubble-text">{msg.text}</div>
+                    : <div className="insights-proto-bubble-rich">{renderBotText(msg.text)}</div>
+                  }
                 </div>
               </div>
             ))}
@@ -390,6 +473,7 @@ export default function InsightsPage() {
                 </div>
               </div>
             )}
+            <div ref={messagesEndRef} />
           </div>
         </div>
 

@@ -334,11 +334,7 @@
   }
 
   .insights-proto-subtitle {
-    font-size: 12px;
-    display: -webkit-box;
-    -webkit-line-clamp: 1;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+    display: none;
   }
 
   /* Stats — 2×2 colored accent cards */
@@ -353,17 +349,10 @@
   }
 
   .insights-proto-stat {
-    background: #f8faff;
     border-radius: 10px;
     padding: 8px 10px;
     gap: 8px;
-    border: 1px solid #e0e7ff;
     box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-  }
-
-  :root[data-theme='dark'] .insights-proto-stat {
-    background: #1e293b;
-    border-color: #334155;
   }
 
   .insights-proto-stat-icon-blue   { color: #2563eb; }
@@ -449,12 +438,53 @@
     font-size: 14px;
     padding: 10px 14px;
     border-radius: 22px;
-    rows: 1;
+    height: 44px;
+    min-height: 44px;
+    max-height: 120px;
+    overflow-y: auto;
   }
 
   .insights-proto-send {
     padding: 10px 16px;
     border-radius: 22px;
+    height: 44px;
+  }
+
+  /* Cards strip — compact on mobile */
+  .insights-proto-cards-strip {
+    padding: 10px 0;
+  }
+
+  .insights-proto-cards-inner {
+    width: calc(100% - 24px);
+    gap: 8px;
+  }
+
+  .insights-proto-card {
+    min-width: 148px;
+    padding: 10px 12px;
+    border-radius: 10px;
+  }
+
+  .insights-proto-card-value {
+    font-size: 13px;
+  }
+
+  /* Rich message formatting on mobile */
+  .insights-proto-bubble-rich {
+    font-size: 13px;
+  }
+
+  .insights-rich-head {
+    font-size: 12px;
+  }
+
+  .insights-rich-kv-value {
+    font-size: 12px;
+  }
+
+  .insights-rich-line {
+    font-size: 13px;
   }
 }
 
