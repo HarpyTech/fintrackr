@@ -593,12 +593,17 @@
   }
 }
 
-/* --- ≤ 767px: mobile bottom nav — tighten item padding for fit --- */
+/* --- ≤ 767px: mobile bottom nav — icons only, no labels --- */
 @media (max-width: 767px) {
   .sidebar-proto-mobile-link,
   .sidebar-proto-mobile-logout {
-    padding: 6px 8px;
+    padding: 10px 8px;
     min-width: 0;
     flex: 1;
+  }
+
+  .sidebar-proto-mobile-link span,
+  .sidebar-proto-mobile-logout span {
+    display: none;
   }
 }
