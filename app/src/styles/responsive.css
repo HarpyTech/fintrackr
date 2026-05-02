@@ -592,3 +592,13 @@
     height: 28px;
   }
 }
+
+/* --- ≤ 767px: mobile bottom nav — tighten item padding for fit --- */
+@media (max-width: 767px) {
+  .sidebar-proto-mobile-link,
+  .sidebar-proto-mobile-logout {
+    padding: 6px 8px;
+    min-width: 0;
+    flex: 1;
+  }
+}
