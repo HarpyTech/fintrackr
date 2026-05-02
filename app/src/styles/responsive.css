@@ -199,14 +199,25 @@
 @media (max-width: 767px) {
   .dashboard-proto-container {
     width: min(1120px, 100% - 24px);
+    padding-top: 20px;
   }
 
   .dashboard-proto-title {
     font-size: 1.65rem;
+    margin-bottom: 16px;
   }
 
-  .dashboard-proto-stats,
-  .dashboard-proto-grid,
+  .dashboard-proto-stats {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .dashboard-proto-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
   .dashboard-proto-legend {
     grid-template-columns: 1fr;
   }
@@ -244,6 +255,39 @@
   .quick-add-desktop-card {
     display: none;
   }
+
+  /* Compact all proto-cards */
+  .dashboard-proto-card {
+    padding: 16px;
+  }
+
+  /* Stat cards — horizontal row (icon+label left, value right) */
+  .dashboard-proto-stats .dashboard-proto-card {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+  }
+
+  .dashboard-proto-stat-head {
+    flex: 1;
+  }
+
+  .dashboard-proto-stat-value {
+    font-size: 1.25rem;
+    margin-top: 0;
+    text-align: right;
+  }
+
+  .dashboard-proto-card h3 {
+    margin-bottom: 10px;
+  }
+
+  /* Limit chart height on mobile */
+  .chart-box {
+    height: 200px;
+  }
 }
 
 /* --- ≥ 768px: dashboard prototype desktop --- */
@@ -257,14 +301,24 @@
 @media (max-width: 767px) {
   .add-expense-proto-container {
     width: min(1120px, 100% - 24px);
+    padding-top: 20px;
   }
 
   .add-expense-proto-title {
     font-size: 1.65rem;
+    margin-bottom: 16px;
   }
 
   .add-expense-proto-grid {
     grid-template-columns: 1fr;
+  }
+
+  .add-expense-proto-card {
+    padding: 16px;
+  }
+
+  .add-expense-proto-fields {
+    gap: 14px;
   }
 
   .add-expense-proto-mobile-only {
@@ -302,16 +356,9 @@
 
 /* --- ≤ 767px: insights page responsive --- */
 @media (max-width: 767px) {
-  /* Compact header */
+  /* Header hidden on mobile — TopNavigation already shows “Insights” */
   .insights-proto-header {
-    padding: 10px 0;
-    background: linear-gradient(135deg, #eff6ff 0%, #eef2ff 100%);
-    border-bottom: 1px solid #c7d2fe;
-  }
-
-  :root[data-theme='dark'] .insights-proto-header {
-    background: linear-gradient(135deg, #1e1b4b 0%, #111827 100%);
-    border-color: #3730a3;
+    display: none;
   }
 
   .insights-proto-header-inner {
@@ -337,18 +384,30 @@
     display: none;
   }
 
-  /* Stats — 2×2 colored accent cards */
+  /* Stats — single-row horizontal scroll */
   .insights-proto-stats-bar {
     padding: 10px 0;
   }
 
   .insights-proto-stats-inner {
-    grid-template-columns: repeat(2, 1fr);
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
     gap: 8px;
     width: calc(100% - 32px);
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding-bottom: 2px;
+  }
+
+  .insights-proto-stats-inner::-webkit-scrollbar {
+    display: none;
   }
 
   .insights-proto-stat {
+    flex: 0 0 auto;
+    min-width: 90px;
     border-radius: 10px;
     padding: 8px 10px;
     gap: 8px;
@@ -488,6 +547,25 @@
   }
 }
 
+/* --- ≤ 767px: report prototype responsive --- */
+@media (max-width: 767px) {
+  .report-proto-container {
+    padding-top: 20px;
+  }
+
+  .report-proto-title {
+    margin-bottom: 16px;
+  }
+
+  .report-proto-card {
+    padding: 16px;
+  }
+
+  .report-proto-summary {
+    padding: 10px 14px;
+  }
+}
+
 /* --- ≤ 767px: support page responsive --- */
 @media (max-width: 767px) {
   .support-proto-channels {
@@ -500,5 +578,17 @@
 
   .support-proto-title {
     font-size: 1.75rem;
+  }
+}
+
+/* --- ≤ 767px: TopNavigation compact --- */
+@media (max-width: 767px) {
+  .dashboard-header {
+    padding: 12px 14px;
+    margin-bottom: 16px;
+  }
+
+  .dashboard-logo {
+    height: 28px;
   }
 }
