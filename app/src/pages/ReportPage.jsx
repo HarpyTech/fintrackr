@@ -139,6 +139,7 @@ export default function ReportPage() {
         <div className="report-proto-card">
           {/* ── View Toggle Tabs ── */}
           <div className="report-proto-tabs" role="tablist" aria-label="Report view selector">
+            <span className="report-proto-tabs-label">View By</span>
             <button
               type="button"
               role="tab"
@@ -146,7 +147,7 @@ export default function ReportPage() {
               className={clsx('report-proto-tab', historyView === 'expense' && 'active')}
               onClick={() => setHistoryView('expense')}
             >
-              View By Expense
+              Expense
             </button>
             <button
               type="button"
@@ -155,7 +156,7 @@ export default function ReportPage() {
               className={clsx('report-proto-tab', historyView === 'line_items' && 'active')}
               onClick={() => setHistoryView('line_items')}
             >
-              View By Line Items
+              Line Items
             </button>
           </div>
 
