@@ -561,8 +561,43 @@
     padding: 16px;
   }
 
+  /* Filters: 2-col grid — Start/End side by side, Category full-width */
+  .report-proto-filters {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .report-proto-filters .report-proto-label:last-child {
+    grid-column: span 2;
+  }
+
+  .report-proto-label {
+    gap: 4px;
+    font-size: 11px;
+  }
+
+  .report-proto-label input,
+  .report-proto-label select {
+    height: 32px;
+    padding: 0 10px;
+    font-size: 13px;
+    border-radius: 6px;
+  }
+
+  /* Summary bar: compact inline row */
   .report-proto-summary {
-    padding: 10px 14px;
+    padding: 8px 12px;
+    gap: 14px;
+    margin-bottom: 14px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
+  .report-proto-summary-item {
+    font-size: 12px;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 }
 
