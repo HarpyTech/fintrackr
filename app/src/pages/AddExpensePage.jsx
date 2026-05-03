@@ -226,83 +226,10 @@ export default function AddExpensePage() {
         {/* ── Two-column grid ── */}
         <div className="add-expense-proto-grid">
 
-          {/* ── Left: Manual Entry ── */}
-          <div className="add-expense-proto-card">
-            <h2 className="add-expense-proto-card-title">Manual Entry</h2>
-            <form onSubmit={addExpense} className="add-expense-proto-fields">
-              <label className="add-expense-proto-label">
-                Amount
-                <input
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  required
-                  placeholder="0.00"
-                  value={expenseForm.amount}
-                  disabled={sessionLimitReached}
-                  onChange={(e) =>
-                    setExpenseForm((prev) => ({ ...prev, amount: e.target.value }))
-                  }
-                />
-              </label>
-
-              <label className="add-expense-proto-label">
-                Category
-                <select
-                  value={expenseForm.category}
-                  disabled={sessionLimitReached}
-                  onChange={(e) =>
-                    setExpenseForm((prev) => ({ ...prev, category: e.target.value }))
-                  }
-                >
-                  {CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="add-expense-proto-label">
-                Date
-                <input
-                  type="date"
-                  required
-                  value={expenseForm.expense_date}
-                  disabled={sessionLimitReached}
-                  onChange={(e) =>
-                    setExpenseForm((prev) => ({ ...prev, expense_date: e.target.value }))
-                  }
-                />
-              </label>
-
-              <label className="add-expense-proto-label">
-                Note
-                <textarea
-                  rows={3}
-                  placeholder="Optional description…"
-                  value={expenseForm.description}
-                  disabled={sessionLimitReached}
-                  onChange={(e) =>
-                    setExpenseForm((prev) => ({ ...prev, description: e.target.value }))
-                  }
-                />
-              </label>
-
-              <button
-                type="submit"
-                className="add-expense-proto-submit"
-                disabled={sessionLimitReached}
-              >
-                Save Expense
-              </button>
-
-              {message ? <p className="add-expense-proto-success">{message}</p> : null}
-              {error ? <p className="add-expense-proto-error">{error}</p> : null}
-            </form>
-          </div>
-
-          {/* ── Right: AI Extraction ── */}
+          {/* ── Left: AI Extraction ── */}
           <div className="add-expense-proto-card">
             <h2 className="add-expense-proto-card-title">AI-Powered Extraction</h2>
+
             <form onSubmit={addExpenseFromAi} className="add-expense-proto-fields">
               <label className="add-expense-proto-label">
                 Describe Expense
@@ -399,6 +326,80 @@ export default function AddExpensePage() {
                 <pre>{JSON.stringify(lastExtracted, null, 2)}</pre>
               </div>
             ) : null}
+          </div>
+
+          {/* ── Right: Manual Entry ── */}
+          <div className="add-expense-proto-card">
+            <h2 className="add-expense-proto-card-title">Manual Entry</h2>
+            <form onSubmit={addExpense} className="add-expense-proto-fields">
+              <label className="add-expense-proto-label">
+                Amount
+                <input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  required
+                  placeholder="0.00"
+                  value={expenseForm.amount}
+                  disabled={sessionLimitReached}
+                  onChange={(e) =>
+                    setExpenseForm((prev) => ({ ...prev, amount: e.target.value }))
+                  }
+                />
+              </label>
+
+              <label className="add-expense-proto-label">
+                Category
+                <select
+                  value={expenseForm.category}
+                  disabled={sessionLimitReached}
+                  onChange={(e) =>
+                    setExpenseForm((prev) => ({ ...prev, category: e.target.value }))
+                  }
+                >
+                  {CATEGORIES.map((cat) => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="add-expense-proto-label">
+                Date
+                <input
+                  type="date"
+                  required
+                  value={expenseForm.expense_date}
+                  disabled={sessionLimitReached}
+                  onChange={(e) =>
+                    setExpenseForm((prev) => ({ ...prev, expense_date: e.target.value }))
+                  }
+                />
+              </label>
+
+              <label className="add-expense-proto-label">
+                Note
+                <textarea
+                  rows={3}
+                  placeholder="Optional description…"
+                  value={expenseForm.description}
+                  disabled={sessionLimitReached}
+                  onChange={(e) =>
+                    setExpenseForm((prev) => ({ ...prev, description: e.target.value }))
+                  }
+                />
+              </label>
+
+              <button
+                type="submit"
+                className="add-expense-proto-submit"
+                disabled={sessionLimitReached}
+              >
+                Save Expense
+              </button>
+
+              {message ? <p className="add-expense-proto-success">{message}</p> : null}
+              {error ? <p className="add-expense-proto-error">{error}</p> : null}
+            </form>
           </div>
 
         </div>
