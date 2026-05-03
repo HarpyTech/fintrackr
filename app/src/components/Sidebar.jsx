@@ -103,6 +103,15 @@ export default function Sidebar() {
             <span>{label}</span>
           </NavLink>
         ))}
+        <button
+          type="button"
+          className="sidebar-proto-mobile-logout"
+          onClick={handleLogout}
+          aria-label="Logout"
+        >
+          <LogOut size={20} />
+          <span>Logout</span>
+        </button>
       </nav>
     </>
   );
