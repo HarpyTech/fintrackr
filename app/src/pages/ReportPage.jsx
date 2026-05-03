@@ -139,6 +139,7 @@ export default function ReportPage() {
         <div className="report-proto-card">
           {/* ── View Toggle Tabs ── */}
           <div className="report-proto-tabs" role="tablist" aria-label="Report view selector">
+            <span className="report-proto-tabs-label">View By</span>
             <button
               type="button"
               role="tab"
@@ -146,7 +147,7 @@ export default function ReportPage() {
               className={clsx('report-proto-tab', historyView === 'expense' && 'active')}
               onClick={() => setHistoryView('expense')}
             >
-              View By Expense
+              Expense
             </button>
             <button
               type="button"
@@ -155,7 +156,7 @@ export default function ReportPage() {
               className={clsx('report-proto-tab', historyView === 'line_items' && 'active')}
               onClick={() => setHistoryView('line_items')}
             >
-              View By Line Items
+              Line Items
             </button>
           </div>
 
@@ -222,7 +223,6 @@ export default function ReportPage() {
               <table className="report-proto-table">
                 <thead>
                   <tr>
-                    <th>ID</th>
                     <th>Date</th>
                     <th>Category</th>
                     <th>Input Type</th>
@@ -237,7 +237,6 @@ export default function ReportPage() {
                   {filteredExpenses.length > 0 ? (
                     filteredExpenses.map((item) => (
                       <tr key={item.id}>
-                        <td>{item.id}</td>
                         <td>{String(item.expense_date || '').slice(0, 10)}</td>
                         <td>{toTitleCase(item.category)}</td>
                         <td>
@@ -259,7 +258,7 @@ export default function ReportPage() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={9} className="report-proto-empty">
+                      <td colSpan={8} className="report-proto-empty">
                         No expenses matched the selected filters.
                       </td>
                     </tr>
@@ -270,7 +269,6 @@ export default function ReportPage() {
               <table className="report-proto-table">
                 <thead>
                   <tr>
-                    <th>Expense ID</th>
                     <th>Date</th>
                     <th>Category</th>
                     <th>Vendor</th>
@@ -285,7 +283,6 @@ export default function ReportPage() {
                   {filteredLineItems.length > 0 ? (
                     filteredLineItems.map((item) => (
                       <tr key={item.id}>
-                        <td>{item.expenseId}</td>
                         <td>{item.expenseDate}</td>
                         <td>{toTitleCase(item.category)}</td>
                         <td>{item.vendor || '—'}</td>
@@ -307,7 +304,7 @@ export default function ReportPage() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={9} className="report-proto-empty">
+                      <td colSpan={8} className="report-proto-empty">
                         No line items matched the selected filters.
                       </td>
                     </tr>
