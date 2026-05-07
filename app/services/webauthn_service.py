@@ -333,7 +333,7 @@ def verify_authentication(
             key="refresh_token",
             value=refresh_token,
             httponly=True,
-            secure=False,  # set True in production (HTTPS)
+            secure=settings.COOKIE_SECURE,
             samesite="lax",
             max_age=60 * 60 * 24 * settings.REFRESH_TOKEN_EXPIRE_DAYS,
         )
@@ -412,7 +412,7 @@ def exchange_refresh_token(token: str, response_obj) -> dict:
         key="refresh_token",
         value=new_refresh,
         httponly=True,
-        secure=False,
+        secure=settings.COOKIE_SECURE,
         samesite="lax",
         max_age=60 * 60 * 24 * settings.REFRESH_TOKEN_EXPIRE_DAYS,
     )

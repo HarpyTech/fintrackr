@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request, Response, status
 import logging
 
+from app.core.config import settings
 from app.core.security import create_access_token
 from app.core.ratelimit import OtpRateLimitError
 from app.services.auth_service import (
@@ -33,7 +34,7 @@ def _set_session_cookie(response: Response, token: str) -> None:
         key=COOKIE_NAME,
         value=token,
         httponly=True,
-        secure=False,
+        secure=settings.COOKIE_SECURE,
         samesite="lax",
         max_age=60 * 60 * 24,
     )

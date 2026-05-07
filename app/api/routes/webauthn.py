@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request, Response, status
 import logging
 
+from app.core.ratelimit import WebAuthnRateLimitError, check_webauthn_rate_limit
 from app.models.user import (
     WebAuthnRegisterRequest,
     WebAuthnRegisterVerifyRequest,
@@ -27,6 +28,17 @@ def webauthn_register(payload: WebAuthnRegisterRequest):
     Issue a WebAuthn registration challenge.
     Call this after a successful email/password login to enrol a biometric credential.
     """
+    try:
+        check_webauthn_rate_limit(payload.username, "register")
+    except WebAuthnRateLimitError as exc:
+        resp = Response(status_code=429)
+        resp.headers["Retry-After"] = str(exc.retry_after_seconds)
+        return resp
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
     try:
         options = generate_registration_challenge(payload.username, payload.device_id)
     except ValueError as exc:
@@ -68,6 +80,17 @@ def webauthn_authenticate(payload: WebAuthnAuthenticateRequest):
     Issue a WebAuthn authentication challenge.
     Call this at app launch when a stored device credential is detected.
     """
+    try:
+        check_webauthn_rate_limit(payload.username, "authenticate")
+    except WebAuthnRateLimitError as exc:
+        resp = Response(status_code=429)
+        resp.headers["Retry-After"] = str(exc.retry_after_seconds)
+        return resp
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
     try:
         options = generate_authentication_challenge(payload.username, payload.device_id)
     except ValueError as exc:
