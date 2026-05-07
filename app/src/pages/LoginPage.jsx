@@ -1,14 +1,54 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import PasswordInput from '../components/PasswordInput';
+import { useWebAuthn } from '../hooks/useWebAuthn';
+import { getBoundUsername, getStoredCredentialId, isInstalledPwa } from '../lib/deviceBinding';
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, loginWithBiometric } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({ username: '', password: '' });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  const { isSupported } = useWebAuthn();
+  const [biometricUsername, setBiometricUsername] = useState(null);
+  const [biometricLoading, setBiometricLoading] = useState(false);
+
+  // Detect stored credential on mount
+  useEffect(() => {
+    if (!isSupported) return;
+    (async () => {
+      const [username, credentialId] = await Promise.all([
+        getBoundUsername().catch(() => null),
+        getStoredCredentialId().catch(() => null),
+      ]);
+      if (username && credentialId) {
+        setBiometricUsername(username);
+        // Pre-fill email so user can see which account is bound
+        setForm((prev) => ({ ...prev, username }));
+        // Auto-login silently if running as installed PWA
+        if (isInstalledPwa()) {
+          await handleBiometricLogin(username);
+        }
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSupported]);
+
+  async function handleBiometricLogin(username) {
+    setBiometricLoading(true);
+    setError('');
+    try {
+      await loginWithBiometric(username);
+      navigate('/dashboard');
+    } catch (err) {
+      setError(err.message || 'Biometric login failed. Please use your password.');
+    } finally {
+      setBiometricLoading(false);
+    }
+  }
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -45,6 +85,24 @@ export default function LoginPage() {
         <p className="auth-login-kicker">Your smart expense tracking companion</p>
         <section className="auth-card auth-card-login">
           <h1 className="auth-login-title">Sign in</h1>
+
+          {/* Biometric shortcut – only shown if a credential is stored on this device */}
+          {isSupported && biometricUsername && (
+            <div className="biometric-login-section">
+              <button
+                type="button"
+                className="biometric-login-btn"
+                onClick={() => handleBiometricLogin(biometricUsername)}
+                disabled={biometricLoading}
+                aria-label={`Sign in as ${biometricUsername} with biometrics`}
+              >
+                <span aria-hidden="true">🔑</span>
+                {biometricLoading ? 'Authenticating…' : `Sign in as ${biometricUsername}`}
+              </button>
+              <p className="biometric-login-hint">Uses fingerprint, face, or device PIN</p>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="stack-form">
             <label>
               Email

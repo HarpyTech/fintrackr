@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -8,8 +8,8 @@ import {
   HelpCircle,
   ChevronLeft,
   ChevronRight,
-  TrendingUp,
   LogOut,
+  Settings,
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { isSupportPageEnabled } from '../lib/featureFlags';
@@ -19,6 +19,7 @@ const MENU_ITEMS = [
   { to: '/insights', icon: MessageSquare, label: 'Insights' },
   { to: '/report', icon: FileText, label: 'Report' },
   { to: '/add-expense', icon: PlusCircle, label: 'Add Expense' },
+  { to: '/settings', icon: Settings, label: 'Settings' },
   ...(isSupportPageEnabled
     ? [{ to: '/support', icon: HelpCircle, label: 'Support' }]
     : []),
@@ -26,7 +27,35 @@ const MENU_ITEMS = [
 
 export default function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const { logout } = useAuth();
+  const { session, profile, logout } = useAuth();
+
+  const displayName = useMemo(() => {
+    const firstName = profile?.first_name?.trim();
+    const lastName = profile?.last_name?.trim();
+    if (firstName || lastName) {
+      return [firstName, lastName].filter(Boolean).join(' ');
+    }
+    return session?.user || 'User';
+  }, [profile, session?.user]);
+
+  const initials = useMemo(() => {
+    const firstName = profile?.first_name?.trim();
+    const lastName = profile?.last_name?.trim();
+    if (firstName && lastName) {
+      return (firstName.charAt(0) + lastName.charAt(0)).toUpperCase();
+    }
+    if (firstName) {
+      const fallback = session?.user || '';
+      return (firstName.charAt(0) + fallback.charAt(0)).replace(/\s/g, '').toUpperCase().slice(0, 2) || 'U';
+    }
+    const emailCandidate = (session?.user || '').trim();
+    if (emailCandidate.includes('@')) {
+      const localPart = emailCandidate.split('@')[0] || '';
+      const localChars = localPart.replace(/[^a-zA-Z]/g, '');
+      return localChars.slice(0, 2).toUpperCase() || 'U';
+    }
+    return emailCandidate.slice(0, 2).toUpperCase() || 'U';
+  }, [profile, session?.user]);
 
   async function handleLogout() {
     await logout();
@@ -65,8 +94,24 @@ export default function Sidebar() {
           ))}
         </nav>
 
-        {/* Logout */}
+        {/* Footer: profile link + logout */}
         <div className="sidebar-proto-footer">
+          <div className="sidebar-proto-profile">
+            <NavLink
+              to="/settings"
+              className="sidebar-proto-profile-trigger"
+              title={isCollapsed ? 'Settings' : undefined}
+              aria-label={isCollapsed ? 'Go to settings' : undefined}
+            >
+              <span className="sidebar-proto-avatar" aria-hidden="true">{initials}</span>
+              <div className="sidebar-proto-profile-info">
+                <span className="sidebar-proto-profile-name">{displayName}</span>
+                <span className="sidebar-proto-profile-email">{session?.user}</span>
+              </div>
+            </NavLink>
+          </div>
+
+          {/* Logout */}
           <button
             type="button"
             className="sidebar-proto-logout"
@@ -82,7 +127,7 @@ export default function Sidebar() {
         <button
           type="button"
           className="sidebar-proto-toggle"
-          onClick={() => setIsCollapsed(prev => !prev)}
+          onClick={() => setIsCollapsed((prev) => !prev)}
           aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
@@ -103,15 +148,6 @@ export default function Sidebar() {
             <span>{label}</span>
           </NavLink>
         ))}
-        <button
-          type="button"
-          className="sidebar-proto-mobile-logout"
-          onClick={handleLogout}
-          aria-label="Logout"
-        >
-          <LogOut size={20} />
-          <span>Logout</span>
-        </button>
       </nav>
     </>
   );

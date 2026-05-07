@@ -27,6 +27,9 @@ jinja2==3.1.3
 # Database
 pymongo==4.10.1
 
+# WebAuthn / FIDO2 biometric authentication
+webauthn==2.1.0
+
 # AI extraction
 google-generativeai==0.8.5
 Pillow==10.4.0

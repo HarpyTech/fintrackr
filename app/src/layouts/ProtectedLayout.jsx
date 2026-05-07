@@ -1,14 +1,12 @@
 import Sidebar from '../components/Sidebar';
 import MobileHeader from '../components/MobileHeader';
 import ExpenseChatWidget from '../components/ExpenseChatWidget';
-import SettingsWidget from '../components/SettingsWidget';
 
 /**
  * ProtectedLayout wraps all authenticated pages with:
- * - Desktop: collapsible left sidebar (sidebar-proto)
- * - Mobile: fixed bottom nav bar (sidebar-proto-mobile-nav)
+ * - Desktop: collapsible left sidebar (sidebar-proto) — includes profile/settings in footer
+ * - Mobile: fixed bottom nav bar (sidebar-proto-mobile-nav) + MobileHeader with avatar
  * - ExpenseChatWidget floating in bottom-right
- * - SettingsWidget floating near chat widget
  */
 export default function ProtectedLayout({ children }) {
   return (
@@ -21,7 +19,6 @@ export default function ProtectedLayout({ children }) {
         </div>
       </div>
       <ExpenseChatWidget />
-      <SettingsWidget />
     </div>
   );
 }
