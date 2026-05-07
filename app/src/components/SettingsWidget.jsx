@@ -1,7 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Settings, X } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import ThemeToggle from './ThemeToggle';
+import { apiRequest } from '../lib/api';
+import { getOrCreateDeviceId, clearDeviceBinding } from '../lib/deviceBinding';
+import { useWebAuthn } from '../hooks/useWebAuthn';
 
 const PHONE_PATTERN = /^\+?[0-9]{8,15}$/;
 const ADDRESS_MIN_LENGTH = 10;
@@ -9,12 +12,18 @@ const ADDRESS_MAX_LENGTH = 120;
 
 export default function SettingsWidget() {
   const { session, profile, updateProfile } = useAuth();
+  const { isSupported: isWebAuthnSupported } = useWebAuthn();
   const [isOpen, setIsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isDevicesOpen, setIsDevicesOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [devices, setDevices] = useState([]);
+  const [devicesLoading, setDevicesLoading] = useState(false);
+  const [devicesError, setDevicesError] = useState('');
+  const [deletingDeviceId, setDeletingDeviceId] = useState(null);
   const widgetRef = useRef(null);
 
   const displayName = useMemo(() => {
@@ -80,6 +89,44 @@ export default function SettingsWidget() {
     });
   }, [profile]);
 
+  const loadDevices = useCallback(async () => {
+    setDevicesLoading(true);
+    setDevicesError('');
+    try {
+      const data = await apiRequest('/webauthn/credentials');
+      setDevices(data.credentials || []);
+    } catch (err) {
+      setDevicesError(err.message || 'Failed to load devices.');
+    } finally {
+      setDevicesLoading(false);
+    }
+  }, []);
+
+  async function openDevices() {
+    setIsDevicesOpen(true);
+    setIsOpen(false);
+    setDevicesError('');
+    await loadDevices();
+  }
+
+  async function handleDeleteDevice(deviceId) {
+    setDeletingDeviceId(deviceId);
+    setDevicesError('');
+    try {
+      await apiRequest(`/webauthn/credentials/${encodeURIComponent(deviceId)}`, { method: 'DELETE' });
+      // Clear local binding if deleting the current device
+      const currentDeviceId = await getOrCreateDeviceId().catch(() => null);
+      if (currentDeviceId === deviceId) {
+        await clearDeviceBinding().catch(() => {});
+      }
+      setDevices((prev) => prev.filter((d) => d.device_id !== deviceId));
+    } catch (err) {
+      setDevicesError(err.message || 'Failed to remove device.');
+    } finally {
+      setDeletingDeviceId(null);
+    }
+  }
+
   useEffect(() => {
     function handlePointerDown(event) {
       if (isOpen && widgetRef.current && !widgetRef.current.contains(event.target)) {
@@ -90,6 +137,7 @@ export default function SettingsWidget() {
       if (event.key === 'Escape') {
         setIsOpen(false);
         setIsProfileOpen(false);
+        setIsDevicesOpen(false);
       }
     }
     document.addEventListener('mousedown', handlePointerDown);
@@ -107,6 +155,7 @@ export default function SettingsWidget() {
       if (nextIsOpen) {
         setIsOpen(false);
         setIsProfileOpen(false);
+        setIsDevicesOpen(false);
       }
     }
 
@@ -115,6 +164,7 @@ export default function SettingsWidget() {
       window.removeEventListener('expense-chat:visibility-change', handleChatVisibility);
     };
   }, []);
+
 
   async function handleSaveProfile(event) {
     event.preventDefault();
@@ -168,10 +218,22 @@ export default function SettingsWidget() {
                 setMessage('');
                 setError('');
               }}
-              style={{ marginBottom: '16px' }}
+              style={{ marginBottom: '8px' }}
             >
               Edit Profile
             </button>
+
+            {isWebAuthnSupported && (
+              <button
+                type="button"
+                role="menuitem"
+                className="profile-dropdown-action"
+                onClick={openDevices}
+                style={{ marginBottom: '16px' }}
+              >
+                Manage Devices
+              </button>
+            )}
 
             <div style={{ borderTop: '1px solid var(--line)', paddingTop: '16px' }}>
               <p style={{ fontSize: '13px', color: 'var(--muted)', margin: '0 0 10px 0', fontWeight: '600' }}>Theme</p>
@@ -180,7 +242,7 @@ export default function SettingsWidget() {
           </div>
         ) : null}
 
-        {!isProfileOpen && (
+        {!isProfileOpen && !isDevicesOpen && (
           <button
             type="button"
             className="settings-widget-launcher"
@@ -260,6 +322,72 @@ export default function SettingsWidget() {
                 </button>
               </div>
             </form>
+          </section>
+        </div>
+      ) : null}
+
+      {isDevicesOpen ? (
+        <div className="profile-modal-backdrop" role="presentation" onClick={() => setIsDevicesOpen(false)}>
+          <section
+            className="profile-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="devices-modal-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 id="devices-modal-title">Registered Devices</h2>
+            <p className="help-text">Devices with saved biometric login credentials.</p>
+
+            {devicesLoading ? (
+              <p className="help-text">Loading devices…</p>
+            ) : devicesError ? (
+              <p className="error-text" role="alert">{devicesError}</p>
+            ) : devices.length === 0 ? (
+              <p className="help-text">No biometric devices registered.</p>
+            ) : (
+              <ul style={{ listStyle: 'none', padding: 0, margin: '16px 0' }}>
+                {devices.map((device) => (
+                  <li
+                    key={device.device_id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '10px 0',
+                      borderBottom: '1px solid var(--line)',
+                    }}
+                  >
+                    <div>
+                      <p style={{ margin: 0, fontSize: '13px', fontWeight: '600' }}>
+                        {device.device_id.slice(0, 8)}…
+                      </p>
+                      <p style={{ margin: 0, fontSize: '12px', color: 'var(--muted)' }}>
+                        Last used:{' '}
+                        {device.last_used_at
+                          ? new Date(device.last_used_at).toLocaleDateString()
+                          : 'Unknown'}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      style={{ fontSize: '12px', padding: '4px 10px' }}
+                      onClick={() => handleDeleteDevice(device.device_id)}
+                      disabled={deletingDeviceId === device.device_id}
+                      aria-label={`Remove device ${device.device_id.slice(0, 8)}`}
+                    >
+                      {deletingDeviceId === device.device_id ? 'Removing…' : 'Remove'}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <div className="profile-modal-actions">
+              <button type="button" className="secondary-button" onClick={() => setIsDevicesOpen(false)}>
+                Close
+              </button>
+            </div>
           </section>
         </div>
       ) : null}

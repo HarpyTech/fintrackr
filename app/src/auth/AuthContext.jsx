@@ -112,8 +112,11 @@ export function AuthProvider({ children }) {
       body: JSON.stringify({ username, password }),
     });
     await refreshSession();
-    // Offer biometric enrolment after first successful password login
-    setShowBiometricPrompt(true);
+    // Offer biometric enrolment only if no credential is already stored on this device
+    const existingCred = await getStoredCredentialId().catch(() => null);
+    if (!existingCred) {
+      setShowBiometricPrompt(true);
+    }
   };
 
   const loginWithBiometric = async (username) => {
