@@ -8,6 +8,7 @@ Handles:
 - Refresh token issuance, validation, and revocation
 """
 
+import base64
 import json
 import logging
 from datetime import datetime, timedelta, timezone
@@ -19,8 +20,13 @@ from webauthn import (
     verify_authentication_response,
     options_to_json,
     base64url_to_bytes,
-    bytes_to_base64url,
 )
+
+
+def _bytes_to_base64url(val: bytes) -> str:
+    return base64.urlsafe_b64encode(val).rstrip(b"=").decode("utf-8")
+
+
 from webauthn.helpers.structs import (
     AuthenticatorSelectionCriteria,
     UserVerificationRequirement,
@@ -181,8 +187,8 @@ def verify_registration(username: str, device_id: str, credential_data: dict) ->
         )
         raise ValueError(f"Registration verification failed: {exc}") from exc
 
-    credential_id_b64 = bytes_to_base64url(verified.credential_id)
-    public_key_b64 = bytes_to_base64url(verified.credential_public_key)
+    credential_id_b64 = _bytes_to_base64url(verified.credential_id)
+    public_key_b64 = _bytes_to_base64url(verified.credential_public_key)
 
     credentials_col = get_webauthn_credentials_collection()
 
