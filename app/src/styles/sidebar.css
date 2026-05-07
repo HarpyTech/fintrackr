@@ -223,7 +223,8 @@
   border-top: 1px solid #e5e7eb;
   z-index: 50;
   justify-content: space-around;
-  padding: 8px 0;
+  /* top padding + bottom padding includes safe-area for iPhone home indicator */
+  padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px));
 }
 
 :root[data-theme='dark'] .sidebar-proto-mobile-nav {
