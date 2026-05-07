@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -13,14 +13,13 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { isSupportPageEnabled } from '../lib/featureFlags';
-import ThemeToggle from './ThemeToggle';
-import ProfileEditModal from './ProfileEditModal';
 
 const MENU_ITEMS = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/insights', icon: MessageSquare, label: 'Insights' },
   { to: '/report', icon: FileText, label: 'Report' },
   { to: '/add-expense', icon: PlusCircle, label: 'Add Expense' },
+  { to: '/settings', icon: Settings, label: 'Settings' },
   ...(isSupportPageEnabled
     ? [{ to: '/support', icon: HelpCircle, label: 'Support' }]
     : []),
@@ -28,9 +27,6 @@ const MENU_ITEMS = [
 
 export default function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const settingsRef = useRef(null);
   const { session, profile, logout } = useAuth();
 
   const displayName = useMemo(() => {
@@ -60,25 +56,6 @@ export default function Sidebar() {
     }
     return emailCandidate.slice(0, 2).toUpperCase() || 'U';
   }, [profile, session?.user]);
-
-  useEffect(() => {
-    function handlePointerDown(event) {
-      if (isSettingsOpen && settingsRef.current && !settingsRef.current.contains(event.target)) {
-        setIsSettingsOpen(false);
-      }
-    }
-    function handleEscape(event) {
-      if (event.key === 'Escape') {
-        setIsSettingsOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handlePointerDown);
-    document.addEventListener('keydown', handleEscape);
-    return () => {
-      document.removeEventListener('mousedown', handlePointerDown);
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [isSettingsOpen]);
 
   async function handleLogout() {
     await logout();
@@ -117,40 +94,21 @@ export default function Sidebar() {
           ))}
         </nav>
 
-        {/* Footer: profile + settings + logout */}
+        {/* Footer: profile link + logout */}
         <div className="sidebar-proto-footer">
-          {/* Profile / Settings section */}
-          <div className="sidebar-proto-profile" ref={settingsRef}>
-            <button
-              type="button"
+          <div className="sidebar-proto-profile">
+            <NavLink
+              to="/settings"
               className="sidebar-proto-profile-trigger"
-              onClick={() => setIsSettingsOpen((prev) => !prev)}
-              aria-expanded={isSettingsOpen}
               title={isCollapsed ? 'Settings' : undefined}
-              aria-label={isCollapsed ? 'Settings' : 'Settings and profile'}
+              aria-label={isCollapsed ? 'Go to settings' : undefined}
             >
               <span className="sidebar-proto-avatar" aria-hidden="true">{initials}</span>
               <div className="sidebar-proto-profile-info">
                 <span className="sidebar-proto-profile-name">{displayName}</span>
                 <span className="sidebar-proto-profile-email">{session?.user}</span>
               </div>
-              <Settings size={15} className="sidebar-proto-settings-icon" />
-            </button>
-            {isSettingsOpen && (
-              <div className="sidebar-proto-settings-panel">
-                <ThemeToggle />
-                <button
-                  type="button"
-                  className="sidebar-proto-settings-edit"
-                  onClick={() => {
-                    setIsProfileModalOpen(true);
-                    setIsSettingsOpen(false);
-                  }}
-                >
-                  Edit Profile
-                </button>
-              </div>
-            )}
+            </NavLink>
           </div>
 
           {/* Logout */}
@@ -190,22 +148,7 @@ export default function Sidebar() {
             <span>{label}</span>
           </NavLink>
         ))}
-        <button
-          type="button"
-          className="sidebar-proto-mobile-logout"
-          onClick={handleLogout}
-          aria-label="Logout"
-        >
-          <LogOut size={20} />
-          <span>Logout</span>
-        </button>
       </nav>
-
-      {/* Profile edit modal */}
-      <ProfileEditModal
-        isOpen={isProfileModalOpen}
-        onClose={() => setIsProfileModalOpen(false)}
-      />
     </>
   );
 }
