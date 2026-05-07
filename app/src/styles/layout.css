@@ -29,7 +29,7 @@
   flex-direction: column;
   min-height: 0;
   /* Clear the fixed bottom nav (≈64px) + iPhone home-indicator safe area */
-  padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  margin-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
 }
 
 .mobile-header-proto {
@@ -93,7 +93,7 @@
 
 @media (min-width: 768px) {
   .protected-layout-content {
-    padding-bottom: 0;
+    margin-bottom: 0;
   }
 
   .mobile-header-proto {
