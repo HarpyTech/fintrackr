@@ -223,7 +223,8 @@
   border-top: 1px solid #e5e7eb;
   z-index: 50;
   justify-content: space-around;
-  padding: 8px 0;
+  /* top padding + bottom padding includes safe-area for iPhone home indicator */
+  padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px));
 }
 
 :root[data-theme='dark'] .sidebar-proto-mobile-nav {
@@ -298,4 +299,135 @@
   .sidebar-proto-mobile-nav {
     display: none;
   }
+}
+
+/* ── Profile / Settings section in sidebar footer ── */
+.sidebar-proto-profile {
+  margin-bottom: 6px;
+}
+
+.sidebar-proto-profile-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 6px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: background 0.12s;
+}
+
+.sidebar-proto-profile-trigger:hover {
+  background: #f3f4f6;
+}
+
+:root[data-theme='dark'] .sidebar-proto-profile-trigger:hover {
+  background: #374151;
+}
+
+.sidebar-proto-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--brand-soft, #eff6ff);
+  border: 1px solid var(--brand-soft-border, #bfdbfe);
+  color: var(--brand, #2563eb);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+}
+
+.sidebar-proto-profile-info {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  transition: opacity 0.2s, max-width 0.25s;
+  max-width: 140px;
+}
+
+.sidebar-proto.collapsed .sidebar-proto-profile-info {
+  opacity: 0;
+  max-width: 0;
+}
+
+.sidebar-proto-profile-name {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+:root[data-theme='dark'] .sidebar-proto-profile-name {
+  color: #f9fafb;
+}
+
+.sidebar-proto-profile-email {
+  display: block;
+  font-size: 11px;
+  color: #6b7280;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-proto-settings-icon {
+  color: #9ca3af;
+  flex-shrink: 0;
+  transition: opacity 0.2s, max-width 0.25s;
+}
+
+.sidebar-proto.collapsed .sidebar-proto-settings-icon {
+  opacity: 0;
+  max-width: 0;
+  overflow: hidden;
+}
+
+.sidebar-proto-settings-panel {
+  padding: 4px 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sidebar-proto-settings-edit {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  transition: background 0.12s, color 0.12s;
+}
+
+.sidebar-proto-settings-edit:hover {
+  background: #f3f4f6;
+  color: #2563eb;
+}
+
+:root[data-theme='dark'] .sidebar-proto-settings-edit {
+  color: #d1d5db;
+}
+
+:root[data-theme='dark'] .sidebar-proto-settings-edit:hover {
+  background: #374151;
+  color: #60a5fa;
 }

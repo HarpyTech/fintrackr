@@ -8,7 +8,7 @@ import traceback
 
 from app.core.config import settings
 from app.core.tracing import setup_trace_logging
-from app.api.routes import auth, users, health, expenses
+from app.api.routes import auth, users, health, expenses, webauthn
 from app.middleware.tracing import TraceIDMiddleware
 from app.middleware.auth import AuthenticationMiddleware
 from app.middleware.csrf import CSRFProtectionMiddleware
@@ -113,6 +113,13 @@ app.include_router(
     tags=["Expenses"],
 )
 logger.info("Expense routes registered")
+
+app.include_router(
+    webauthn.router,
+    prefix=f"{settings.API_V1_STR}/webauthn",
+    tags=["WebAuthn"],
+)
+logger.info("WebAuthn routes registered")
 
 
 BASE_DIR = Path(__file__).resolve().parent

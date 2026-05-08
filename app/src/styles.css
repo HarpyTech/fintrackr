@@ -23,6 +23,7 @@
 @import './styles/features.css';
 @import './styles/insights.css';
 @import './styles/support.css';
+@import './styles/settings.css';
 
 /* Responsive overrides (kept last so they win) */
 @import './styles/responsive.css';

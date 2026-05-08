@@ -198,6 +198,88 @@ def get_expense_line_items_collection() -> Collection:
         raise
 
 
+def get_webauthn_credentials_collection() -> Collection:
+    """Get the webauthn_credentials collection with indexes"""
+    try:
+        collection = get_database()["webauthn_credentials"]
+        _safe_create_indexes(
+            collection,
+            [
+                {"kind": "single", "field": "credential_id", "unique": True},
+                {"kind": "compound", "fields": [("username", 1), ("device_id", 1)]},
+            ],
+        )
+        logger.debug("WebAuthn credentials collection accessed")
+        return collection
+    except PyMongoError:
+        logger.error("Failed to access webauthn_credentials collection", exc_info=True)
+        raise
+    except Exception:
+        logger.error(
+            "Unexpected error accessing webauthn_credentials collection",
+            exc_info=True,
+        )
+        raise
+
+
+def get_webauthn_challenges_collection() -> Collection:
+    """Get the webauthn_challenges collection. Challenges expire after 5 minutes."""
+    try:
+        collection = get_database()["webauthn_challenges"]
+        _safe_create_indexes(
+            collection,
+            [
+                # TTL index: MongoDB auto-deletes documents after expires_at
+                {"kind": "single", "field": "expires_at", "unique": False},
+                {"kind": "compound", "fields": [("username", 1), ("type", 1)]},
+            ],
+        )
+        # Create TTL index separately (requires expireAfterSeconds)
+        try:
+            collection.create_index("expires_at", expireAfterSeconds=0)
+        except Exception:
+            pass
+        logger.debug("WebAuthn challenges collection accessed")
+        return collection
+    except PyMongoError:
+        logger.error("Failed to access webauthn_challenges collection", exc_info=True)
+        raise
+    except Exception:
+        logger.error(
+            "Unexpected error accessing webauthn_challenges collection",
+            exc_info=True,
+        )
+        raise
+
+
+def get_refresh_tokens_collection() -> Collection:
+    """Get the refresh_tokens collection with TTL index."""
+    try:
+        collection = get_database()["refresh_tokens"]
+        _safe_create_indexes(
+            collection,
+            [
+                {"kind": "single", "field": "token_hash", "unique": True},
+                {"kind": "compound", "fields": [("username", 1), ("device_id", 1)]},
+            ],
+        )
+        try:
+            collection.create_index("expires_at", expireAfterSeconds=0)
+        except Exception:
+            pass
+        logger.debug("Refresh tokens collection accessed")
+        return collection
+    except PyMongoError:
+        logger.error("Failed to access refresh_tokens collection", exc_info=True)
+        raise
+    except Exception:
+        logger.error(
+            "Unexpected error accessing refresh_tokens collection",
+            exc_info=True,
+        )
+        raise
+
+
 def ping_database() -> bool:
     """Ping the database to check connectivity"""
     try:

@@ -14,6 +14,7 @@ import LandingPage from './pages/LandingPage';
 import FeaturesPage from './pages/FeaturesPage';
 import InsightsPage from './pages/InsightsPage';
 import SupportPage from './pages/SupportPage';
+import SettingsPage from './pages/SettingsPage';
 import { isSupportPageEnabled } from './lib/featureFlags';
 
 function ProtectedRoute({ children }) {
@@ -74,6 +75,14 @@ export default function App() {
         />
         <Route path="/features" element={<FeaturesPage />} />
         {isSupportPageEnabled ? <Route path="/support" element={<SupportPage />} /> : null}
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <SettingsPage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/insights"
           element={

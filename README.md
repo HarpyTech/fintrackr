@@ -205,6 +205,9 @@ The workflows no longer read application runtime values from GitHub secrets. Clo
 - `ACCESS_TOKEN_EXPIRE_MINUTES`
 - `ALGORITHM`
 - `CORS_ORIGINS`
+- `WEBAUTHN_RP_ID`
+- `WEBAUTHN_RP_NAME`
+- `WEBAUTHN_ORIGIN`
 - `MONGODB_DB`
 - `GEMINI_API_KEY`
 - `GEMINI_MODEL`

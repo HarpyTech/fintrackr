@@ -31,6 +31,18 @@ class Settings(BaseSettings):
 
     MONGODB_URI: str = "mongodb://localhost:27017"
     MONGODB_DB: str = "my_finance"
+
+    # WebAuthn / FIDO2
+    WEBAUTHN_RP_ID: str = "localhost"
+    WEBAUTHN_RP_NAME: str = "FinTrackr"
+    WEBAUTHN_ORIGIN: str = "http://localhost:5173"
+
+    # Refresh tokens (issued only for installed PWA sessions)
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 30
+
+    # Set True in production (HTTPS); False for local HTTP development
+    COOKIE_SECURE: bool = False
+
     GEMINI_API_KEY: str | None = None
     GEMINI_MODEL: str = "gemini-2.5-flash"
     BUILD_VERSION: str = "dev"

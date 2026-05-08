@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request, Response, status
 import logging
 
+from app.core.config import settings
 from app.core.security import create_access_token
 from app.core.ratelimit import OtpRateLimitError
 from app.services.auth_service import (
@@ -25,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 
 COOKIE_NAME = "access_token"
+REFRESH_COOKIE_NAME = "refresh_token"
 
 
 def _set_session_cookie(response: Response, token: str) -> None:
@@ -32,7 +34,7 @@ def _set_session_cookie(response: Response, token: str) -> None:
         key=COOKIE_NAME,
         value=token,
         httponly=True,
-        secure=False,
+        secure=settings.COOKIE_SECURE,
         samesite="lax",
         max_age=60 * 60 * 24,
     )
@@ -213,11 +215,43 @@ async def api_login(request: Request, response: Response):
 
 @router.post("/logout")
 def api_logout(request: Request, response: Response):
-    """Log out the current user"""
+    """Log out the current user. Also revokes any active refresh token."""
+    from app.services.webauthn_service import revoke_refresh_token
+
     user = getattr(request.state, "user", "unknown")
     logger.info(f"User logged out: {user}")
+    refresh_token = request.cookies.get(REFRESH_COOKIE_NAME)
+    if refresh_token:
+        try:
+            revoke_refresh_token(refresh_token)
+        except Exception:
+            pass
     response.delete_cookie(key=COOKIE_NAME)
+    response.delete_cookie(key=REFRESH_COOKIE_NAME)
     return {"message": "Logged out"}
+
+
+@router.post("/refresh", status_code=status.HTTP_200_OK)
+def api_refresh_token(request: Request, response: Response):
+    """
+    Exchange a valid refresh token for a new access token (PWA sessions only).
+    Uses sliding expiration: a new refresh token is also issued and the old one revoked.
+    Browser sessions are NOT issued refresh tokens and must re-authenticate via login.
+    """
+    from app.services.webauthn_service import exchange_refresh_token
+
+    token = request.cookies.get(REFRESH_COOKIE_NAME)
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No refresh token present. Please log in.",
+        )
+    try:
+        result = exchange_refresh_token(token, response)
+    except ValueError as exc:
+        response.delete_cookie(key=REFRESH_COOKIE_NAME)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc))
+    return result
 
 
 @router.post("/forgot-password", status_code=status.HTTP_200_OK)
@@ -248,7 +282,9 @@ def api_reset_password(payload: ResetPasswordPayload):
     """Verify OTP and set a new password."""
     logger.info("Password reset attempt received")
     try:
-        result = reset_password_with_otp(payload.username, payload.otp, payload.new_password)
+        result = reset_password_with_otp(
+            payload.username, payload.otp, payload.new_password
+        )
     except RuntimeError as exc:
         logger.error(f"Service unavailable during password reset: {str(exc)}")
         raise HTTPException(

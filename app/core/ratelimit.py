@@ -111,6 +111,88 @@ def check_and_record_otp_request(
         raise RuntimeError("Failed to check rate limit") from exc
 
 
+class WebAuthnRateLimitError(Exception):
+    """Raised when a WebAuthn challenge request exceeds the rate limit."""
+
+    def __init__(self, message: str, retry_after_seconds: int):
+        super().__init__(message)
+        self.retry_after_seconds = retry_after_seconds
+
+
+def check_webauthn_rate_limit(
+    username: str,
+    action: str,
+    max_attempts: int = 5,
+    window_minutes: int = 10,
+) -> None:
+    """
+    Rate-limit WebAuthn challenge requests (register / authenticate).
+    `action` should be 'register' or 'authenticate'.
+    Raises WebAuthnRateLimitError when the limit is exceeded.
+    """
+    try:
+        col = get_users_collection().database["webauthn_attempts"]
+        try:
+            col.create_index("created_at", expireAfterSeconds=window_minutes * 60)
+        except Exception:
+            pass
+
+        now = _utcnow()
+        window_start = now - timedelta(minutes=window_minutes)
+        key = f"{username}:{action}"
+
+        recent_count = col.count_documents(
+            {"key": key, "created_at": {"$gte": window_start}}
+        )
+
+        if recent_count >= max_attempts:
+            oldest = col.find_one(
+                {"key": key, "created_at": {"$gte": window_start}},
+                sort=[("created_at", 1)],
+            )
+            if oldest:
+                retry_after = int(
+                    (
+                        oldest["created_at"] + timedelta(minutes=window_minutes) - now
+                    ).total_seconds()
+                )
+                retry_after = max(1, retry_after)
+            else:
+                retry_after = window_minutes * 60
+
+            logger.warning(
+                "WebAuthn rate limit exceeded for %s action=%s: %d attempts in %d minutes",
+                username,
+                action,
+                recent_count,
+                window_minutes,
+            )
+            raise WebAuthnRateLimitError(
+                f"Too many attempts. Please try again in {retry_after} seconds.",
+                retry_after,
+            )
+
+        col.insert_one({"key": key, "created_at": now})
+        logger.debug(
+            "WebAuthn attempt recorded for %s action=%s: %d/%d",
+            username,
+            action,
+            recent_count + 1,
+            max_attempts,
+        )
+
+    except WebAuthnRateLimitError:
+        raise
+    except Exception as exc:
+        logger.error(
+            "Error checking WebAuthn rate limit for %s: %s",
+            username,
+            str(exc),
+            exc_info=True,
+        )
+        raise RuntimeError("Failed to check rate limit") from exc
+
+
 def clear_otp_attempts(email: str) -> None:
     """Clear all OTP attempts for an email after successful verification."""
     try:
