@@ -15,6 +15,7 @@ export default function LoginPage() {
   const { isSupported } = useWebAuthn();
   const [biometricUsername, setBiometricUsername] = useState(null);
   const [biometricLoading, setBiometricLoading] = useState(false);
+  const [showPasswordFallback, setShowPasswordFallback] = useState(false);
 
   // Detect stored credential on mount
   useEffect(() => {
@@ -26,6 +27,7 @@ export default function LoginPage() {
       ]);
       if (username && credentialId) {
         setBiometricUsername(username);
+        setShowPasswordFallback(false);
         // Pre-fill email so user can see which account is bound
         setForm((prev) => ({ ...prev, username }));
         // Auto-login silently if running as installed PWA
@@ -69,6 +71,8 @@ export default function LoginPage() {
     }
   }
 
+  const shouldShowBiometricFirst = isSupported && biometricUsername && !showPasswordFallback;
+
   return (
     <main className="auth-layout auth-layout-login">
       <div className="auth-login-shell">
@@ -86,8 +90,8 @@ export default function LoginPage() {
         <section className="auth-card auth-card-login">
           <h1 className="auth-login-title">Sign in</h1>
 
-          {/* Biometric shortcut – only shown if a credential is stored on this device */}
-          {isSupported && biometricUsername && (
+          {/* Biometric-first login when a credential is stored on this device */}
+          {shouldShowBiometricFirst ? (
             <div className="biometric-login-section">
               <button
                 type="button"
@@ -100,9 +104,19 @@ export default function LoginPage() {
                 {biometricLoading ? 'Authenticating…' : `Sign in as ${biometricUsername}`}
               </button>
               <p className="biometric-login-hint">Uses fingerprint, face, or device PIN</p>
+              {error ? (
+                <p className="error-text auth-inline-error" role="alert" aria-live="polite">{error}</p>
+              ) : null}
+              <button
+                type="button"
+                className="biometric-login-alt"
+                onClick={() => setShowPasswordFallback(true)}
+                disabled={biometricLoading}
+              >
+                Use email and password instead
+              </button>
             </div>
-          )}
-
+          ) : (
           <form onSubmit={handleSubmit} className="stack-form">
             <label>
               Email
@@ -132,6 +146,7 @@ export default function LoginPage() {
               {submitting ? 'Signing in...' : 'Sign in'}
             </button>
           </form>
+          )}
           <div className="auth-login-links">
             <Link to="/register">Create account</Link>
             <Link to="/verify-email">Verify account</Link>
