@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 @router.post("/register", status_code=status.HTTP_200_OK)
-def webauthn_register(payload: WebAuthnRegisterRequest):
+def webauthn_register(payload: WebAuthnRegisterRequest, request: Request):
     """
     Issue a WebAuthn registration challenge.
     Call this after a successful email/password login to enrol a biometric credential.
@@ -40,7 +40,11 @@ def webauthn_register(payload: WebAuthnRegisterRequest):
             detail=str(exc),
         ) from exc
     try:
-        options = generate_registration_challenge(payload.username, payload.device_id)
+        options = generate_registration_challenge(
+            payload.username,
+            payload.device_id,
+            request,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     except Exception as exc:
@@ -75,7 +79,7 @@ def webauthn_register_verify(payload: WebAuthnRegisterVerifyRequest):
 
 
 @router.post("/authenticate", status_code=status.HTTP_200_OK)
-def webauthn_authenticate(payload: WebAuthnAuthenticateRequest):
+def webauthn_authenticate(payload: WebAuthnAuthenticateRequest, request: Request):
     """
     Issue a WebAuthn authentication challenge.
     Call this at app launch when a stored device credential is detected.
@@ -92,7 +96,11 @@ def webauthn_authenticate(payload: WebAuthnAuthenticateRequest):
             detail=str(exc),
         ) from exc
     try:
-        options = generate_authentication_challenge(payload.username, payload.device_id)
+        options = generate_authentication_challenge(
+            payload.username,
+            payload.device_id,
+            request,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     except Exception as exc:
