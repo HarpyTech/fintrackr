@@ -12,6 +12,10 @@ import base64
 import json
 import logging
 from datetime import datetime, timedelta, timezone
+from ipaddress import ip_address
+from urllib.parse import urlparse
+
+from fastapi import Request
 
 from webauthn import (
     generate_registration_options,
@@ -66,13 +70,70 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _is_ip_address(value: str) -> bool:
+    try:
+        ip_address(value)
+        return True
+    except ValueError:
+        return False
+
+
+def _parse_origin(origin: str) -> tuple[str, str] | None:
+    """Parse an Origin header value into (origin, rp_id)."""
+    parsed = urlparse(origin.strip())
+    if not parsed.scheme or not parsed.hostname:
+        return None
+    rp_id = parsed.hostname.lower().rstrip(".")
+    if not rp_id:
+        return None
+    normalized_origin = f"{parsed.scheme}://{parsed.netloc}"
+    return normalized_origin, rp_id
+
+
+def _derive_webauthn_context(request: Request | None) -> tuple[str, str]:
+    """Derive (origin, rp_id) from request headers, with config fallback."""
+    if request is not None:
+        origin_header = request.headers.get("origin")
+        if origin_header:
+            parsed = _parse_origin(origin_header)
+            if parsed:
+                return parsed
+
+        forwarded_proto = request.headers.get("x-forwarded-proto", "")
+        scheme = (
+            forwarded_proto.split(",")[0].strip() or request.url.scheme or "https"
+        )
+        forwarded_host = request.headers.get("x-forwarded-host", "")
+        host = forwarded_host.split(",")[0].strip() or request.headers.get("host", "")
+        if host:
+            parsed = _parse_origin(f"{scheme}://{host}")
+            if parsed:
+                return parsed
+
+    configured_origin = settings.WEBAUTHN_ORIGIN.strip()
+    parsed = _parse_origin(configured_origin)
+    if parsed:
+        origin, rp_id = parsed
+        configured_rp = settings.WEBAUTHN_RP_ID.strip().lower().rstrip(".")
+        if configured_rp and (configured_rp == rp_id or _is_ip_address(configured_rp)):
+            return origin, configured_rp
+        return origin, rp_id
+
+    return settings.WEBAUTHN_ORIGIN, settings.WEBAUTHN_RP_ID
+
+
 # ---------------------------------------------------------------------------
 # Challenge helpers
 # ---------------------------------------------------------------------------
 
 
 def _store_challenge(
-    username: str, challenge_b64: str, device_id: str, challenge_type: str
+    username: str,
+    challenge_b64: str,
+    device_id: str,
+    challenge_type: str,
+    rp_id: str,
+    origin: str,
 ) -> None:
     """Persist a WebAuthn challenge; replaces any existing pending challenge of the same type."""
     col = get_webauthn_challenges_collection()
@@ -84,6 +145,8 @@ def _store_challenge(
             "type": challenge_type,
             "challenge": challenge_b64,
             "device_id": device_id,
+            "rp_id": rp_id,
+            "origin": origin,
             "expires_at": expires_at,
         },
         upsert=True,
@@ -109,7 +172,9 @@ def _pop_challenge(username: str, challenge_type: str) -> dict | None:
 # ---------------------------------------------------------------------------
 
 
-def generate_registration_challenge(username: str, device_id: str) -> dict:
+def generate_registration_challenge(
+    username: str, device_id: str, request: Request | None = None
+) -> dict:
     """
     Issue a WebAuthn registration challenge for `username`.
     Returns a dict that can be passed directly to the browser as JSON.
@@ -124,8 +189,10 @@ def generate_registration_challenge(username: str, device_id: str) -> dict:
     # Build user_id as UTF-8 bytes of the username
     user_id_bytes = username.encode("utf-8")
 
+    expected_origin, expected_rp_id = _derive_webauthn_context(request)
+
     options = generate_registration_options(
-        rp_id=settings.WEBAUTHN_RP_ID,
+        rp_id=expected_rp_id,
         rp_name=settings.WEBAUTHN_RP_NAME,
         user_id=user_id_bytes,
         user_name=username,
@@ -139,7 +206,14 @@ def generate_registration_challenge(username: str, device_id: str) -> dict:
 
     options_dict = json.loads(options_to_json(options))
     challenge_b64 = options_dict["challenge"]
-    _store_challenge(username, challenge_b64, device_id, "registration")
+    _store_challenge(
+        username,
+        challenge_b64,
+        device_id,
+        "registration",
+        expected_rp_id,
+        expected_origin,
+    )
     logger.info(f"WebAuthn registration challenge issued for: {username}")
     return options_dict
 
@@ -156,6 +230,9 @@ def verify_registration(username: str, device_id: str, credential_data: dict) ->
         )
     if challenge_doc["device_id"] != device_id:
         raise ValueError("Device ID mismatch during registration.")
+
+    expected_rp_id = challenge_doc.get("rp_id") or settings.WEBAUTHN_RP_ID
+    expected_origin = challenge_doc.get("origin") or settings.WEBAUTHN_ORIGIN
 
     challenge_bytes = base64url_to_bytes(challenge_doc["challenge"])
 
@@ -177,8 +254,8 @@ def verify_registration(username: str, device_id: str, credential_data: dict) ->
         verified = verify_registration_response(
             credential=credential,
             expected_challenge=challenge_bytes,
-            expected_rp_id=settings.WEBAUTHN_RP_ID,
-            expected_origin=settings.WEBAUTHN_ORIGIN,
+            expected_rp_id=expected_rp_id,
+            expected_origin=expected_origin,
             require_user_verification=False,
         )
     except (InvalidCBORData, InvalidAuthenticatorDataStructure, Exception) as exc:
@@ -219,7 +296,9 @@ def verify_registration(username: str, device_id: str, credential_data: dict) ->
 # ---------------------------------------------------------------------------
 
 
-def generate_authentication_challenge(username: str, device_id: str) -> dict:
+def generate_authentication_challenge(
+    username: str, device_id: str, request: Request | None = None
+) -> dict:
     """
     Issue a WebAuthn authentication challenge.
     Returns a dict for the browser.
@@ -235,8 +314,10 @@ def generate_authentication_challenge(username: str, device_id: str) -> dict:
         PublicKeyCredentialDescriptor(id=base64url_to_bytes(cred_doc["credential_id"]))
     ]
 
+    expected_origin, expected_rp_id = _derive_webauthn_context(request)
+
     options = generate_authentication_options(
-        rp_id=settings.WEBAUTHN_RP_ID,
+        rp_id=expected_rp_id,
         allow_credentials=allow_credentials,
         user_verification=UserVerificationRequirement.PREFERRED,
         timeout=60000,
@@ -244,7 +325,14 @@ def generate_authentication_challenge(username: str, device_id: str) -> dict:
 
     options_dict = json.loads(options_to_json(options))
     challenge_b64 = options_dict["challenge"]
-    _store_challenge(username, challenge_b64, device_id, "authentication")
+    _store_challenge(
+        username,
+        challenge_b64,
+        device_id,
+        "authentication",
+        expected_rp_id,
+        expected_origin,
+    )
     logger.info(f"WebAuthn authentication challenge issued for: {username}")
     return options_dict
 
@@ -267,6 +355,9 @@ def verify_authentication(
         )
     if challenge_doc["device_id"] != device_id:
         raise ValueError("Device ID mismatch during authentication.")
+
+    expected_rp_id = challenge_doc.get("rp_id") or settings.WEBAUTHN_RP_ID
+    expected_origin = challenge_doc.get("origin") or settings.WEBAUTHN_ORIGIN
 
     challenge_bytes = base64url_to_bytes(challenge_doc["challenge"])
 
@@ -299,8 +390,8 @@ def verify_authentication(
         verified = verify_authentication_response(
             credential=credential,
             expected_challenge=challenge_bytes,
-            expected_rp_id=settings.WEBAUTHN_RP_ID,
-            expected_origin=settings.WEBAUTHN_ORIGIN,
+            expected_rp_id=expected_rp_id,
+            expected_origin=expected_origin,
             credential_public_key=base64url_to_bytes(cred_doc["public_key"]),
             credential_current_sign_count=cred_doc["sign_count"],
             require_user_verification=False,
