@@ -3,6 +3,7 @@ import { apiRequest } from '../lib/api';
 import { useWebAuthn } from '../hooks/useWebAuthn';
 import {
   getBoundUsername,
+  getOrCreateDeviceId,
   getStoredCredentialId,
   clearDeviceBinding,
   isInstalledPwa,
@@ -102,10 +103,23 @@ export function AuthProvider({ children }) {
       body: JSON.stringify({ username, password }),
     });
     await refreshSession();
-    // Offer biometric enrolment only if no credential is already stored on this device
-    const existingCred = await getStoredCredentialId().catch(() => null);
-    if (!existingCred) {
-      setShowBiometricPrompt(true);
+
+    // Offer biometric enrolment only when this logged-in device has no server-side credential record.
+    const currentDeviceId = await getOrCreateDeviceId().catch(() => null);
+    if (!currentDeviceId) {
+      return;
+    }
+
+    try {
+      const data = await apiRequest('/webauthn/credentials');
+      const hasCredentialForCurrentDevice = (data.credentials || []).some(
+        (credential) => credential.device_id === currentDeviceId
+      );
+      setShowBiometricPrompt(!hasCredentialForCurrentDevice);
+    } catch {
+      // If we cannot verify server records, preserve prior behavior as a fallback.
+      const existingCred = await getStoredCredentialId().catch(() => null);
+      setShowBiometricPrompt(!existingCred);
     }
   };
 
