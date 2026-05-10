@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from './auth/AuthContext';
 import ProtectedLayout from './layouts/ProtectedLayout';
@@ -16,6 +17,42 @@ import InsightsPage from './pages/InsightsPage';
 import SupportPage from './pages/SupportPage';
 import SettingsPage from './pages/SettingsPage';
 import { isSupportPageEnabled } from './lib/featureFlags';
+import { getBoundUsername, getStoredCredentialId } from './lib/deviceBinding';
+
+function HomeRoute() {
+  const [target, setTarget] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+
+    (async () => {
+      const [boundUsername, credentialId] = await Promise.all([
+        getBoundUsername().catch(() => null),
+        getStoredCredentialId().catch(() => null),
+      ]);
+
+      if (!active) {
+        return;
+      }
+
+      setTarget(boundUsername && credentialId ? '/login' : 'landing');
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (target === null) {
+    return <div className="page-shell"><p>Loading...</p></div>;
+  }
+
+  if (target === '/login') {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <LandingPage />;
+}
 
 function ProtectedRoute({ children }) {
   const { session, loading } = useAuth();
@@ -43,7 +80,7 @@ export default function App() {
     <>
       {showFloatingThemeToggle ? <ThemeToggle floating /> : null}
       <Routes>
-        <Route path="/" element={<LandingPage />} />
+        <Route path="/" element={<HomeRoute />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
