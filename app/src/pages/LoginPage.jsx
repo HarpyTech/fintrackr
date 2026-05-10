@@ -1,14 +1,73 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import PasswordInput from '../components/PasswordInput';
+import { useWebAuthn } from '../hooks/useWebAuthn';
+import { getBoundUsername, getStoredCredentialId, isInstalledPwa } from '../lib/deviceBinding';
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { session, login, loginWithBiometric } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({ username: '', password: '' });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [checkingBackgroundAuth, setCheckingBackgroundAuth] = useState(true);
+
+  const { isSupported } = useWebAuthn();
+
+  useEffect(() => {
+    if (session.authenticated) {
+      return;
+    }
+
+    let active = true;
+
+    (async () => {
+      if (!isInstalledPwa() || !isSupported) {
+        if (active) {
+          setCheckingBackgroundAuth(false);
+        }
+        return;
+      }
+
+      const [username, credentialId] = await Promise.all([
+        getBoundUsername().catch(() => null),
+        getStoredCredentialId().catch(() => null),
+      ]);
+
+      if (!active) {
+        return;
+      }
+
+      if (!username || !credentialId) {
+        setCheckingBackgroundAuth(false);
+        return;
+      }
+
+      try {
+        await loginWithBiometric(username);
+        navigate('/dashboard', { replace: true });
+      } catch (_) {
+        // Fall through to the password form without exposing device-specific UI.
+      } finally {
+        if (active) {
+          setCheckingBackgroundAuth(false);
+        }
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [isSupported, loginWithBiometric, navigate, session.authenticated]);
+
+  if (session.authenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  if (checkingBackgroundAuth) {
+    return <div className="page-shell"><p>Signing in...</p></div>;
+  }
 
   async function handleSubmit(event) {
     event.preventDefault();
