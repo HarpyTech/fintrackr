@@ -259,8 +259,10 @@ export default function SettingsPage() {
                   {devices.map((device) => (
                     <li key={device.device_id} className="settings-device-item">
                       <div>
-                        <p className="settings-device-id">{device.device_id.slice(0, 8)}…</p>
+                        <p className="settings-device-id">{device.device_name || `Device ${device.device_id.slice(0, 8)}`}</p>
                         <p className="settings-device-meta">
+                          ID: {device.device_id.slice(0, 8)}…
+                          <br />
                           Last used:{' '}
                           {device.last_used_at
                             ? new Date(device.last_used_at).toLocaleDateString()
@@ -273,7 +275,7 @@ export default function SettingsPage() {
                         style={{ fontSize: '12px', padding: '4px 12px', flexShrink: 0 }}
                         onClick={() => handleDeleteDevice(device.device_id)}
                         disabled={deletingDeviceId === device.device_id}
-                        aria-label={`Remove device ${device.device_id.slice(0, 8)}`}
+                        aria-label={`Remove ${device.device_name || `device ${device.device_id.slice(0, 8)}`}`}
                       >
                         {deletingDeviceId === device.device_id ? 'Removing…' : 'Remove'}
                       </button>

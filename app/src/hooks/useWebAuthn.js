@@ -55,6 +55,18 @@ function serializeRegistrationCredential(credential) {
   };
 }
 
+function getDeviceLabel() {
+  if (typeof navigator === 'undefined') {
+    return 'This device';
+  }
+
+  const platform = navigator.userAgentData?.platform || navigator.platform || 'Unknown platform';
+  const browserBrand = navigator.userAgentData?.brands?.find((brand) => brand.brand !== 'Not A;Brand')?.brand;
+  const browser = browserBrand || 'Browser';
+
+  return `${browser} on ${platform}`;
+}
+
 function serializeAuthenticationCredential(credential) {
   return {
     id: credential.id,
@@ -95,6 +107,7 @@ export function useWebAuthn() {
     setError(null);
     try {
       const deviceId = await getOrCreateDeviceId();
+      const deviceName = getDeviceLabel();
 
       // 1. Get challenge from server
       const optionsJson = await apiRequest('/webauthn/register', {
@@ -126,6 +139,7 @@ export function useWebAuthn() {
         body: JSON.stringify({
           username,
           device_id: deviceId,
+          device_name: deviceName,
           credential: credentialJson,
         }),
       });
