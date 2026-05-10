@@ -100,9 +100,7 @@ def _derive_webauthn_context(request: Request | None) -> tuple[str, str]:
                 return parsed
 
         forwarded_proto = request.headers.get("x-forwarded-proto", "")
-        scheme = (
-            forwarded_proto.split(",")[0].strip() or request.url.scheme or "https"
-        )
+        scheme = forwarded_proto.split(",")[0].strip() or request.url.scheme or "https"
         forwarded_host = request.headers.get("x-forwarded-host", "")
         host = forwarded_host.split(",")[0].strip() or request.headers.get("host", "")
         if host:
@@ -218,7 +216,12 @@ def generate_registration_challenge(
     return options_dict
 
 
-def verify_registration(username: str, device_id: str, credential_data: dict) -> dict:
+def verify_registration(
+    username: str,
+    device_id: str,
+    credential_data: dict,
+    device_name: str | None = None,
+) -> dict:
     """
     Verify the registration response from the browser and persist the credential.
     Returns stored credential metadata.
@@ -277,6 +280,7 @@ def verify_registration(username: str, device_id: str, credential_data: dict) ->
             "credential_id": credential_id_b64,
             "public_key": public_key_b64,
             "device_id": device_id,
+            "device_name": device_name or f"Device {device_id[:8]}",
             "sign_count": verified.sign_count,
             "aaguid": str(verified.aaguid),
             "created_at": _utcnow(),
@@ -288,7 +292,11 @@ def verify_registration(username: str, device_id: str, credential_data: dict) ->
     logger.info(
         f"WebAuthn credential registered for {username} on device {device_id[:8]}…"
     )
-    return {"credential_id": credential_id_b64, "device_id": device_id}
+    return {
+        "credential_id": credential_id_b64,
+        "device_id": device_id,
+        "device_name": device_name or f"Device {device_id[:8]}",
+    }
 
 
 # ---------------------------------------------------------------------------

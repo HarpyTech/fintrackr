@@ -69,6 +69,7 @@ class WebAuthnRegisterRequest(BaseModel):
 class WebAuthnRegisterVerifyRequest(BaseModel):
     username: EmailStr
     device_id: str = Field(min_length=8, max_length=128)
+    device_name: str | None = Field(default=None, max_length=160)
     # Raw credential JSON from navigator.credentials.create()
     credential: dict
 

@@ -29,7 +29,11 @@ export default function SettingsPage() {
   const [devices, setDevices] = useState([]);
   const [devicesLoading, setDevicesLoading] = useState(false);
   const [devicesError, setDevicesError] = useState('');
+  const [devicesInfo, setDevicesInfo] = useState('');
   const [deletingDeviceId, setDeletingDeviceId] = useState(null);
+  const [bulkRemoving, setBulkRemoving] = useState(false);
+  const [confirmDevice, setConfirmDevice] = useState(null);
+  const [currentDeviceId, setCurrentDeviceId] = useState(null);
 
   useEffect(() => {
     setForm({
@@ -44,6 +48,7 @@ export default function SettingsPage() {
     if (!isWebAuthnSupported) return;
     setDevicesLoading(true);
     setDevicesError('');
+    setDevicesInfo('');
     try {
       const data = await apiRequest('/webauthn/credentials');
       setDevices(data.credentials || []);
@@ -57,6 +62,42 @@ export default function SettingsPage() {
   useEffect(() => {
     loadDevices();
   }, [loadDevices]);
+
+  useEffect(() => {
+    if (!isWebAuthnSupported) return;
+    (async () => {
+      const id = await getOrCreateDeviceId().catch(() => null);
+      setCurrentDeviceId(id);
+    })();
+  }, [isWebAuthnSupported]);
+
+  const managedDevices = useMemo(() => {
+    const mapped = devices.map((device) => {
+      const isCurrent = Boolean(currentDeviceId) && device.device_id === currentDeviceId;
+      const hasName = Boolean(device.device_name && device.device_name.trim());
+      const isUnknown = !hasName || device.device_name === `Device ${device.device_id.slice(0, 8)}`;
+      const sortLastUsed = device.last_used_at ? new Date(device.last_used_at).getTime() : 0;
+      return {
+        ...device,
+        isCurrent,
+        isUnknown,
+        sortLastUsed,
+        displayName: hasName ? device.device_name : `Device ${device.device_id.slice(0, 8)}`,
+      };
+    });
+
+    return mapped.sort((a, b) => {
+      if (a.isCurrent !== b.isCurrent) {
+        return a.isCurrent ? -1 : 1;
+      }
+      return b.sortLastUsed - a.sortLastUsed;
+    });
+  }, [currentDeviceId, devices]);
+
+  const removableOtherDevices = useMemo(
+    () => managedDevices.filter((device) => !device.isCurrent),
+    [managedDevices]
+  );
 
   const displayName = useMemo(() => {
     const firstName = profile?.first_name?.trim();
@@ -129,21 +170,80 @@ export default function SettingsPage() {
     }
   }
 
-  async function handleDeleteDevice(deviceId) {
+  async function removeDevice(device) {
+    const deviceId = device.device_id;
     setDeletingDeviceId(deviceId);
     setDevicesError('');
+    setDevicesInfo('');
     try {
       await apiRequest(`/webauthn/credentials/${encodeURIComponent(deviceId)}`, { method: 'DELETE' });
-      const currentDeviceId = await getOrCreateDeviceId().catch(() => null);
-      if (currentDeviceId === deviceId) {
+      if (device.isCurrent) {
         await clearDeviceBinding().catch(() => {});
       }
       setDevices((prev) => prev.filter((d) => d.device_id !== deviceId));
+      setDevicesInfo(`${device.displayName} removed.`);
     } catch (err) {
       setDevicesError(err.message || 'Failed to remove device.');
     } finally {
       setDeletingDeviceId(null);
     }
+  }
+
+  function handleDeleteDevice(device) {
+    setConfirmDevice(device);
+  }
+
+  async function handleConfirmDelete() {
+    if (!confirmDevice) {
+      return;
+    }
+    const device = confirmDevice;
+    setConfirmDevice(null);
+    await removeDevice(device);
+  }
+
+  async function handleRemoveOtherDevices() {
+    if (removableOtherDevices.length === 0) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Remove ${removableOtherDevices.length} other device${removableOtherDevices.length > 1 ? 's' : ''}?`
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setBulkRemoving(true);
+    setDevicesError('');
+    setDevicesInfo('');
+
+    let removedCount = 0;
+    const failedDevices = [];
+    const failedDeviceIds = [];
+
+    for (const device of removableOtherDevices) {
+      try {
+        await apiRequest(`/webauthn/credentials/${encodeURIComponent(device.device_id)}`, { method: 'DELETE' });
+        removedCount += 1;
+      } catch (_err) {
+        failedDevices.push(device.displayName);
+        failedDeviceIds.push(device.device_id);
+      }
+    }
+
+    setDevices((prev) => prev.filter((device) => {
+      const toRemove = removableOtherDevices.some((candidate) => candidate.device_id === device.device_id);
+      return !toRemove || failedDeviceIds.includes(device.device_id);
+    }));
+
+    if (failedDevices.length > 0) {
+      setDevicesError(`Removed ${removedCount} device(s). Could not remove: ${failedDevices.join(', ')}.`);
+    } else {
+      setDevicesInfo(`Removed ${removedCount} device${removedCount > 1 ? 's' : ''}.`);
+    }
+
+    setBulkRemoving(false);
   }
 
   async function handleLogout() {
@@ -247,33 +347,54 @@ export default function SettingsPage() {
               <h2 id="settings-devices-heading">Biometric Devices</h2>
             </div>
             <div className="settings-card-body">
-              <p className="settings-section-label">Devices with saved biometric login credentials.</p>
+              <div className="settings-device-toolbar">
+                <p className="settings-section-label">Devices with saved biometric login credentials.</p>
+                {removableOtherDevices.length > 0 ? (
+                  <button
+                    type="button"
+                    className="settings-device-bulk-remove"
+                    onClick={handleRemoveOtherDevices}
+                    disabled={bulkRemoving || Boolean(deletingDeviceId)}
+                  >
+                    {bulkRemoving ? 'Removing…' : 'Remove all other devices'}
+                  </button>
+                ) : null}
+              </div>
               {devicesLoading ? (
                 <p className="help-text">Loading…</p>
               ) : devicesError ? (
                 <p className="error-text" role="alert">{devicesError}</p>
-              ) : devices.length === 0 ? (
+              ) : managedDevices.length === 0 ? (
                 <p className="help-text">No biometric devices registered.</p>
               ) : (
                 <ul className="settings-devices-list">
-                  {devices.map((device) => (
+                  {managedDevices.map((device) => (
                     <li key={device.device_id} className="settings-device-item">
-                      <div>
-                        <p className="settings-device-id">{device.device_id.slice(0, 8)}…</p>
+                      <div className="settings-device-details">
+                        <div className="settings-device-title-row">
+                          <p className="settings-device-id">{device.displayName}</p>
+                          {device.isCurrent ? (
+                            <span className="settings-device-badge settings-device-badge-current">Current device</span>
+                          ) : null}
+                          {device.isUnknown ? (
+                            <span className="settings-device-badge settings-device-badge-unknown">Unknown device</span>
+                          ) : null}
+                        </div>
                         <p className="settings-device-meta">
+                          ID: {device.device_id.slice(0, 8)}…
+                          <br />
                           Last used:{' '}
                           {device.last_used_at
-                            ? new Date(device.last_used_at).toLocaleDateString()
+                            ? new Date(device.last_used_at).toLocaleString()
                             : 'Unknown'}
                         </p>
                       </div>
                       <button
                         type="button"
-                        className="secondary-button"
-                        style={{ fontSize: '12px', padding: '4px 12px', flexShrink: 0 }}
-                        onClick={() => handleDeleteDevice(device.device_id)}
+                        className="settings-device-remove"
+                        onClick={() => handleDeleteDevice(device)}
                         disabled={deletingDeviceId === device.device_id}
-                        aria-label={`Remove device ${device.device_id.slice(0, 8)}`}
+                        aria-label={`Remove ${device.displayName}`}
                       >
                         {deletingDeviceId === device.device_id ? 'Removing…' : 'Remove'}
                       </button>
@@ -281,6 +402,7 @@ export default function SettingsPage() {
                   ))}
                 </ul>
               )}
+              {devicesInfo ? <p className="help-text" role="status">{devicesInfo}</p> : null}
             </div>
           </section>
         ) : null}
@@ -305,6 +427,38 @@ export default function SettingsPage() {
           </div>
         </section>
       </div>
+
+      {confirmDevice ? (
+        <div className="settings-modal-backdrop" role="presentation">
+          <div className="settings-modal" role="dialog" aria-modal="true" aria-labelledby="remove-device-title">
+            <h3 id="remove-device-title">Remove device?</h3>
+            <p>
+              You are about to remove <strong>{confirmDevice.displayName}</strong>.
+            </p>
+            {confirmDevice.isCurrent ? (
+              <p className="settings-modal-warning">
+                This is your current device. Removing it will disable biometric login on this device.
+              </p>
+            ) : null}
+            <div className="settings-modal-actions">
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => setConfirmDevice(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="settings-device-remove"
+                onClick={handleConfirmDelete}
+              >
+                Remove device
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

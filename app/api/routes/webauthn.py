@@ -65,7 +65,7 @@ def webauthn_register_verify(payload: WebAuthnRegisterVerifyRequest):
     """
     try:
         result = verify_registration(
-            payload.username, payload.device_id, payload.credential
+            payload.username, payload.device_id, payload.credential, payload.device_name
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))

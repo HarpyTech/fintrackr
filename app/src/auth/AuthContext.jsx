@@ -3,6 +3,7 @@ import { apiRequest } from '../lib/api';
 import { useWebAuthn } from '../hooks/useWebAuthn';
 import {
   getBoundUsername,
+  getOrCreateDeviceId,
   getStoredCredentialId,
   clearDeviceBinding,
   isInstalledPwa,
@@ -48,8 +49,8 @@ export function AuthProvider({ children }) {
   }, []);
 
   /**
-   * Attempt silent biometric auto-login for installed PWA.
-   * Tries refresh token first; falls back to biometric ceremony if token is stale.
+   * Attempt silent auto-login for installed PWA.
+   * Only tries refresh-token exchange; device login is handled explicitly on the device-login page.
    */
   const tryAutoLogin = useCallback(async () => {
     if (!isInstalledPwa()) return false;
@@ -58,24 +59,14 @@ export function AuthProvider({ children }) {
     const credentialId = await getStoredCredentialId().catch(() => null);
     if (!boundUsername || !credentialId) return false;
 
-    // 1. Try silent refresh-token exchange
     try {
       await apiRequest('/auth/refresh', { method: 'POST' });
       await refreshSession();
       return true;
     } catch (_) {
-      // refresh token missing/expired → fall through to biometric ceremony
-    }
-
-    // 2. Biometric ceremony (requires user interaction)
-    try {
-      await authenticateBiometric(boundUsername);
-      await refreshSession();
-      return true;
-    } catch (_) {
       return false;
     }
-  }, [authenticateBiometric, refreshSession]);
+  }, [refreshSession]);
 
   useEffect(() => {
     (async () => {
@@ -112,10 +103,23 @@ export function AuthProvider({ children }) {
       body: JSON.stringify({ username, password }),
     });
     await refreshSession();
-    // Offer biometric enrolment only if no credential is already stored on this device
-    const existingCred = await getStoredCredentialId().catch(() => null);
-    if (!existingCred) {
-      setShowBiometricPrompt(true);
+
+    // Offer biometric enrolment only when this logged-in device has no server-side credential record.
+    const currentDeviceId = await getOrCreateDeviceId().catch(() => null);
+    if (!currentDeviceId) {
+      return;
+    }
+
+    try {
+      const data = await apiRequest('/webauthn/credentials');
+      const hasCredentialForCurrentDevice = (data.credentials || []).some(
+        (credential) => credential.device_id === currentDeviceId
+      );
+      setShowBiometricPrompt(!hasCredentialForCurrentDevice);
+    } catch {
+      // If we cannot verify server records, preserve prior behavior as a fallback.
+      const existingCred = await getStoredCredentialId().catch(() => null);
+      setShowBiometricPrompt(!existingCred);
     }
   };
 

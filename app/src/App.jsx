@@ -16,6 +16,15 @@ import InsightsPage from './pages/InsightsPage';
 import SupportPage from './pages/SupportPage';
 import SettingsPage from './pages/SettingsPage';
 import { isSupportPageEnabled } from './lib/featureFlags';
+import { isInstalledPwa } from './lib/deviceBinding';
+
+function HomeRoute() {
+  if (!isInstalledPwa()) {
+    return <LandingPage />;
+  }
+
+  return <Navigate to="/login" replace />;
+}
 
 function ProtectedRoute({ children }) {
   const { session, loading } = useAuth();
@@ -43,7 +52,7 @@ export default function App() {
     <>
       {showFloatingThemeToggle ? <ThemeToggle floating /> : null}
       <Routes>
-        <Route path="/" element={<LandingPage />} />
+        <Route path="/" element={<HomeRoute />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
