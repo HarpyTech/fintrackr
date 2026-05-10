@@ -48,8 +48,8 @@ export function AuthProvider({ children }) {
   }, []);
 
   /**
-   * Attempt silent biometric auto-login for installed PWA.
-   * Tries refresh token first; falls back to biometric ceremony if token is stale.
+   * Attempt silent auto-login for installed PWA.
+   * Only tries refresh-token exchange; device login is handled explicitly on the device-login page.
    */
   const tryAutoLogin = useCallback(async () => {
     if (!isInstalledPwa()) return false;
@@ -58,24 +58,14 @@ export function AuthProvider({ children }) {
     const credentialId = await getStoredCredentialId().catch(() => null);
     if (!boundUsername || !credentialId) return false;
 
-    // 1. Try silent refresh-token exchange
     try {
       await apiRequest('/auth/refresh', { method: 'POST' });
       await refreshSession();
       return true;
     } catch (_) {
-      // refresh token missing/expired → fall through to biometric ceremony
-    }
-
-    // 2. Biometric ceremony (requires user interaction)
-    try {
-      await authenticateBiometric(boundUsername);
-      await refreshSession();
-      return true;
-    } catch (_) {
       return false;
     }
-  }, [authenticateBiometric, refreshSession]);
+  }, [refreshSession]);
 
   useEffect(() => {
     (async () => {

@@ -4,6 +4,7 @@ import { useAuth } from './auth/AuthContext';
 import ProtectedLayout from './layouts/ProtectedLayout';
 import ThemeToggle from './components/ThemeToggle';
 import LoginPage from './pages/LoginPage';
+import DeviceLoginPage from './pages/DeviceLoginPage';
 import RegisterPage from './pages/RegisterPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
@@ -17,12 +18,17 @@ import InsightsPage from './pages/InsightsPage';
 import SupportPage from './pages/SupportPage';
 import SettingsPage from './pages/SettingsPage';
 import { isSupportPageEnabled } from './lib/featureFlags';
-import { getBoundUsername, getStoredCredentialId } from './lib/deviceBinding';
+import { isInstalledPwa, getBoundUsername, getStoredCredentialId } from './lib/deviceBinding';
 
 function HomeRoute() {
-  const [target, setTarget] = useState(null);
+  const installedPwa = isInstalledPwa();
+  const [target, setTarget] = useState(installedPwa ? null : 'landing');
 
   useEffect(() => {
+    if (!installedPwa) {
+      return;
+    }
+
     let active = true;
 
     (async () => {
@@ -35,23 +41,31 @@ function HomeRoute() {
         return;
       }
 
-      setTarget(boundUsername && credentialId ? '/login' : 'landing');
+      setTarget(boundUsername && credentialId ? '/device-login' : '/login');
     })();
 
     return () => {
       active = false;
     };
-  }, []);
+  }, [installedPwa]);
+
+  if (!installedPwa) {
+    return <LandingPage />;
+  }
 
   if (target === null) {
     return <div className="page-shell"><p>Loading...</p></div>;
   }
 
-  if (target === '/login') {
-    return <Navigate to="/login" replace />;
+  if (target === 'landing') {
+    return <LandingPage />;
   }
 
-  return <LandingPage />;
+  if (target === '/device-login') {
+    return <Navigate to="/device-login" replace />;
+  }
+
+  return <Navigate to="/login" replace />;
 }
 
 function ProtectedRoute({ children }) {
@@ -70,7 +84,7 @@ function ProtectedRoute({ children }) {
 
 export default function App() {
   const location = useLocation();
-  const floatingThemeRoutes = ['/', '/login', '/register', '/verify-email', '/features', '/forgot-password', '/reset-password'];
+  const floatingThemeRoutes = ['/', '/login', '/device-login', '/register', '/verify-email', '/features', '/forgot-password', '/reset-password'];
   if (isSupportPageEnabled) {
     floatingThemeRoutes.push('/support');
   }
@@ -82,6 +96,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<HomeRoute />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/device-login" element={<DeviceLoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
