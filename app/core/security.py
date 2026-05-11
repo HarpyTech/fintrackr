@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from jose import jwt
 from passlib.context import CryptContext
 import logging
+import hashlib
 
 from app.core.config import settings
 import secrets
@@ -9,6 +10,8 @@ import secrets
 logger = logging.getLogger(__name__)
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+REFRESH_TOKEN_COOKIE_NAME = "refresh_token"
 
 
 def create_csrf_token():
@@ -25,7 +28,7 @@ def create_access_token(data: dict):
         expire = datetime.utcnow() + timedelta(
             minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
         )
-        to_encode.update({"exp": expire})
+        to_encode.update({"exp": expire, "type": "access"})
         token = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
         logger.debug(
             f"Access token created for user: {data.get('username', 'unknown')}"
@@ -34,6 +37,40 @@ def create_access_token(data: dict):
     except Exception as exc:
         logger.error(f"Failed to create access token: {str(exc)}", exc_info=True)
         raise
+
+
+def create_refresh_token(data: dict) -> str:
+    """Create a JWT refresh token (for installed PWA sessions only)"""
+    try:
+        to_encode = data.copy()
+        expire = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+        to_encode.update({"exp": expire, "type": "refresh"})
+        token = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+        logger.debug(
+            f"Refresh token created for user: {data.get('username', 'unknown')}"
+        )
+        return token
+    except Exception as exc:
+        logger.error(f"Failed to create refresh token: {str(exc)}", exc_info=True)
+        raise
+
+
+def decode_refresh_token(token: str) -> dict | None:
+    """Decode and validate a refresh token. Returns payload or None."""
+    try:
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
+        if payload.get("type") != "refresh":
+            return None
+        return payload
+    except Exception:
+        return None
+
+
+def hash_token(token: str) -> str:
+    """Return a SHA-256 hex digest of a token for revocation storage."""
+    return hashlib.sha256(token.encode()).hexdigest()
 
 
 def hash_password(password: str) -> str:
@@ -56,11 +93,3 @@ def verify_password(password: str, hashed: str) -> bool:
     except Exception as exc:
         logger.error(f"Error during password verification: {str(exc)}", exc_info=True)
         return False
-
-
-# def create_access_token(subject: str):
-#     expire = datetime.utcnow() + timedelta(
-#         minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
-#     )
-#     payload = {"sub": subject, "exp": expire}
-#     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)

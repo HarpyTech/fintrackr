@@ -156,6 +156,29 @@
   text-decoration: underline;
 }
 
+.biometric-login-alt {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: var(--surface-alt);
+  color: var(--muted-strong);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
+}
+
+.biometric-login-alt:hover:not(:disabled) {
+  border-color: var(--brand-soft-border);
+  color: var(--accent-text);
+  background: var(--brand-soft);
+}
+
+.biometric-login-alt:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
 /* --- Register brand lockup --- */
 .auth-brand-block {
   display: grid;

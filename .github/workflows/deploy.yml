@@ -42,6 +42,9 @@ jobs:
           APP_ACCESS_TOKEN_EXPIRE_MINUTES: ${{ secrets.APP_ACCESS_TOKEN_EXPIRE_MINUTES }}
           APP_ALGORITHM: ${{ secrets.APP_ALGORITHM }}
           APP_CORS_ORIGINS: ${{ secrets.APP_CORS_ORIGINS }}
+          APP_WEBAUTHN_RP_ID: ${{ secrets.APP_WEBAUTHN_RP_ID }}
+          APP_WEBAUTHN_RP_NAME: ${{ secrets.APP_WEBAUTHN_RP_NAME }}
+          APP_WEBAUTHN_ORIGIN: ${{ secrets.APP_WEBAUTHN_ORIGIN }}
           APP_MONGODB_URI: ${{ secrets.APP_MONGODB_URI }}
           APP_MONGODB_DB: ${{ secrets.APP_MONGODB_DB }}
           APP_GEMINI_API_KEY: ${{ secrets.APP_GEMINI_API_KEY }}
@@ -100,6 +103,9 @@ jobs:
           add_env("ACCESS_TOKEN_EXPIRE_MINUTES", "APP_ACCESS_TOKEN_EXPIRE_MINUTES")
           add_env("ALGORITHM", "APP_ALGORITHM")
           add_env("CORS_ORIGINS", "APP_CORS_ORIGINS")
+          add_env("WEBAUTHN_RP_ID", "APP_WEBAUTHN_RP_ID")
+          add_env("WEBAUTHN_RP_NAME", "APP_WEBAUTHN_RP_NAME")
+          add_env("WEBAUTHN_ORIGIN", "APP_WEBAUTHN_ORIGIN")
           add_env("MONGODB_DB", "APP_MONGODB_DB")
           add_env("GEMINI_API_KEY", "APP_GEMINI_API_KEY")
           add_env("GEMINI_MODEL", "APP_GEMINI_MODEL")

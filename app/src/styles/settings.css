@@ -1,0 +1,335 @@
+/* ============================================================
+   SETTINGS PAGE — settings-page, settings-card, settings-*
+   ============================================================ */
+
+.settings-page {
+  padding: 24px;
+  max-width: 780px;
+}
+
+.settings-page-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--heading);
+  margin: 0 0 24px 0;
+}
+
+/* ── Grid of cards ── */
+.settings-grid {
+  display: grid;
+  gap: 20px;
+}
+
+/* ── Card shell ── */
+.settings-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.settings-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-alt);
+}
+
+.settings-card-header h2 {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted-strong);
+  margin: 0;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.settings-card-icon {
+  color: var(--brand);
+  flex-shrink: 0;
+}
+
+.settings-card-body {
+  padding: 20px;
+}
+
+/* ── Profile summary row ── */
+.settings-profile-summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.settings-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  background: var(--brand-soft);
+  border: 1.5px solid var(--brand-soft-border);
+  color: var(--brand);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.settings-profile-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.settings-profile-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--heading);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.settings-profile-email {
+  font-size: 13px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Profile form ── */
+.settings-form {
+  max-width: 540px;
+}
+
+.settings-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* ── Section description label ── */
+.settings-section-label {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0 0 14px 0;
+}
+
+.settings-device-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.settings-device-toolbar .settings-section-label {
+  margin-bottom: 0;
+}
+
+.settings-device-bulk-remove {
+  border: 1px solid var(--line);
+  background: var(--surface-alt);
+  color: var(--heading);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.settings-device-bulk-remove:hover:not(:disabled) {
+  border-color: var(--danger-soft-border);
+  color: var(--danger);
+}
+
+.settings-device-bulk-remove:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ── Device list ── */
+.settings-devices-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.settings-device-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.settings-device-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.settings-device-details {
+  min-width: 0;
+}
+
+.settings-device-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.settings-device-id {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--heading);
+  font-family: 'Courier New', monospace;
+}
+
+.settings-device-meta {
+  margin: 3px 0 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.settings-device-badge {
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.settings-device-badge-current {
+  background: var(--brand-soft);
+  border: 1px solid var(--brand-soft-border);
+  color: var(--brand);
+}
+
+.settings-device-badge-unknown {
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-soft-border);
+  color: var(--danger);
+}
+
+.settings-device-remove {
+  border: 1px solid var(--danger-soft-border);
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.settings-device-remove:hover:not(:disabled) {
+  border-color: var(--danger);
+}
+
+.settings-device-remove:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.settings-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(12, 18, 28, 0.42);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 70;
+  padding: 16px;
+}
+
+.settings-modal {
+  width: 100%;
+  max-width: 420px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 20px 36px rgba(12, 18, 28, 0.18);
+}
+
+.settings-modal h3 {
+  margin: 0 0 8px 0;
+  font-size: 17px;
+  color: var(--heading);
+}
+
+.settings-modal p {
+  margin: 0;
+  color: var(--muted-strong);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.settings-modal-warning {
+  margin-top: 10px !important;
+  color: var(--danger) !important;
+}
+
+.settings-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+/* ── Account / Sign Out ── */
+.settings-logout-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 10px 20px;
+  border-radius: 10px;
+  border: 1px solid var(--danger-soft-border);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.settings-logout-button:hover {
+  background: #fde8eb;
+  border-color: var(--danger);
+}
+
+:root[data-theme='dark'] .settings-logout-button:hover {
+  background: rgba(180, 35, 57, 0.25);
+}
+
+/* ── Responsive ── */
+@media (max-width: 540px) {
+  .settings-page {
+    padding: 16px;
+  }
+
+  .settings-form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-device-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .settings-device-item {
+    align-items: flex-start;
+  }
+}

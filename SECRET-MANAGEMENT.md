@@ -157,6 +157,9 @@ Recommended Secret Manager secret names:
 - `ACCESS_TOKEN_EXPIRE_MINUTES`
 - `ALGORITHM`
 - `CORS_ORIGINS`
+- `WEBAUTHN_RP_ID`
+- `WEBAUTHN_RP_NAME`
+- `WEBAUTHN_ORIGIN`
 - `SIGNUP_OTP_EXPIRY_MINUTES`
 - `SIGNUP_OTP_LENGTH`
 
@@ -183,6 +186,8 @@ All variables are read from the environment or a `.env` file at startup by `app/
 | `SMTP_USERNAME` | *(none — optional)* | **High** | SMTP login username. Required when the mail server enforces authentication. |
 | `SMTP_PASSWORD` | *(none — optional)* | **High** | SMTP login password. Required when the mail server enforces authentication. Keep secret. |
 | `CORS_ORIGINS` | `http://localhost:3000, http://localhost:5173` | **High** | Comma-separated or JSON-array list of allowed CORS origins. Must be set to the real frontend URL(s) in production to prevent cross-origin abuse. |
+| `WEBAUTHN_RP_ID` | `localhost` | **High** | WebAuthn relying party ID. Must equal the login domain (or a parent registrable suffix) where passkeys are used, e.g. `app.example.com` or `example.com`. |
+| `WEBAUTHN_ORIGIN` | `http://localhost:5173` | **High** | Exact WebAuthn origin used by browsers for passkey verification, e.g. `https://app.example.com`. Must match the frontend origin exactly. |
 
 ### 🟡 Medium — tune for your deployment
 
@@ -205,6 +210,7 @@ All variables are read from the environment or a `.env` file at startup by `app/
 | `BUILD_VERSION` | `dev` | **Low** | Build or release version string exposed via the health endpoint. Set by CI/CD pipelines. |
 | `API_V1_STR` | `/api/v1` | **Low** | URL prefix for all API routes. Changing this requires matching updates to frontend API calls and the ingress config. |
 | `ALGORITHM` | `HS256` | **Low** | JWT signing algorithm. Only change if your security policy mandates RS256/ES256 (requires keypair setup). |
+| `WEBAUTHN_RP_NAME` | `FinTrackr` | **Low** | Human-readable relying party name shown in authenticator prompts. Cosmetic only, but keep consistent for users. |
 | `SIGNUP_OTP_EXPIRY_MINUTES` | `2` | **Low** | How long a registration OTP remains valid. Short window reduces brute-force exposure. |
 | `SIGNUP_OTP_LENGTH` | `6` | **Low** | Number of digits in a registration OTP (4–8). Higher values are harder to guess but less convenient. |
 

@@ -1,5 +1,15 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, lazy, Suspense, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { apiRequest } from '../lib/api';
+import { useWebAuthn } from '../hooks/useWebAuthn';
+import {
+  getBoundUsername,
+  getOrCreateDeviceId,
+  getStoredCredentialId,
+  clearDeviceBinding,
+  isInstalledPwa,
+} from '../lib/deviceBinding';
+
+const BiometricPromptLazy = lazy(() => import('../components/BiometricPrompt'));
 
 const AuthContext = createContext(null);
 
@@ -7,6 +17,9 @@ export function AuthProvider({ children }) {
   const [session, setSession] = useState({ authenticated: false, user: null, role: null });
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showBiometricPrompt, setShowBiometricPrompt] = useState(false);
+
+  const { authenticateBiometric } = useWebAuthn();
 
   const refreshProfile = useCallback(async () => {
     if (!session.authenticated) {
@@ -35,9 +48,46 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  useEffect(() => {
-    refreshSession();
+  /**
+   * Attempt silent auto-login for installed PWA.
+   * Only tries refresh-token exchange; device login is handled explicitly on the device-login page.
+   */
+  const tryAutoLogin = useCallback(async () => {
+    if (!isInstalledPwa()) return false;
+
+    const boundUsername = await getBoundUsername().catch(() => null);
+    const credentialId = await getStoredCredentialId().catch(() => null);
+    if (!boundUsername || !credentialId) return false;
+
+    try {
+      await apiRequest('/auth/refresh', { method: 'POST' });
+      await refreshSession();
+      return true;
+    } catch (_) {
+      return false;
+    }
   }, [refreshSession]);
+
+  useEffect(() => {
+    (async () => {
+      // First try existing session (valid access token cookie)
+      try {
+        const data = await apiRequest('/auth/session');
+        setSession(data);
+        setLoading(false);
+        return;
+      } catch (_) {
+        // no valid session – try auto-login
+      }
+
+      // Then try auto-login (PWA only)
+      const didAutoLogin = await tryAutoLogin();
+      if (!didAutoLogin) {
+        setSession({ authenticated: false, user: null, role: null });
+        setLoading(false);
+      }
+    })();
+  }, [tryAutoLogin]);
 
   useEffect(() => {
     if (session.authenticated) {
@@ -52,6 +102,29 @@ export function AuthProvider({ children }) {
       method: 'POST',
       body: JSON.stringify({ username, password }),
     });
+    await refreshSession();
+
+    // Offer biometric enrolment only when this logged-in device has no server-side credential record.
+    const currentDeviceId = await getOrCreateDeviceId().catch(() => null);
+    if (!currentDeviceId) {
+      return;
+    }
+
+    try {
+      const data = await apiRequest('/webauthn/credentials');
+      const hasCredentialForCurrentDevice = (data.credentials || []).some(
+        (credential) => credential.device_id === currentDeviceId
+      );
+      setShowBiometricPrompt(!hasCredentialForCurrentDevice);
+    } catch {
+      // If we cannot verify server records, preserve prior behavior as a fallback.
+      const existingCred = await getStoredCredentialId().catch(() => null);
+      setShowBiometricPrompt(!existingCred);
+    }
+  };
+
+  const loginWithBiometric = async (username) => {
+    await authenticateBiometric(username);
     await refreshSession();
   };
 
@@ -91,6 +164,8 @@ export function AuthProvider({ children }) {
   };
 
   const logout = async () => {
+    // Clear biometric binding from IndexedDB on explicit logout
+    await clearDeviceBinding().catch(() => {});
     await apiRequest('/auth/logout', { method: 'POST' });
     setSession({ authenticated: false, user: null, role: null });
     setProfile(null);
@@ -111,6 +186,7 @@ export function AuthProvider({ children }) {
       profile,
       loading,
       login,
+      loginWithBiometric,
       requestSignupOtp,
       verifySignupOtp,
       resendSignupOtp,
@@ -120,11 +196,25 @@ export function AuthProvider({ children }) {
       refreshSession,
       refreshProfile,
       updateProfile,
+      showBiometricPrompt,
+      setShowBiometricPrompt,
     }),
-    [session, profile, loading, refreshSession, refreshProfile]
+    [session, profile, loading, refreshSession, refreshProfile, showBiometricPrompt]
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+      {showBiometricPrompt && session.authenticated && session.user && (
+        <Suspense fallback={null}>
+          <BiometricPromptLazy
+            username={session.user}
+            onDismiss={() => setShowBiometricPrompt(false)}
+          />
+        </Suspense>
+      )}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

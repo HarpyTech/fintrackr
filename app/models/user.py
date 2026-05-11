@@ -54,3 +54,34 @@ class ResetPasswordPayload(BaseModel):
     username: EmailStr
     otp: str = Field(min_length=4, max_length=8)
     new_password: str = Field(min_length=8)
+
+
+# ---------------------------------------------------------------------------
+# WebAuthn / FIDO2 models
+# ---------------------------------------------------------------------------
+
+
+class WebAuthnRegisterRequest(BaseModel):
+    username: EmailStr
+    device_id: str = Field(min_length=8, max_length=128)
+
+
+class WebAuthnRegisterVerifyRequest(BaseModel):
+    username: EmailStr
+    device_id: str = Field(min_length=8, max_length=128)
+    device_name: str | None = Field(default=None, max_length=160)
+    # Raw credential JSON from navigator.credentials.create()
+    credential: dict
+
+
+class WebAuthnAuthenticateRequest(BaseModel):
+    username: EmailStr
+    device_id: str = Field(min_length=8, max_length=128)
+
+
+class WebAuthnAuthenticateVerifyRequest(BaseModel):
+    username: EmailStr
+    device_id: str = Field(min_length=8, max_length=128)
+    credential: dict
+    # True when request comes from an installed PWA (triggers refresh token issuance)
+    is_pwa: bool = False

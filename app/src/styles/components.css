@@ -416,6 +416,121 @@
   color: var(--muted);
 }
 
+/* --- Header avatar button + dropdown --- */
+.header-profile-menu {
+  position: relative;
+}
+
+.header-avatar-button,
+.mobile-header-avatar-button {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1.5px solid var(--brand-soft-border, #bfdbfe);
+  background: var(--brand-soft, #eff6ff);
+  color: var(--brand, #2563eb);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+.header-avatar-button:hover,
+.mobile-header-avatar-button:hover {
+  border-color: var(--brand, #2563eb);
+  box-shadow: 0 0 0 3px var(--brand-soft, #eff6ff);
+}
+
+.header-avatar-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  width: min(240px, 90vw);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: var(--panel-shadow);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.header-avatar-dropdown--mobile {
+  top: auto;
+  bottom: calc(100% + 8px);
+}
+
+.header-avatar-dropdown-user {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.header-avatar-dropdown-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.header-avatar-dropdown-email {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.header-avatar-dropdown-divider {
+  height: 1px;
+  background: var(--line);
+}
+
+.header-avatar-dropdown-theme {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.header-avatar-dropdown-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.header-avatar-dropdown-action {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: none;
+  background: var(--brand-soft, #eff6ff);
+  color: var(--brand, #2563eb);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.12s;
+}
+
+.header-avatar-dropdown-action:hover {
+  background: var(--brand-soft-border, #bfdbfe);
+}
+
+/* Mobile header avatar container */
+.mobile-header-avatar-menu {
+  position: relative;
+  margin-left: auto;
+}
+
 /* --- Settings Widget --- */
 .settings-widget-container {
   position: fixed;
@@ -462,10 +577,151 @@
 /* Base adjustment for mobile bottom-nav stack */
 @media (max-width: 768px) {
   .expense-chat-widget {
-    bottom: 110px;
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
   }
   .settings-widget-container {
-    bottom: 150px;
+    bottom: calc(112px + env(safe-area-inset-bottom, 0px));
   }
+}
+
+/* ── BiometricPrompt ── */
+/*
+ * Rendered at root level (AuthContext), so it must be a
+ * fixed overlay that sits above the mobile nav bar (z-index 50).
+ */
+.biometric-prompt-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  /* Bottom padding clears the fixed mobile nav + iPhone home indicator */
+  padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 768px) {
+  .biometric-prompt-overlay {
+    align-items: center;
+    padding-bottom: 0;
+  }
+}
+
+.biometric-prompt-card {
+  width: 100%;
+  max-width: 480px;
+  background: var(--surface, #ffffff);
+  border-radius: 20px 20px 0 0;
+  padding: 28px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  box-shadow: 0 -6px 32px rgba(0, 0, 0, 0.18);
+}
+
+@media (min-width: 768px) {
+  .biometric-prompt-card {
+    border-radius: 16px;
+    padding: 36px 32px;
+  }
+}
+
+:root[data-theme='dark'] .biometric-prompt-card {
+  background: var(--surface, #1f2937);
+}
+
+.biometric-prompt-icon {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.biometric-prompt-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--heading, #111827);
+  margin: 0;
+}
+
+:root[data-theme='dark'] .biometric-prompt-title {
+  color: var(--heading, #f9fafb);
+}
+
+.biometric-prompt-body {
+  font-size: 0.875rem;
+  color: var(--muted, #6b7280);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.biometric-prompt-success {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #16a34a;
+  margin: 0;
+}
+
+.biometric-prompt-error {
+  font-size: 0.875rem;
+  color: var(--danger, #dc2626);
+  margin: 0;
+}
+
+.biometric-prompt-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  margin-top: 6px;
+}
+
+.biometric-prompt-enable {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: none;
+  background: var(--brand, #2563eb);
+  color: #ffffff;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.biometric-prompt-enable:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.biometric-prompt-enable:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.biometric-prompt-skip {
+  width: 100%;
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--line, #e5e7eb);
+  background: transparent;
+  color: var(--muted, #6b7280);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.biometric-prompt-skip:hover:not(:disabled) {
+  background: var(--surface-alt, #f3f4f6);
+}
+
+:root[data-theme='dark'] .biometric-prompt-skip {
+  border-color: var(--line, #374151);
+  color: var(--muted, #9ca3af);
+}
+
+:root[data-theme='dark'] .biometric-prompt-skip:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.06);
 }
 

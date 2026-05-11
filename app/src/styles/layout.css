@@ -28,8 +28,8 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  /* Bottom padding on mobile so the fixed bottom nav doesn't overlap content */
-  padding-bottom: 64px;
+  /* Clear the fixed bottom nav (≈64px) + iPhone home-indicator safe area */
+  margin-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
 }
 
 .mobile-header-proto {
@@ -93,7 +93,7 @@
 
 @media (min-width: 768px) {
   .protected-layout-content {
-    padding-bottom: 0;
+    margin-bottom: 0;
   }
 
   .mobile-header-proto {
