@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { AlertTriangle } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
+import AppLoader from '../components/AppLoader';
 import PasswordInput from '../components/PasswordInput';
 import { useWebAuthn } from '../hooks/useWebAuthn';
 import { getBoundUsername, getStoredCredentialId, isInstalledPwa } from '../lib/deviceBinding';
 
 export default function LoginPage() {
-  const { session, login, loginWithBiometric } = useAuth();
+  const { session, login, loginWithBiometric, sessionExpired } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({ username: '', password: '' });
   const [error, setError] = useState('');
@@ -66,7 +68,7 @@ export default function LoginPage() {
   }
 
   if (checkingBackgroundAuth) {
-    return <div className="page-shell"><p>Signing in...</p></div>;
+    return <AppLoader label="Signing you in…" full />;
   }
 
   async function handleSubmit(event) {
@@ -104,6 +106,12 @@ export default function LoginPage() {
         <p className="auth-login-kicker">Your smart expense tracking companion</p>
         <section className="auth-card auth-card-login">
           <h1 className="auth-login-title">Sign in</h1>
+          {sessionExpired ? (
+            <p className="session-expired-banner" role="status">
+              <AlertTriangle size={16} aria-hidden="true" />
+              Your session expired. Please sign in again to continue.
+            </p>
+          ) : null}
           <form onSubmit={handleSubmit} className="stack-form">
             <label>
               Email

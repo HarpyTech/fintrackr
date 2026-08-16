@@ -9,11 +9,15 @@
  */
 import { useState } from 'react';
 import { useWebAuthn } from '../hooks/useWebAuthn';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 export default function BiometricPrompt({ username, onDismiss }) {
   const { isSupported, loading, registerBiometric } = useWebAuthn();
   const [status, setStatus] = useState('idle'); // 'idle' | 'success' | 'error'
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Called before the early return so hook order stays stable across renders.
+  const dialogRef = useFocusTrap(isSupported, onDismiss);
 
   if (!isSupported) return null;
 
@@ -31,8 +35,14 @@ export default function BiometricPrompt({ username, onDismiss }) {
   }
 
   return (
-    <div className="biometric-prompt-overlay" role="dialog" aria-modal="true" aria-label="Enable biometric login">
-      <div className="biometric-prompt-card">
+    <div className="biometric-prompt-overlay" role="presentation">
+      <div
+        ref={dialogRef}
+        className="biometric-prompt-card"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Enable biometric login"
+      >
         <div className="biometric-prompt-icon" aria-hidden="true">🔑</div>
         <h2 className="biometric-prompt-title">Enable biometric login?</h2>
         <p className="biometric-prompt-body">
