@@ -284,9 +284,15 @@
     margin-bottom: 10px;
   }
 
-  /* Limit chart height on mobile */
-  .chart-box {
-    height: 200px;
+  /* Reduce chart heights on mobile.
+     Retargeting the tokens is enough: .chart-frame reads them and the
+     ResponsiveContainer inside is height:100%, so nothing can clip. This
+     breakpoint must stay in sync with MOBILE_QUERY in
+     app/src/hooks/useChartLayout.js. */
+  .dashboard-proto {
+    --chart-h-sm: 170px;
+    --chart-h-md: 220px;
+    --chart-h-lg: 260px;
   }
 }
 
