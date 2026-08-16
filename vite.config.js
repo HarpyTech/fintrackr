@@ -27,9 +27,27 @@ export default defineConfig({
     // Keep extensionless imports working for JS/JSX modules.
     extensions: [".mjs", ".js", ".mts", ".ts", ".jsx", ".tsx", ".json"]
   },
+  esbuild: {
+    // Strip debug output from production bundles. Vite only applies this to
+    // `vite build`, so the dev server keeps full logging.
+    drop: ["console", "debugger"]
+  },
   build: {
     outDir: "static",
-    emptyOutDir: true
+    emptyOutDir: true,
+    sourcemap: false,
+    // Warn earlier than the 500 kB default so bundle growth is visible.
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        // Split the heavy, rarely-changing vendor code into its own chunks so
+        // they stay cached across app deploys.
+        manualChunks: {
+          "vendor-react": ["react", "react-dom", "react-router-dom"],
+          "vendor-charts": ["recharts"]
+        }
+      }
+    }
   },
   server: {
     port: 3000
