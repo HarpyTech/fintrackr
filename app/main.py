@@ -12,6 +12,7 @@ from app.api.routes import auth, users, health, expenses, webauthn
 from app.middleware.tracing import TraceIDMiddleware
 from app.middleware.auth import AuthenticationMiddleware
 from app.middleware.csrf import CSRFProtectionMiddleware
+from app.middleware.security_headers import SecurityHeadersMiddleware
 
 # Configure logging with trace ID support
 logging.basicConfig(
@@ -21,7 +22,16 @@ logging.basicConfig(
 setup_trace_logging()
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title=settings.PROJECT_NAME)
+# Interactive docs expose the full auth, WebAuthn and expense surface.
+# They stay available outside production and are disabled in it.
+_docs_enabled = not settings.is_production
+
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    docs_url="/docs" if _docs_enabled else None,
+    redoc_url="/redoc" if _docs_enabled else None,
+    openapi_url="/openapi.json" if _docs_enabled else None,
+)
 
 
 # --------------------
@@ -86,6 +96,22 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "X-CSRF-Token"],
 )
 logger.info("CORS middleware registered")
+
+# Registered last so it is the outermost layer — this guarantees the headers
+# are attached to every response, including error responses produced by the
+# inner middleware and the SPA catch-all.
+app.add_middleware(SecurityHeadersMiddleware)
+logger.info("Security headers middleware registered")
+
+_env_source = (
+    f"ENVIRONMENT={settings.ENVIRONMENT}"
+    if settings.ENVIRONMENT
+    else f"inferred from K_SERVICE={settings.cloud_run_service or '<none>'}"
+)
+if _docs_enabled:
+    logger.info(f"API docs enabled at /docs and /redoc ({_env_source})")
+else:
+    logger.info(f"API docs disabled — production deployment ({_env_source})")
 
 # --------------------
 # API Routes
