@@ -139,9 +139,48 @@
 }
 
 /* --- Chart and table utilities --- */
-.chart-box {
+/* ------------------------------------------------------------------
+   Chart frames
+
+   Charts get their height from these rules only. Every ResponsiveContainer
+   inside a .chart-frame is height:100%, so the SVG and its container can
+   never disagree — the previous arrangement (fixed-px ResponsiveContainer
+   inside a differently-sized .chart-box) clipped on mobile.
+   ------------------------------------------------------------------ */
+.chart-frame {
   width: 100%;
-  height: 280px;
+  height: var(--chart-h-md);
+}
+
+.chart-frame-sm {
+  height: var(--chart-h-sm);
+}
+
+.chart-frame-md {
+  height: var(--chart-h-md);
+}
+
+.chart-frame-lg {
+  height: var(--chart-h-lg);
+}
+
+/* Horizontal track for grouped multi-series charts, which are scrolled
+   rather than compressed once the series count grows. */
+.chart-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.chart-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.chart-scroll::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: var(--radius-pill);
 }
 
 .table-wrap {

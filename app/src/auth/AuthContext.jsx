@@ -1,5 +1,6 @@
-import { createContext, lazy, Suspense, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, lazy, Suspense, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { apiRequest } from '../lib/api';
+import { UNAUTHORIZED_EVENT, notifyWarning } from '../lib/notify';
 import { useWebAuthn } from '../hooks/useWebAuthn';
 import {
   getBoundUsername,
@@ -18,6 +19,11 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showBiometricPrompt, setShowBiometricPrompt] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
+
+  // Mirrors session.authenticated so the global 401 listener can read the
+  // current value without being torn down and re-subscribed on every change.
+  const authenticatedRef = useRef(false);
 
   const { authenticateBiometric } = useWebAuthn();
 
@@ -97,11 +103,44 @@ export function AuthProvider({ children }) {
     setProfile(null);
   }, [session.authenticated, refreshProfile]);
 
+  useEffect(() => {
+    authenticatedRef.current = session.authenticated;
+  }, [session.authenticated]);
+
+  /**
+   * Global session-expiry handling.
+   *
+   * apiRequest emits this event when a protected endpoint answers 401.
+   * Only a user who was already signed in can have a session expire — for
+   * everyone else the 401 is expected and must be ignored, otherwise the
+   * login page would bounce on its own failed requests.
+   */
+  useEffect(() => {
+    function handleUnauthorized() {
+      if (!authenticatedRef.current) {
+        return;
+      }
+
+      authenticatedRef.current = false;
+      setSession({ authenticated: false, user: null, role: null });
+      setProfile(null);
+      setShowBiometricPrompt(false);
+      setSessionExpired(true);
+      notifyWarning('Your session has expired. Please sign in again.');
+    }
+
+    window.addEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
+    return () => {
+      window.removeEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
+    };
+  }, []);
+
   const login = async (username, password) => {
     await apiRequest('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ username, password }),
     });
+    setSessionExpired(false);
     await refreshSession();
 
     // Offer biometric enrolment only when this logged-in device has no server-side credential record.
@@ -125,6 +164,7 @@ export function AuthProvider({ children }) {
 
   const loginWithBiometric = async (username) => {
     await authenticateBiometric(username);
+    setSessionExpired(false);
     await refreshSession();
   };
 
@@ -198,8 +238,10 @@ export function AuthProvider({ children }) {
       updateProfile,
       showBiometricPrompt,
       setShowBiometricPrompt,
+      sessionExpired,
+      clearSessionExpired: () => setSessionExpired(false),
     }),
-    [session, profile, loading, refreshSession, refreshProfile, showBiometricPrompt]
+    [session, profile, loading, refreshSession, refreshProfile, showBiometricPrompt, sessionExpired]
   );
 
   return (

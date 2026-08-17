@@ -394,12 +394,16 @@
   line-height: 1.5;
   background: #ffffff;
   color: #111827;
-  outline: none;
   transition: border-color 0.15s;
 }
 
 .insights-proto-textarea:focus {
   border-color: #2563eb;
+}
+
+.insights-proto-textarea:focus-visible {
+  outline: 2px solid var(--focus-outline);
+  outline-offset: 2px;
 }
 
 :root[data-theme='dark'] .insights-proto-textarea {

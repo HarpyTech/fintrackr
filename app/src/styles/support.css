@@ -200,7 +200,6 @@
   font-family: inherit;
   background: #ffffff;
   color: #111827;
-  outline: none;
   transition: border-color 0.15s;
   width: 100%;
   box-sizing: border-box;
@@ -210,6 +209,13 @@
 .support-proto-form-select:focus,
 .support-proto-form-textarea:focus {
   border-color: #2563eb;
+}
+
+.support-proto-form-input:focus-visible,
+.support-proto-form-select:focus-visible,
+.support-proto-form-textarea:focus-visible {
+  outline: 2px solid var(--focus-outline);
+  outline-offset: 2px;
 }
 
 :root[data-theme='dark'] .support-proto-form-input,

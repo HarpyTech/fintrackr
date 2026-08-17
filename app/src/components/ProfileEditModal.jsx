@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 const PHONE_PATTERN = /^\+?[0-9]{8,15}$/;
 const ADDRESS_MIN_LENGTH = 10;
@@ -27,19 +28,9 @@ export default function ProfileEditModal({ isOpen, onClose }) {
     });
   }, [profile]);
 
-  useEffect(() => {
-    function handleEscape(event) {
-      if (event.key === 'Escape') {
-        onClose();
-      }
-    }
-    if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
-    }
-    return () => {
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [isOpen, onClose]);
+  // Traps Tab inside the dialog, closes on Escape, and restores focus to the
+  // trigger on close. Replaces the previous Escape-only listener.
+  const dialogRef = useFocusTrap(isOpen, onClose);
 
   const trimmedPhone = form.phone?.trim() || '';
   const normalizedPhone = trimmedPhone.replace(/[\s()-]/g, '');
@@ -92,6 +83,7 @@ export default function ProfileEditModal({ isOpen, onClose }) {
   return (
     <div className="profile-modal-backdrop" role="presentation" onClick={onClose}>
       <section
+        ref={dialogRef}
         className="profile-modal"
         role="dialog"
         aria-modal="true"

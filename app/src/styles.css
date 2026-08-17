@@ -10,6 +10,9 @@
 /* Shared components: ThemeToggle, TopNavigation, ProfileMenu, PWA, ChatWidget */
 @import './styles/components.css';
 
+/* Feedback primitives: toasts, error boundaries, loaders */
+@import './styles/feedback.css';
+
 /* Layout shells */
 @import './styles/layout.css';
 @import './styles/sidebar.css';

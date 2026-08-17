@@ -37,6 +37,47 @@
   --warning-text: #7a4a00;
   --warning-soft: #fff7e8;
   --warning-soft-border: #f3c87b;
+
+  /* Derived roles — overridden per theme so text-on-surface stays legible */
+  --link: var(--brand);
+  --focus-outline: var(--brand);
+
+  /* Spacing scale (4px base unit) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* Radius scale */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+
+  /* Type scale */
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-md: 16px;
+  --text-lg: 20px;
+  --text-xl: 26px;
+  --text-2xl: 34px;
+
+  /* Chart frame heights — overridden per breakpoint in responsive.css.
+     Charts read their height from these only; see .chart-frame. */
+  --chart-h-sm: 200px;
+  --chart-h-md: 280px;
+  --chart-h-lg: 320px;
+
+  /* Motion */
+  --motion-fast: 120ms;
+  --motion-base: 180ms;
+  --motion-slow: 280ms;
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 /* --- Design tokens (dark mode) --- */
@@ -65,6 +106,19 @@
   --danger-soft-border: rgba(226, 98, 125, 0.38);
   --warning-soft: rgba(138, 94, 26, 0.22);
   --warning-soft-border: rgba(234, 177, 86, 0.4);
+
+  /* Status text colors must be lightened for dark surfaces.
+     The light-mode values (#b42339, #0d6b4f, #7a4a00) are dark inks and
+     fail contrast against the dark navy surfaces above. */
+  --danger: #ff8a9c;
+  --success: #4fd1a0;
+  --success-strong: #63e0b3;
+  --warning-text: #f0c479;
+
+  /* --brand stays dark so gradient buttons keep white-on-blue contrast;
+     links and focus outlines get lightened variants instead. */
+  --link: #93b4ff;
+  --focus-outline: #7ea2ff;
 }
 
 /* --- Reset --- */
@@ -74,14 +128,17 @@
 
 body {
   margin: 0;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    Roboto, 'Helvetica Neue', Arial, sans-serif;
   background: var(--page-bg);
   color: var(--ink);
-  transition: background 180ms ease, color 180ms ease;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background var(--motion-base) ease, color var(--motion-base) ease;
 }
 
 a {
-  color: var(--brand);
+  color: var(--link);
 }
 
 /* --- Global transition targets --- */
@@ -105,14 +162,29 @@ select,
     box-shadow 180ms ease;
 }
 
-/* --- Focus ring --- */
+/* --- Focus ring ---
+   Uses a real outline (not box-shadow alone) so the indicator survives
+   Windows High Contrast / forced-colors mode, where box-shadow is stripped. */
 button:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible,
-a:focus-visible {
-  outline: none;
+a:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--focus-outline);
+  outline-offset: 2px;
   box-shadow: var(--focus-ring);
+}
+
+@media (forced-colors: active) {
+  button:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible,
+  a:focus-visible,
+  [tabindex]:focus-visible {
+    outline: 2px solid Highlight;
+  }
 }
 
 /* --- Form elements --- */
@@ -163,8 +235,8 @@ button:disabled {
 
 /* --- Utility text states --- */
 .error-text {
-  color: #d0293f;
-  margin: 4px 0;
+  color: var(--danger);
+  margin: var(--space-1) 0;
 }
 
 .success-text {
@@ -180,20 +252,21 @@ button:disabled {
 
 /* --- Session / info banners --- */
 .session-limit-banner {
-  background: #fff4e5;
-  border: 1px solid #f5a623;
-  border-left: 4px solid #f5a623;
-  border-radius: 6px;
-  color: #7a4a00;
-  padding: 12px 16px;
-  margin: 0 0 16px;
-  font-size: 14px;
+  background: var(--warning-soft);
+  border: 1px solid var(--warning-soft-border);
+  border-left: 4px solid var(--warning-soft-border);
+  border-radius: var(--radius-sm);
+  color: var(--warning-text);
+  padding: var(--space-3) var(--space-4);
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-base);
   line-height: 1.5;
 }
 
 .session-limit-banner a {
-  color: #c45c00;
+  color: var(--warning-text);
   font-weight: 600;
+  text-decoration: underline;
 }
 
 /* --- Tables --- */
@@ -213,4 +286,127 @@ td {
   text-align: center;
   color: var(--muted);
   padding: 20px 8px;
+}
+
+/* ============================================================
+   Reduced motion — WCAG 2.1 SC 2.3.3.
+   Kept near the end of base so it overrides the transition
+   targets declared above, but page stylesheets that declare
+   their own animations are covered by the universal selector.
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ============================================================
+   Skeleton loaders
+   ============================================================ */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--surface-soft) 25%,
+    var(--surface-alt) 37%,
+    var(--surface-soft) 63%
+  );
+  background-size: 400% 100%;
+  animation: skeleton-shimmer 1.4s ease infinite;
+  border-radius: var(--radius-sm);
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+.skeleton-text {
+  height: 12px;
+  margin: var(--space-2) 0;
+}
+
+.skeleton-title {
+  height: 20px;
+  width: 45%;
+  margin-bottom: var(--space-4);
+}
+
+/* Fills its .chart-frame so the skeleton→chart swap causes no layout jump.
+   min-height covers the few places a skeleton renders outside a frame. */
+.skeleton-chart {
+  height: 100%;
+  min-height: 160px;
+  width: 100%;
+}
+
+.skeleton-stat-value {
+  height: 30px;
+  width: 60%;
+  margin-top: var(--space-2);
+}
+
+/* ============================================================
+   Empty states
+   ============================================================ */
+.empty-state {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  padding: var(--space-7) var(--space-4);
+  text-align: center;
+  color: var(--muted);
+}
+
+.empty-state-icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-pill);
+  background: var(--brand-soft);
+  border: 1px solid var(--brand-soft-border);
+  color: var(--link);
+}
+
+.empty-state-icon svg {
+  width: 26px;
+  height: 26px;
+}
+
+.empty-state-title {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--heading);
+}
+
+.empty-state-body {
+  margin: 0;
+  max-width: 42ch;
+  font-size: var(--text-base);
+  line-height: 1.55;
+}
+
+/* ============================================================
+   Visually-hidden (screen-reader only) utility
+   ============================================================ */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

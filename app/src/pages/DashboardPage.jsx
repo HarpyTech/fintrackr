@@ -1,43 +1,41 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Legend,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
 import { Calendar, Camera, DollarSign, FileText, X } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
-import AvgCategoryBarChart from '../components/AvgCategoryBarChart';
-import CategoryDonutChart from '../components/CategoryDonutChart';
-import DailyExpenseChart from '../components/DailyExpenseChart';
+import ErrorBoundary from '../components/ErrorBoundary';
 import MonthYearFilter from '../components/MonthYearFilter';
 import TopNavigation from '../components/TopNavigation';
-import VendorDonutChart from '../components/VendorDonutChart';
+import BreakdownChart from '../components/charts/BreakdownChart';
+import CategoryTrendChart from '../components/charts/CategoryTrendChart';
+import TrendBarChart from '../components/charts/TrendBarChart';
 import { apiRequest } from '../lib/api';
+import { CHART_ACCENT, CHART_ACCENT_ALT, formatInr } from '../lib/chartColors';
+import { useToast } from '../components/ToastProvider';
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
-const inrCurrencyFormatter = new Intl.NumberFormat('en-IN', {
-  style: 'currency',
-  currency: 'INR',
-  maximumFractionDigits: 2,
-});
-
-function formatInr(value) {
-  return inrCurrencyFormatter.format(Number(value || 0));
+/** Wraps a chart so one bad dataset cannot blank the whole dashboard. */
+function ChartCard({ title, children, className = '', headerSlot = null }) {
+  return (
+    <article className={`dashboard-proto-card ${className}`.trim()}>
+      {headerSlot || (title ? <h3>{title}</h3> : null)}
+      <ErrorBoundary
+        label={title || 'chart'}
+        title="Chart unavailable"
+        body="This chart could not be drawn. Other sections are unaffected."
+      >
+        {children}
+      </ErrorBoundary>
+    </article>
+  );
 }
 
 export default function DashboardPage() {
   const { session, logout } = useAuth();
   const navigate = useNavigate();
+  const toast = useToast();
 
+  const [summaryLoading, setSummaryLoading] = useState(true);
   const [expenses, setExpenses] = useState([]);
   const [monthly, setMonthly] = useState([]);
   const [yearly, setYearly] = useState([]);
@@ -47,7 +45,6 @@ export default function DashboardPage() {
   const [cameraPreviewUrl, setCameraPreviewUrl] = useState('');
   const [extracting, setExtracting] = useState(false);
   const [lastExtracted, setLastExtracted] = useState(null);
-  const [successToast, setSuccessToast] = useState('');
 
   const [filterYear, setFilterYear] = useState(new Date().getFullYear());
   const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
@@ -78,8 +75,15 @@ export default function DashboardPage() {
       setMonthly(monthRes.items || []);
       setYearly(yearRes.items || []);
       setCategoryData(categoryRes.items || []);
+      setError('');
     } catch (err) {
-      setError(err.message);
+      // A 401 here means the session expired; AuthContext already handles the
+      // redirect and toast, so re-stating it inline would be noise.
+      if (!err.sessionExpired) {
+        setError(err.message);
+      }
+    } finally {
+      setSummaryLoading(false);
     }
   }
 
@@ -164,20 +168,6 @@ export default function DashboardPage() {
     };
   }, [cameraImageFile]);
 
-  useEffect(() => {
-    if (!successToast) {
-      return undefined;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setSuccessToast('');
-    }, 2600);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [successToast]);
-
   async function handleLogout() {
     await logout();
     navigate('/login');
@@ -205,10 +195,17 @@ export default function DashboardPage() {
 
       setLastExtracted(response.extracted || null);
       setCameraImageFile(null);
-      setSuccessToast('Expense captured and saved successfully.');
+      toast.success(
+        response.queued
+          ? 'Receipt queued — it will sync when you are back online.'
+          : 'Expense captured and saved successfully.',
+      );
       await loadData();
     } catch (err) {
-      setError(err.message);
+      if (!err.sessionExpired) {
+        setError(err.message);
+        toast.error(err.message);
+      }
     } finally {
       setExtracting(false);
     }
@@ -221,12 +218,6 @@ export default function DashboardPage() {
 
   return (
     <main className="dashboard-proto">
-      {successToast ? (
-        <div className="success-toast" role="status" aria-live="polite">
-          {successToast}
-        </div>
-      ) : null}
-
       <div className="dashboard-proto-container">
         {/* ── Header ── */}
         <TopNavigation title="Dashboard" />
@@ -242,7 +233,11 @@ export default function DashboardPage() {
               </span>
               <span>Total Expenses</span>
             </div>
-            <p className="dashboard-proto-stat-value">{formatInr(totalSpend)}</p>
+            {summaryLoading ? (
+              <div className="skeleton skeleton-stat-value" aria-hidden="true" />
+            ) : (
+              <p className="dashboard-proto-stat-value">{formatInr(totalSpend)}</p>
+            )}
           </article>
 
           <article className="dashboard-proto-card">
@@ -252,7 +247,11 @@ export default function DashboardPage() {
               </span>
               <span>Entries</span>
             </div>
-            <p className="dashboard-proto-stat-value">{expenses.length}</p>
+            {summaryLoading ? (
+              <div className="skeleton skeleton-stat-value" aria-hidden="true" />
+            ) : (
+              <p className="dashboard-proto-stat-value">{expenses.length}</p>
+            )}
           </article>
 
           <article className="dashboard-proto-card">
@@ -338,102 +337,103 @@ export default function DashboardPage() {
         {/* ── Analytics Grid ── */}
         <div className="dashboard-proto-grid">
           {/* Monthly Trend */}
-          <article className="dashboard-proto-card">
-            <h3>Monthly Trend ({currentYear})</h3>
-            <div className="chart-box">
-              <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={monthly}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis tickFormatter={formatInr} />
-                  <Tooltip formatter={(value) => formatInr(value)} />
-                  <Bar dataKey="total" fill="#2563eb" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </article>
+          <ChartCard title={`Monthly Trend (${currentYear})`}>
+            <TrendBarChart
+              items={monthly}
+              xKey="month"
+              loading={summaryLoading}
+              color={CHART_ACCENT}
+              emptyTitle="No monthly data yet"
+              emptyBody={`Expenses recorded during ${currentYear} will trend here.`}
+            />
+          </ChartCard>
 
           {/* Yearly Trend */}
-          <article className="dashboard-proto-card">
-            <h3>Yearly Trend</h3>
-            <div className="chart-box">
-              <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={yearly}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="year" />
-                  <YAxis tickFormatter={formatInr} />
-                  <Tooltip formatter={(value) => formatInr(value)} />
-                  <Legend />
-                  <Bar dataKey="total" fill="#16a34a" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </article>
+          <ChartCard title="Yearly Trend">
+            <TrendBarChart
+              items={yearly}
+              xKey="year"
+              loading={summaryLoading}
+              color={CHART_ACCENT_ALT}
+              emptyTitle="No yearly data yet"
+              emptyBody="Year-over-year totals appear once you have expenses on record."
+            />
+          </ChartCard>
 
           {/* Category Split */}
-          <article className="dashboard-proto-card">
-            <h3>Category Split</h3>
-            <div className="chart-box">
-              <ResponsiveContainer width="100%" height={260}>
-                <PieChart>
-                  <Pie
-                    data={categoryData}
-                    dataKey="total"
-                    nameKey="category"
-                    outerRadius={90}
-                    fill="#9333ea"
-                  />
-                  <Tooltip formatter={(value) => formatInr(value)} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </article>
+          <ChartCard title="Category Split">
+            <BreakdownChart
+              items={categoryData}
+              nameKey="category"
+              loading={summaryLoading}
+              emptyTitle="No categories yet"
+              emptyBody="Categorised spending for the year appears here."
+            />
+          </ChartCard>
 
           {/* Daily Expenses — full width */}
-          <article className="dashboard-proto-card dashboard-proto-span-2">
-            <div className="dashboard-proto-filter-head">
-              <h3>Daily Expenses — {MONTH_NAMES[filterMonth - 1]} {filterYear}</h3>
-              <div className="dashboard-proto-filter-controls">
-                <MonthYearFilter
-                  year={filterYear}
-                  month={filterMonth}
-                  onYearChange={setFilterYear}
-                  onMonthChange={setFilterMonth}
-                />
+          <ChartCard
+            className="dashboard-proto-span-2"
+            headerSlot={
+              <div className="dashboard-proto-filter-head">
+                <h3>Daily Expenses — {MONTH_NAMES[filterMonth - 1]} {filterYear}</h3>
+                <div className="dashboard-proto-filter-controls">
+                  <MonthYearFilter
+                    year={filterYear}
+                    month={filterMonth}
+                    onYearChange={setFilterYear}
+                    onMonthChange={setFilterMonth}
+                  />
+                </div>
               </div>
-            </div>
-            <DailyExpenseChart items={dailyItems} loading={dailyLoading} error={dailyError} />
-          </article>
+            }
+          >
+            <TrendBarChart
+              items={dailyItems}
+              xKey="day"
+              xLabel="Day"
+              loading={dailyLoading}
+              error={dailyError}
+              emptyTitle="No expenses this month"
+              emptyBody="Daily spending will chart here as soon as you add an expense for this period."
+            />
+          </ChartCard>
 
           {/* Expenses by Category */}
-          <article className="dashboard-proto-card">
-            <h3>Expenses by Category — {MONTH_NAMES[filterMonth - 1]} {filterYear}</h3>
-            <CategoryDonutChart
+          <ChartCard title={`Expenses by Category — ${MONTH_NAMES[filterMonth - 1]} ${filterYear}`}>
+            <BreakdownChart
               items={categoryMonthlyItems}
+              nameKey="category"
               loading={categoryMonthlyLoading}
               error={categoryMonthlyError}
+              emptyTitle="No categories yet"
+              emptyBody="Once expenses are recorded for this period, the category split appears here."
             />
-          </article>
+          </ChartCard>
 
           {/* Expenses by Vendor */}
-          <article className="dashboard-proto-card">
-            <h3>Expenses by Vendor — {MONTH_NAMES[filterMonth - 1]} {filterYear}</h3>
-            <VendorDonutChart
+          <ChartCard title={`Expenses by Vendor — ${MONTH_NAMES[filterMonth - 1]} ${filterYear}`}>
+            <BreakdownChart
               items={vendorMonthlyItems}
+              nameKey="vendor"
               loading={vendorMonthlyLoading}
               error={vendorMonthlyError}
+              emptyTitle="No vendors yet"
+              emptyBody="Vendor names picked up from receipts will be summarised here."
             />
-          </article>
+          </ChartCard>
 
           {/* Avg Expense by Category — full width */}
-          <article className="dashboard-proto-card dashboard-proto-span-2">
-            <h3>Avg Expense by Category — {filterYear}</h3>
-            <AvgCategoryBarChart
+          <ChartCard
+            className="dashboard-proto-span-2"
+            title={`Avg Expense by Category — ${filterYear}`}
+          >
+            <CategoryTrendChart
               items={categoryYearlyItems}
               loading={categoryYearlyLoading}
               error={categoryYearlyError}
             />
-          </article>
+          </ChartCard>
         </div>
       </div>
     </main>
