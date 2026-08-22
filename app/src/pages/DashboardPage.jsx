@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Calendar, Camera, DollarSign, FileText, X } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import ErrorBoundary from '../components/ErrorBoundary';
 import MonthYearFilter from '../components/MonthYearFilter';
-import TopNavigation from '../components/TopNavigation';
 import BreakdownChart from '../components/charts/BreakdownChart';
 import CategoryTrendChart from '../components/charts/CategoryTrendChart';
 import TrendBarChart from '../components/charts/TrendBarChart';
 import { apiRequest } from '../lib/api';
+import { queryKeys } from '../lib/queryClient';
 import { CHART_ACCENT, CHART_ACCENT_ALT, formatInr } from '../lib/chartColors';
 import { useToast } from '../components/ToastProvider';
 
@@ -34,12 +35,8 @@ export default function DashboardPage() {
   const { session, logout } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
+  const queryClient = useQueryClient();
 
-  const [summaryLoading, setSummaryLoading] = useState(true);
-  const [expenses, setExpenses] = useState([]);
-  const [monthly, setMonthly] = useState([]);
-  const [yearly, setYearly] = useState([]);
-  const [categoryData, setCategoryData] = useState([]);
   const [error, setError] = useState('');
   const [cameraImageFile, setCameraImageFile] = useState(null);
   const [cameraPreviewUrl, setCameraPreviewUrl] = useState('');
@@ -48,111 +45,106 @@ export default function DashboardPage() {
 
   const [filterYear, setFilterYear] = useState(new Date().getFullYear());
   const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
-  const [dailyItems, setDailyItems] = useState([]);
-  const [categoryMonthlyItems, setCategoryMonthlyItems] = useState([]);
-  const [vendorMonthlyItems, setVendorMonthlyItems] = useState([]);
-  const [categoryYearlyItems, setCategoryYearlyItems] = useState([]);
-  const [dailyError, setDailyError] = useState('');
-  const [categoryMonthlyError, setCategoryMonthlyError] = useState('');
-  const [vendorMonthlyError, setVendorMonthlyError] = useState('');
-  const [categoryYearlyError, setCategoryYearlyError] = useState('');
-  const [dailyLoading, setDailyLoading] = useState(false);
-  const [categoryMonthlyLoading, setCategoryMonthlyLoading] = useState(false);
-  const [vendorMonthlyLoading, setVendorMonthlyLoading] = useState(false);
-  const [categoryYearlyLoading, setCategoryYearlyLoading] = useState(false);
 
   const currentYear = new Date().getFullYear();
 
-  async function loadData() {
-    try {
-      const [allRes, monthRes, yearRes, categoryRes] = await Promise.all([
-        apiRequest('/expenses'),
-        apiRequest(`/expenses/summary/monthly?year=${currentYear}`),
-        apiRequest('/expenses/summary/yearly'),
-        apiRequest(`/expenses/summary/categories?year=${currentYear}`),
-      ]);
-      setExpenses(allRes.items || []);
-      setMonthly(monthRes.items || []);
-      setYearly(yearRes.items || []);
-      setCategoryData(categoryRes.items || []);
-      setError('');
-    } catch (err) {
-      // A 401 here means the session expired; AuthContext already handles the
-      // redirect and toast, so re-stating it inline would be noise.
-      if (!err.sessionExpired) {
-        setError(err.message);
-      }
-    } finally {
-      setSummaryLoading(false);
-    }
-  }
+  /**
+   * All dashboard data comes from React Query.
+   *
+   * This replaces two hand-rolled loaders (a Promise.all of 4 and a
+   * Promise.allSettled of 4) plus their effects. What that bought:
+   *
+   *  - Requests are deduped by key. `summary/categories` is needed both for
+   *    the yearly Category Split and for the Avg-by-Category chart; when
+   *    filterYear === currentYear those were two identical HTTP calls and are
+   *    now one.
+   *  - Changing the month filter refetches only the three month-scoped
+   *    queries; the four year-scoped ones stay cached.
+   *  - Returning to the dashboard serves from cache instead of refiring
+   *    everything (staleTime 60s, refetchOnMount false).
+   *  - `expense:created` invalidation is handled centrally by
+   *    ExpenseCacheSync, so no listener is needed here.
+   *
+   * `select` unwraps the API's `{items: [...]}` envelope so components keep
+   * receiving plain arrays.
+   */
+  const items = (response) => response?.items || [];
 
-  async function loadChartData(year, month) {
-    setDailyLoading(true);
-    setCategoryMonthlyLoading(true);
-    setVendorMonthlyLoading(true);
-    setCategoryYearlyLoading(true);
-    setDailyError('');
-    setCategoryMonthlyError('');
-    setVendorMonthlyError('');
-    setCategoryYearlyError('');
+  const expensesQuery = useQuery({
+    queryKey: queryKeys.expenses.list(),
+    select: items,
+  });
 
-    const [dailyResult, categoryMonthlyResult, vendorMonthlyResult, categoryYearlyResult] =
-      await Promise.allSettled([
-        apiRequest(`/expenses/summary/daily?year=${year}&month=${month}`),
-        apiRequest(`/expenses/summary/categories-monthly?year=${year}&month=${month}`),
-        apiRequest(`/expenses/summary/vendors-monthly?year=${year}&month=${month}`),
-        apiRequest(`/expenses/summary/categories?year=${year}`),
-      ]);
+  const monthlyQuery = useQuery({
+    queryKey: queryKeys.expenses.summary.monthly(currentYear),
+    select: items,
+  });
 
-    if (dailyResult.status === 'fulfilled') {
-      setDailyItems(dailyResult.value.items || []);
-    } else {
-      setDailyError(dailyResult.reason?.message || 'Failed to load daily data.');
-    }
-    setDailyLoading(false);
+  const yearlyQuery = useQuery({
+    queryKey: queryKeys.expenses.summary.yearly(),
+    select: items,
+  });
 
-    if (categoryMonthlyResult.status === 'fulfilled') {
-      setCategoryMonthlyItems(categoryMonthlyResult.value.items || []);
-    } else {
-      setCategoryMonthlyError(categoryMonthlyResult.reason?.message || 'Failed to load category data.');
-    }
-    setCategoryMonthlyLoading(false);
+  // Shared by Category Split and, when the filter year matches, by the
+  // Avg-by-Category chart below — one cache entry, one request.
+  const categoriesYearQuery = useQuery({
+    queryKey: queryKeys.expenses.summary.categories(currentYear),
+    select: items,
+  });
 
-    if (vendorMonthlyResult.status === 'fulfilled') {
-      setVendorMonthlyItems(vendorMonthlyResult.value.items || []);
-    } else {
-      setVendorMonthlyError(vendorMonthlyResult.reason?.message || 'Failed to load vendor data.');
-    }
-    setVendorMonthlyLoading(false);
+  const dailyQuery = useQuery({
+    queryKey: queryKeys.expenses.summary.daily(filterYear, filterMonth),
+    select: items,
+  });
 
-    if (categoryYearlyResult.status === 'fulfilled') {
-      setCategoryYearlyItems(categoryYearlyResult.value.items || []);
-    } else {
-      setCategoryYearlyError(categoryYearlyResult.reason?.message || 'Failed to load yearly category data.');
-    }
-    setCategoryYearlyLoading(false);
-  }
+  const categoryMonthlyQuery = useQuery({
+    queryKey: queryKeys.expenses.summary.categoriesMonthly(filterYear, filterMonth),
+    select: items,
+  });
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const vendorMonthlyQuery = useQuery({
+    queryKey: queryKeys.expenses.summary.vendorsMonthly(filterYear, filterMonth),
+    select: items,
+  });
 
-  useEffect(() => {
-    loadChartData(filterYear, filterMonth);
-  }, [filterYear, filterMonth]);
+  const categoryFilterYearQuery = useQuery({
+    queryKey: queryKeys.expenses.summary.categories(filterYear),
+    select: items,
+  });
 
-  useEffect(() => {
-    function handleExpenseCreated() {
-      loadData();
-      loadChartData(filterYear, filterMonth);
-    }
+  const expenses = expensesQuery.data || [];
+  const monthly = monthlyQuery.data || [];
+  const yearly = yearlyQuery.data || [];
+  const categoryData = categoriesYearQuery.data || [];
+  const dailyItems = dailyQuery.data || [];
+  const categoryMonthlyItems = categoryMonthlyQuery.data || [];
+  const vendorMonthlyItems = vendorMonthlyQuery.data || [];
+  const categoryYearlyItems = categoryFilterYearQuery.data || [];
 
-    window.addEventListener('expense:created', handleExpenseCreated);
-    return () => {
-      window.removeEventListener('expense:created', handleExpenseCreated);
-    };
-  }, [filterYear, filterMonth]);
+  // A 401 is already handled globally by apiRequest + AuthContext, so those
+  // are filtered out rather than shown twice.
+  const messageOf = (query, fallback) => {
+    const err = query.error;
+    if (!err || err.sessionExpired) return '';
+    return err.message || fallback;
+  };
+
+  const summaryLoading =
+    expensesQuery.isPending ||
+    monthlyQuery.isPending ||
+    yearlyQuery.isPending ||
+    categoriesYearQuery.isPending;
+
+  const summaryError =
+    messageOf(expensesQuery, 'Failed to load expenses.') ||
+    messageOf(monthlyQuery, 'Failed to load monthly data.') ||
+    messageOf(yearlyQuery, 'Failed to load yearly data.') ||
+    messageOf(categoriesYearQuery, 'Failed to load category data.');
+
+  const dailyError = messageOf(dailyQuery, 'Failed to load daily data.');
+  const categoryMonthlyError = messageOf(categoryMonthlyQuery, 'Failed to load category data.');
+  const vendorMonthlyError = messageOf(vendorMonthlyQuery, 'Failed to load vendor data.');
+  const categoryYearlyError = messageOf(categoryFilterYearQuery, 'Failed to load yearly category data.');
 
   useEffect(() => {
     if (!cameraImageFile) {
@@ -200,7 +192,8 @@ export default function DashboardPage() {
           ? 'Receipt queued — it will sync when you are back online.'
           : 'Expense captured and saved successfully.',
       );
-      await loadData();
+      // Marks every expense-derived query stale; only mounted ones refetch.
+      queryClient.invalidateQueries({ queryKey: queryKeys.expenses.all });
     } catch (err) {
       if (!err.sessionExpired) {
         setError(err.message);
@@ -220,9 +213,6 @@ export default function DashboardPage() {
     <main className="dashboard-proto">
       <div className="dashboard-proto-container">
         {/* ── Header ── */}
-        <TopNavigation title="Dashboard" />
-
-        <h1 className="dashboard-proto-title">Dashboard</h1>
 
         {/* ── Stats ── */}
         <section className="dashboard-proto-stats">
@@ -314,7 +304,9 @@ export default function DashboardPage() {
               <pre>{JSON.stringify(lastExtracted, null, 2)}</pre>
             </div>
           ) : null}
-          {error ? <p className="error-text">{error}</p> : null}
+          {error || summaryError ? (
+            <p className="error-text">{error || summaryError}</p>
+          ) : null}
         </div>
 
         {/* ── Quick Add — Desktop ── */}
@@ -331,7 +323,9 @@ export default function DashboardPage() {
           >
             Go to Add Expense
           </button>
-          {error ? <p className="error-text">{error}</p> : null}
+          {error || summaryError ? (
+            <p className="error-text">{error || summaryError}</p>
+          ) : null}
         </div>
 
         {/* ── Analytics Grid ── */}
@@ -392,7 +386,7 @@ export default function DashboardPage() {
               items={dailyItems}
               xKey="day"
               xLabel="Day"
-              loading={dailyLoading}
+              loading={dailyQuery.isPending}
               error={dailyError}
               emptyTitle="No expenses this month"
               emptyBody="Daily spending will chart here as soon as you add an expense for this period."
@@ -404,7 +398,7 @@ export default function DashboardPage() {
             <BreakdownChart
               items={categoryMonthlyItems}
               nameKey="category"
-              loading={categoryMonthlyLoading}
+              loading={categoryMonthlyQuery.isPending}
               error={categoryMonthlyError}
               emptyTitle="No categories yet"
               emptyBody="Once expenses are recorded for this period, the category split appears here."
@@ -416,7 +410,7 @@ export default function DashboardPage() {
             <BreakdownChart
               items={vendorMonthlyItems}
               nameKey="vendor"
-              loading={vendorMonthlyLoading}
+              loading={vendorMonthlyQuery.isPending}
               error={vendorMonthlyError}
               emptyTitle="No vendors yet"
               emptyBody="Vendor names picked up from receipts will be summarised here."
@@ -430,7 +424,7 @@ export default function DashboardPage() {
           >
             <CategoryTrendChart
               items={categoryYearlyItems}
-              loading={categoryYearlyLoading}
+              loading={categoryFilterYearQuery.isPending}
               error={categoryYearlyError}
             />
           </ChartCard>

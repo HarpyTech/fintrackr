@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import { useAuth } from '../auth/AuthContext';
-import TopNavigation from '../components/TopNavigation';
 import { apiRequest } from '../lib/api';
 
 const inrCurrencyFormatter = new Intl.NumberFormat('en-IN', {
@@ -131,11 +130,6 @@ export default function ReportPage() {
   return (
     <main className="report-proto">
       <div className="report-proto-container">
-        {/* ── Header ── */}
-        <TopNavigation title="Reports" />
-
-        <h1 className="report-proto-title">Report</h1>
-
         <div className="report-proto-card">
           {/* ── View Toggle Tabs ── */}
           <div className="report-proto-tabs" role="tablist" aria-label="Report view selector">

@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, Camera, Upload } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
-import TopNavigation from '../components/TopNavigation';
 import { apiRequest } from '../lib/api';
 
 const CATEGORIES = ['Food', 'Travel', 'Utilities', 'Shopping', 'Health', 'Other'];
@@ -202,11 +201,6 @@ export default function AddExpensePage() {
   return (
     <main className="add-expense-proto">
       <div className="add-expense-proto-container">
-        {/* ── Header ── */}
-        <TopNavigation title="Add Expense" />
-
-        <h1 className="add-expense-proto-title">Add Expense</h1>
-
         {/* ── Limit Banner ── */}
         {sessionLimitReached && (
           <div className="add-expense-proto-limit" role="alert">
