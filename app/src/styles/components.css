@@ -1,7 +1,7 @@
 /* ============================================================
    COMPONENTS — Shared UI components used across multiple pages:
-   ThemeToggle, TopNavigation, ProfileMenu, PWA install prompt,
-   and ExpenseChatWidget.
+   ThemeToggle, ProfileMenu, PWA install prompt, and
+   ExpenseChatWidget. The app header is in layout.css.
    ============================================================ */
 
 /* --- ThemeToggle --- */
@@ -71,37 +71,6 @@
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 18px;
-}
-
-.dashboard-header-title {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.dashboard-logo {
-  height: 36px;
-  width: auto;
-}
-
-.dashboard-header-title h1,
-.dashboard-header-title span {
-  margin: 0;
-  font-size: 1.4rem;
-  color: var(--ink);
-}
-
-.dashboard-header-subtitle {
-  margin: 4px 0 0;
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
 }
 
 .top-menu {
@@ -419,46 +388,6 @@
 /* --- Header avatar button + dropdown --- */
 .header-profile-menu {
   position: relative;
-}
-
-.header-avatar-button,
-.mobile-header-avatar-button {
-  width: 36px;
-  height: 36px;
-  border-radius: 999px;
-  border: 1.5px solid var(--brand-soft-border, #bfdbfe);
-  background: var(--brand-soft, #eff6ff);
-  color: var(--brand, #2563eb);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  cursor: pointer;
-  display: inline-grid;
-  place-items: center;
-  flex-shrink: 0;
-  transition: box-shadow 0.15s, border-color 0.15s;
-}
-
-.header-avatar-button:hover,
-.mobile-header-avatar-button:hover {
-  border-color: var(--brand, #2563eb);
-  box-shadow: 0 0 0 3px var(--brand-soft, #eff6ff);
-}
-
-.header-avatar-dropdown {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 8px);
-  width: min(240px, 90vw);
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 12px;
-  box-shadow: var(--panel-shadow);
-  z-index: 100;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
 }
 
 .header-avatar-dropdown--mobile {

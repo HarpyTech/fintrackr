@@ -25,13 +25,6 @@
   padding-top: 32px;
 }
 
-.report-proto-title {
-  margin: 0 0 32px;
-  font-size: 1.875rem;
-  font-weight: 700;
-  color: var(--heading);
-}
-
 /* --- Main card --- */
 .report-proto-card {
   background: #ffffff;

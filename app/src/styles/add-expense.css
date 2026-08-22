@@ -22,13 +22,6 @@
   padding-top: 32px;
 }
 
-.add-expense-proto-title {
-  margin: 0 0 32px;
-  font-size: 1.875rem;
-  font-weight: 700;
-  color: var(--heading);
-}
-
 /* --- Limit reached banner --- */
 .add-expense-proto-limit {
   display: flex;

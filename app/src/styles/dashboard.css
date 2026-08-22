@@ -377,12 +377,6 @@
   padding-top: 32px;
 }
 
-.dashboard-proto-title {
-  margin: 0 0 32px;
-  font-size: 1.875rem;
-  color: var(--heading);
-}
-
 /* --- Stat cards --- */
 .dashboard-proto-stats {
   display: grid;

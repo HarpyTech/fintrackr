@@ -44,7 +44,8 @@ export default defineConfig({
         // they stay cached across app deploys.
         manualChunks: {
           "vendor-react": ["react", "react-dom", "react-router-dom"],
-          "vendor-charts": ["recharts"]
+          "vendor-charts": ["recharts"],
+          "vendor-query": ["@tanstack/react-query"]
         }
       }
     }

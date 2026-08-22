@@ -60,70 +60,11 @@ function getDeviceLabel() {
     return 'This device';
   }
 
-  const userAgent = navigator.userAgent || '';
-  const uaDataPlatform = navigator.userAgentData?.platform || '';
-  const platform = (uaDataPlatform || navigator.platform || '').toLowerCase();
+  const platform = navigator.userAgentData?.platform || navigator.platform || 'Unknown platform';
+  const browserBrand = navigator.userAgentData?.brands?.find((brand) => brand.brand !== 'Not A;Brand')?.brand;
+  const browser = browserBrand || 'Browser';
 
-  const androidModelMatch = userAgent.match(/Android[^;]*;\s*([^)]+?)\s+Build\//i);
-  if (androidModelMatch?.[1]) {
-    return androidModelMatch[1].trim();
-  }
-
-  if (/iphone/i.test(userAgent)) {
-    return 'iPhone';
-  }
-  if (/ipad/i.test(userAgent)) {
-    return 'iPad';
-  }
-
-  if (platform.includes('mac')) {
-    return 'Mac';
-  }
-  if (platform.includes('win')) {
-    return 'Windows PC';
-  }
-  if (platform.includes('linux')) {
-    return 'Linux PC';
-  }
-
-  return 'This device';
-}
-
-async function getBestDeviceLabel() {
-  if (typeof navigator === 'undefined') {
-    return 'This device';
-  }
-
-  const uaData = navigator.userAgentData;
-  if (uaData?.getHighEntropyValues) {
-    try {
-      const values = await uaData.getHighEntropyValues(['model', 'platform']);
-      if (values.model && values.model.trim()) {
-        return values.model.trim();
-      }
-
-      const platform = (values.platform || '').toLowerCase();
-      if (platform.includes('windows')) {
-        return 'Windows PC';
-      }
-      if (platform.includes('mac')) {
-        return 'Mac';
-      }
-      if (platform.includes('linux')) {
-        return 'Linux PC';
-      }
-      if (platform.includes('android')) {
-        return 'Android device';
-      }
-      if (platform.includes('ios')) {
-        return 'iOS device';
-      }
-    } catch {
-      // Fall back to the lower-entropy label detection.
-    }
-  }
-
-  return getDeviceLabel();
+  return `${browser} on ${platform}`;
 }
 
 function serializeAuthenticationCredential(credential) {
@@ -166,7 +107,7 @@ export function useWebAuthn() {
     setError(null);
     try {
       const deviceId = await getOrCreateDeviceId();
-      const deviceName = await getBestDeviceLabel();
+      const deviceName = getDeviceLabel();
 
       // 1. Get challenge from server
       const optionsJson = await apiRequest('/webauthn/register', {

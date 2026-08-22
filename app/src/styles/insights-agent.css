@@ -1,0 +1,505 @@
+/* ============================================================
+   INSIGHTS AGENT UI
+   Query bar, results column, visuals, tables, progress and the
+   query-transparency panel. Kept separate from insights.css, which
+   still holds the KPI strip and highlight-card themes it shares
+   with the rest of the page.
+   ============================================================ */
+
+/* --- Query bar (pinned above the KPI strip) --- */
+.insights-query-bar {
+  flex-shrink: 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  padding: var(--space-4) 0 var(--space-3);
+}
+
+.insights-query-inner {
+  width: min(1280px, 100% - 48px);
+  margin: 0 auto;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.insights-query-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: var(--space-2) var(--space-3);
+}
+
+.insights-query-field:focus-within {
+  border-color: var(--link);
+  box-shadow: var(--focus-ring);
+}
+
+.insights-query-icon {
+  color: var(--link);
+  flex-shrink: 0;
+}
+
+/* The field wrapper owns the border, so the textarea drops its own chrome. */
+.insights-query-textarea {
+  flex: 1;
+  min-height: 24px;
+  max-height: 120px;
+  border: none;
+  background: transparent;
+  padding: var(--space-2) 0;
+  resize: none;
+}
+
+.insights-query-textarea:focus,
+.insights-query-textarea:focus-visible {
+  border: none;
+  outline: none;
+  box-shadow: none;
+}
+
+.insights-query-send {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-pill);
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+.insights-query-send--cancel {
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-soft-border);
+  color: var(--danger);
+}
+
+/* --- Results column --- */
+.insights-results {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-5) 0 var(--space-7);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.insights-results-error {
+  width: min(1280px, 100% - 48px);
+  margin: 0 auto;
+}
+
+.insights-result {
+  width: min(1280px, 100% - 48px);
+  margin: 0 auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--panel-shadow);
+  display: grid;
+  gap: var(--space-4);
+}
+
+.insights-result--pending {
+  gap: var(--space-3);
+}
+
+.insights-result-head {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.insights-result-question {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+.insights-result-headline {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--heading);
+  line-height: 1.25;
+}
+
+.insights-result-icon {
+  color: var(--link);
+  flex-shrink: 0;
+}
+
+.insights-result-warning {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--warning-text);
+  background: var(--warning-soft);
+  border: 1px solid var(--warning-soft-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+}
+
+.insights-narrative {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.insights-narrative p {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-base);
+  line-height: 1.6;
+}
+
+.insights-result-followups {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  border-top: 1px solid var(--line);
+  padding-top: var(--space-3);
+}
+
+.insights-result-followups-label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.insights-result-followup-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* --- Visuals and KPI grid --- */
+.insights-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-3);
+}
+
+.insights-visual {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.insights-visual-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.insights-visual-title {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--heading);
+}
+
+.insights-visual-meta {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* --- Tables --- */
+.insights-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+}
+
+.insights-table {
+  margin: 0;
+}
+
+.insights-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-alt);
+  z-index: 1;
+}
+
+.insights-table-numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.insights-table-stack {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.insights-table-stack-row {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  display: grid;
+  gap: var(--space-1);
+  background: var(--surface-alt);
+}
+
+.insights-table-stack-cell {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.insights-table-stack-label {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+.insights-table-stack-value {
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Agent progress (real SSE phases) --- */
+.insights-progress {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.insights-progress-step {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-base);
+  color: var(--muted);
+  opacity: 0.55;
+}
+
+.insights-progress-step--active {
+  color: var(--ink);
+  opacity: 1;
+  font-weight: 500;
+}
+
+.insights-progress-step--done {
+  color: var(--success);
+  opacity: 1;
+}
+
+.insights-progress-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-pill);
+  border: 2px solid var(--line-strong);
+  flex-shrink: 0;
+}
+
+.insights-progress-spin {
+  animation: insights-spin 900ms linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes insights-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* --- Transparency panel --- */
+.insights-transparency {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-alt);
+}
+
+.insights-transparency-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  color: var(--muted-strong);
+  list-style: none;
+}
+
+.insights-transparency-summary::-webkit-details-marker {
+  display: none;
+}
+
+.insights-transparency-facts {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.insights-confidence {
+  margin-left: auto;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: capitalize;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+
+.insights-confidence--high {
+  background: var(--teal-soft);
+  color: var(--success);
+}
+
+.insights-confidence--medium {
+  background: var(--warning-soft);
+  color: var(--warning-text);
+}
+
+.insights-confidence--low {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.insights-transparency-body {
+  padding: var(--space-3);
+  display: grid;
+  gap: var(--space-3);
+  border-top: 1px solid var(--line);
+}
+
+.insights-transparency-explain,
+.insights-transparency-note {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--muted-strong);
+  line-height: 1.55;
+}
+
+.insights-transparency-note {
+  color: var(--warning-text);
+}
+
+.insights-transparency-caveats {
+  margin: 0;
+  padding-left: var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--muted);
+  display: grid;
+  gap: var(--space-1);
+}
+
+.insights-transparency-code-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.insights-transparency-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  padding: 2px var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--muted-strong);
+  text-transform: none;
+  letter-spacing: normal;
+  cursor: pointer;
+}
+
+.insights-transparency-code {
+  margin: 0;
+  padding: var(--space-3);
+  background: var(--mist);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow: auto;
+  max-height: 260px;
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+/* Neutral badge variant — used when a highlight carries a share rather than a
+   change, so it must not read as up/down. insights.css defines --up/--down. */
+.insights-proto-card-badge--flat {
+  background: var(--brand-soft);
+  color: var(--link);
+}
+
+/* --- KPI strip additions used by the new page --- */
+.insights-proto-stat-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.insights-proto-stat-meta {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- Mobile --- */
+@media (max-width: 767px) {
+  .insights-query-inner,
+  .insights-result,
+  .insights-results-error {
+    width: calc(100% - 24px);
+  }
+
+  .insights-query-bar {
+    padding: var(--space-3) 0 var(--space-2);
+  }
+
+  /* Suggestions scroll sideways instead of stacking into three rows. */
+  .insights-query-inner .insights-proto-quick-pills {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+
+  .insights-query-inner .insights-proto-quick-pills::-webkit-scrollbar {
+    display: none;
+  }
+
+  .insights-query-inner .insights-proto-quick-btn {
+    white-space: nowrap;
+  }
+
+  .insights-result {
+    padding: var(--space-4);
+    border-radius: var(--radius-md);
+  }
+
+  .insights-result-headline {
+    font-size: var(--text-lg);
+  }
+
+  .insights-results {
+    padding: var(--space-4) 0 var(--space-6);
+    gap: var(--space-4);
+  }
+
+  .insights-kpi-grid {
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  }
+}
