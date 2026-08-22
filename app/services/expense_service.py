@@ -9,6 +9,8 @@ from app.db.mongo import (
     get_users_collection,
 )
 
+from app.core.plans import DEFAULT_PLAN
+
 logger = logging.getLogger(__name__)
 
 SESSION_EXPENSE_LIMIT = 10
@@ -266,12 +268,14 @@ def _get_user_rate_limit_config(username: str) -> tuple[bool, int]:
     users = get_users_collection()
     user = users.find_one(
         {"username": username},
-        {"disable_rate_limit": 1, "expense_limit": 1},
+        {"disable_rate_limit": 1, "expense_limit": 1, "plan": 1},
     )
     if not user:
         return False, SESSION_EXPENSE_LIMIT
 
-    default_patch: dict[str, bool | int] = {}
+    default_patch: dict[str, bool | int | str] = {}
+    if "plan" not in user:
+        default_patch["plan"] = DEFAULT_PLAN
     if "disable_rate_limit" not in user:
         default_patch["disable_rate_limit"] = False
     if "expense_limit" not in user:

@@ -8,7 +8,7 @@ import traceback
 
 from app.core.config import settings
 from app.core.tracing import setup_trace_logging
-from app.api.routes import auth, users, health, expenses, webauthn
+from app.api.routes import auth, users, health, expenses, webauthn, analytics, admin
 from app.middleware.tracing import TraceIDMiddleware
 from app.middleware.auth import AuthenticationMiddleware
 from app.middleware.csrf import CSRFProtectionMiddleware
@@ -146,6 +146,20 @@ app.include_router(
     tags=["WebAuthn"],
 )
 logger.info("WebAuthn routes registered")
+
+app.include_router(
+    analytics.router,
+    prefix=f"{settings.API_V1_STR}/insights",
+    tags=["Insights"],
+)
+logger.info("Insights analytics routes registered")
+
+app.include_router(
+    admin.router,
+    prefix=f"{settings.API_V1_STR}/admin",
+    tags=["Admin"],
+)
+logger.info("Admin routes registered")
 
 
 BASE_DIR = Path(__file__).resolve().parent

@@ -193,6 +193,98 @@ def check_webauthn_rate_limit(
         raise RuntimeError("Failed to check rate limit") from exc
 
 
+class LlmRateLimitError(Exception):
+    """Raised when a user exceeds their allowance of LLM calls."""
+
+    def __init__(self, message: str, retry_after_seconds: int):
+        super().__init__(message)
+        self.retry_after_seconds = retry_after_seconds
+
+
+def check_and_record_llm_call(
+    username: str,
+    feature: str,
+    max_calls: int = 20,
+    window_minutes: int = 10,
+) -> None:
+    """
+    Rate-limit calls to the Gemini API per user.
+
+    The analytics agent fans out across several skills, so one user message can
+    trigger multiple model calls. This is invoked from inside
+    services/gemini_client.py rather than from a route, so no skill or
+    sub-agent can reach the model without passing through it.
+
+    `feature` separates budgets (e.g. 'analytics' vs 'extraction') so a burst
+    of analytics questions cannot starve receipt extraction.
+
+    Raises LlmRateLimitError when the limit is exceeded.
+    """
+    try:
+        col = get_users_collection().database["llm_call_attempts"]
+        try:
+            col.create_index("created_at", expireAfterSeconds=window_minutes * 60)
+        except Exception:
+            pass
+
+        now = _utcnow()
+        window_start = now - timedelta(minutes=window_minutes)
+        key = f"{username}:{feature}"
+
+        recent_count = col.count_documents(
+            {"key": key, "created_at": {"$gte": window_start}}
+        )
+
+        if recent_count >= max_calls:
+            oldest = col.find_one(
+                {"key": key, "created_at": {"$gte": window_start}},
+                sort=[("created_at", 1)],
+            )
+            if oldest:
+                retry_after = int(
+                    (
+                        oldest["created_at"] + timedelta(minutes=window_minutes) - now
+                    ).total_seconds()
+                )
+                retry_after = max(1, retry_after)
+            else:
+                retry_after = window_minutes * 60
+
+            logger.warning(
+                "LLM rate limit exceeded for %s feature=%s: %d calls in %d minutes",
+                username,
+                feature,
+                recent_count,
+                window_minutes,
+            )
+            raise LlmRateLimitError(
+                f"You have reached the AI request limit. "
+                f"Please try again in {retry_after} seconds.",
+                retry_after,
+            )
+
+        col.insert_one({"key": key, "created_at": now})
+        logger.debug(
+            "LLM call recorded for %s feature=%s: %d/%d",
+            username,
+            feature,
+            recent_count + 1,
+            max_calls,
+        )
+
+    except LlmRateLimitError:
+        raise
+    except Exception as exc:
+        # Unlike OTP, an infrastructure failure here must not hard-fail the
+        # request: the agent has a deterministic fallback path. Log and allow.
+        logger.error(
+            "Error checking LLM rate limit for %s: %s",
+            username,
+            str(exc),
+            exc_info=True,
+        )
+
+
 def clear_otp_attempts(email: str) -> None:
     """Clear all OTP attempts for an email after successful verification."""
     try:

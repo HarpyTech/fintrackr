@@ -57,6 +57,22 @@ class Settings(BaseSettings):
     GEMINI_MODEL: str = "gemini-2.5-flash"
     BUILD_VERSION: str = "dev"
 
+    # --- Analytics agent -------------------------------------------------
+    # The Cloud Run deploy workflow builds its env file from a fixed APP_*
+    # allow-list, so none of these can be supplied there. Each default must
+    # therefore be safe to run with as-is.
+    ANALYTICS_AGENT_ENABLED: bool = True
+    # Per-user Gemini call allowance for the analytics feature.
+    ANALYTICS_LLM_CALLS_PER_WINDOW: int = 20
+    ANALYTICS_LLM_WINDOW_MINUTES: int = 10
+    # Ceiling on model calls for a single question (1 author + 1 repair).
+    ANALYTICS_MAX_LLM_CALLS_PER_MESSAGE: int = 2
+    # Narration is template-driven by default; enabling this spends an extra
+    # model call per question.
+    ANALYTICS_NARRATIVE_LLM: bool = False
+    # Timeout for a single Gemini request, in seconds.
+    ANALYTICS_LLM_TIMEOUT_SECONDS: int = 12
+
     SIGNUP_OTP_EXPIRY_MINUTES: int = 2
     SIGNUP_OTP_LENGTH: int = 6
 

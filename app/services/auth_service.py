@@ -8,6 +8,7 @@ from email.message import EmailMessage
 
 from app.core.security import verify_password, hash_password
 from app.core.config import settings
+from app.core.plans import DEFAULT_PLAN, plan_user_fields
 from app.core.ratelimit import (
     check_and_record_otp_request,
     clear_otp_attempts,
@@ -343,8 +344,7 @@ def register_user(username: str, password: str, role: str = "user"):
             "password_hash": hash_password(password),
             "role": role,
             "email_verified": False,
-            "expense_limit": 10,
-            "disable_rate_limit": False,
+            **plan_user_fields(DEFAULT_PLAN),
             "signup_otp_hash": hash_password(otp),
             "signup_otp_expires_at": otp_expires_at,
             "updated_at": _utcnow(),
@@ -547,6 +547,7 @@ def get_user_profile(username: str):
             "last_name": user.get("last_name"),
             "phone": user.get("phone"),
             "address": user.get("address"),
+            "plan": user.get("plan", DEFAULT_PLAN),
             "expense_limit": user.get("expense_limit", 10),
             "disable_rate_limit": user.get("disable_rate_limit", False),
         }
