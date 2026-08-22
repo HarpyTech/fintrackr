@@ -1,0 +1,18 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.coverage.run]
+source = ["app"]
+omit = [
+    "app/main.py",
+    "app/app.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+
+# Coverage gate. Currently enforced (via CI) on the new SaaS modules that ship
+# with a full test suite; the --cov scope is widened as tests are backfilled
+# across the remaining routers/services toward repo-wide 80%.
+fail_under = 80
