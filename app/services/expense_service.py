@@ -1,13 +1,29 @@
+from contextlib import contextmanager
 from datetime import date, datetime, time, timezone
 import re
+from bson import ObjectId
+from bson.errors import InvalidId
 from pymongo.errors import PyMongoError
 import logging
 
 from app.db.mongo import (
     get_expense_line_items_collection,
     get_expenses_collection,
+    get_mongo_client,
     get_users_collection,
 )
+
+
+@contextmanager
+def _expense_transaction():
+    """Yield a PyMongo session in a transaction; falls back to None in envs
+    that don't support multi-document transactions (e.g. mongomock in tests)."""
+    try:
+        with get_mongo_client().start_session() as session:
+            with session.start_transaction():
+                yield session
+    except (NotImplementedError, AttributeError):
+        yield None
 
 from app.core.plans import DEFAULT_PLAN
 
@@ -39,6 +55,7 @@ def add_expense(
     expense_date: date,
     llm_model: str | None = None,
     line_items: list[dict] | None = None,
+    tenant_id: str | None = None,
 ):
     """Add a new expense for a user"""
     logger.info(
@@ -56,7 +73,7 @@ def add_expense(
         )
         normalized_llm_model = (llm_model or "").strip() or None
 
-        doc = {
+        doc: dict = {
             "username": username,
             "amount": round(float(amount), 2),
             "category": category.strip().lower(),
@@ -70,24 +87,26 @@ def add_expense(
             "line_items_count": len(normalized_items),
             "created_at": datetime.now(timezone.utc),
         }
-        result = expenses.insert_one(doc)
+        if tenant_id:
+            doc["tenant_id"] = tenant_id
+        with _expense_transaction() as session:
+            result = expenses.insert_one(doc, session=session)
+            expense_id = str(result.inserted_id)
 
-        expense_id = str(result.inserted_id)
-
-        if normalized_items:
-            line_item_docs = [
-                {
-                    "expense_id": expense_id,
-                    "username": username,
-                    "name": item["name"],
-                    "quantity": item["quantity"],
-                    "unit_price": item["unit_price"],
-                    "total": item["total"],
-                    "created_at": datetime.now(timezone.utc),
-                }
-                for item in normalized_items
-            ]
-            expense_line_items.insert_many(line_item_docs)
+            if normalized_items:
+                line_item_docs = [
+                    {
+                        "expense_id": expense_id,
+                        "username": username,
+                        "name": item["name"],
+                        "quantity": item["quantity"],
+                        "unit_price": item["unit_price"],
+                        "total": item["total"],
+                        "created_at": datetime.now(timezone.utc),
+                    }
+                    for item in normalized_items
+                ]
+                expense_line_items.insert_many(line_item_docs, session=session)
 
         logger.info(f"Expense added successfully with ID: {expense_id}")
 
@@ -121,13 +140,32 @@ def add_expense(
         raise
 
 
-def list_expenses(username: str):
-    """List all expenses for a user"""
-    logger.debug("Fetching all expenses for user")
+def list_expenses(
+    username: str,
+    limit: int = 50,
+    offset: int = 0,
+    sort_dir: int = -1,
+    tenant_id: str | None = None,
+):
+    """List expenses for a user with pagination.
+
+    Returns a dict with 'items', 'total', 'limit', and 'offset' so callers
+    can render pagination controls without a second count query.
+    """
+    limit = max(1, min(limit, 200))
+    offset = max(0, offset)
+    logger.debug("Fetching expenses for user (limit=%d, offset=%d)", limit, offset)
     try:
         expenses = get_expenses_collection()
         expense_line_items = get_expense_line_items_collection()
-        docs = list(expenses.find({"username": username}).sort("expense_date", -1))
+        base = _active_filter(username, tenant_id)
+        total = expenses.count_documents(base)
+        docs = list(
+            expenses.find(base)
+            .sort("expense_date", sort_dir)
+            .skip(offset)
+            .limit(limit)
+        )
 
         expense_ids = [str(doc["_id"]) for doc in docs]
         line_items_map: dict[str, list[dict]] = {
@@ -179,8 +217,8 @@ def list_expenses(username: str):
             }
             for doc in docs
         ]
-        logger.info(f"Retrieved {len(result)} expenses")
-        return result
+        logger.info("Retrieved %d/%d expenses (offset=%d)", len(result), total, offset)
+        return {"items": result, "total": total, "limit": limit, "offset": offset}
     except PyMongoError as exc:
         logger.error(
             f"Database error while fetching expenses: {str(exc)}",
@@ -198,7 +236,127 @@ def list_expenses(username: str):
         raise
 
 
-def check_session_expense_limit(username: str) -> None:
+def _tenant_filter(username: str, tenant_id: str | None = None) -> dict:
+    """Return a MongoDB filter scoped to username and (when available) tenant_id."""
+    f: dict = {"username": username}
+    if tenant_id:
+        f["tenant_id"] = tenant_id
+    return f
+
+
+def _active_filter(username: str, tenant_id: str | None = None) -> dict:
+    """Like _tenant_filter but also excludes soft-deleted documents."""
+    return {**_tenant_filter(username, tenant_id), "is_deleted": {"$ne": True}}
+
+
+def _parse_expense_id(expense_id: str) -> ObjectId:
+    """Convert a string expense ID to ObjectId, raising ValueError on bad format."""
+    try:
+        return ObjectId(expense_id)
+    except (InvalidId, TypeError) as exc:
+        raise ValueError(f"Invalid expense ID: {expense_id}") from exc
+
+
+def _serialize_expense(doc: dict, line_items: list[dict] | None = None) -> dict:
+    """Serialize a single MongoDB expense document to API shape."""
+    return {
+        "id": str(doc["_id"]),
+        "amount": round(float(doc.get("amount", 0)), 2),
+        "category": doc.get("category", "other"),
+        "bill_type": doc.get("bill_type", "other"),
+        "input_type": doc.get("input_type", "manual"),
+        "invoice_number": doc.get("invoice_number", ""),
+        "vendor": doc.get("vendor", ""),
+        "description": doc.get("description", ""),
+        "expense_date": doc["expense_date"].isoformat(),
+        "llm_model": doc.get("llm_model"),
+        "line_items": line_items or [],
+    }
+
+
+def get_expense(username: str, expense_id: str, tenant_id: str | None = None) -> dict | None:
+    """Return a single expense owned by username, or None if not found."""
+    try:
+        oid = _parse_expense_id(expense_id)
+        expenses = get_expenses_collection()
+        expense_line_items = get_expense_line_items_collection()
+        doc = expenses.find_one({"_id": oid, **_active_filter(username, tenant_id)})
+        if doc is None:
+            return None
+        items = list(
+            expense_line_items.find(
+                {"expense_id": expense_id, "username": username},
+                {"_id": 0, "name": 1, "quantity": 1, "unit_price": 1, "total": 1},
+            )
+        )
+        return _serialize_expense(doc, items)
+    except ValueError:
+        return None
+    except PyMongoError as exc:
+        raise RuntimeError("Failed to fetch expense") from exc
+
+
+def update_expense(username: str, expense_id: str, updates: dict, tenant_id: str | None = None) -> dict | None:
+    """Apply a partial update to an expense owned by username.
+
+    Returns the updated expense dict, or None if the expense wasn't found.
+    """
+    try:
+        oid = _parse_expense_id(expense_id)
+        expenses = get_expenses_collection()
+        set_fields: dict = {}
+        if "amount" in updates and updates["amount"] is not None:
+            set_fields["amount"] = round(float(updates["amount"]), 2)
+        if "category" in updates and updates["category"] is not None:
+            set_fields["category"] = updates["category"].strip().lower()
+        if "bill_type" in updates and updates["bill_type"] is not None:
+            set_fields["bill_type"] = updates["bill_type"]
+        if "invoice_number" in updates and updates["invoice_number"] is not None:
+            set_fields["invoice_number"] = updates["invoice_number"].strip()
+        if "vendor" in updates and updates["vendor"] is not None:
+            set_fields["vendor"] = updates["vendor"].strip()
+        if "description" in updates and updates["description"] is not None:
+            set_fields["description"] = updates["description"].strip()
+        if "expense_date" in updates and updates["expense_date"] is not None:
+            set_fields["expense_date"] = _as_mongo_datetime(updates["expense_date"])
+        if not set_fields:
+            return get_expense(username, expense_id, tenant_id)
+        set_fields["updated_at"] = datetime.now(timezone.utc)
+        result = expenses.update_one(
+            {"_id": oid, **_active_filter(username, tenant_id)},
+            {"$set": set_fields},
+        )
+        if result.matched_count == 0:
+            return None
+        return get_expense(username, expense_id, tenant_id)
+    except ValueError:
+        return None
+    except PyMongoError as exc:
+        raise RuntimeError("Failed to update expense") from exc
+
+
+def delete_expense(username: str, expense_id: str, tenant_id: str | None = None) -> bool:
+    """Soft-delete an expense owned by username.
+
+    Sets is_deleted=True and deleted_at timestamp instead of removing the
+    document, preserving audit history. Returns True if marked deleted,
+    False if not found (or already deleted).
+    """
+    try:
+        oid = _parse_expense_id(expense_id)
+        expenses = get_expenses_collection()
+        result = expenses.update_one(
+            {"_id": oid, **_active_filter(username, tenant_id)},
+            {"$set": {"is_deleted": True, "deleted_at": datetime.now(timezone.utc)}},
+        )
+        return result.matched_count > 0
+    except ValueError:
+        return False
+    except PyMongoError as exc:
+        raise RuntimeError("Failed to delete expense") from exc
+
+
+def check_session_expense_limit(username: str, tenant_id: str | None = None) -> None:
     """Raise SessionExpenseLimitError if the overall expense limit is hit."""
     try:
         disable_rate_limit, effective_limit = _get_user_rate_limit_config(
@@ -208,7 +366,7 @@ def check_session_expense_limit(username: str) -> None:
             return
 
         expenses = get_expenses_collection()
-        count = expenses.count_documents({"username": username})
+        count = expenses.count_documents(_active_filter(username, tenant_id))
 
         if count >= effective_limit:
             logger.warning(
@@ -235,14 +393,14 @@ def check_session_expense_limit(username: str) -> None:
         ) from exc
 
 
-def get_expense_limit_status(username: str) -> dict:
+def get_expense_limit_status(username: str, tenant_id: str | None = None) -> dict:
     """Return expense limit status for the given user."""
     try:
         disable_rate_limit, effective_limit = _get_user_rate_limit_config(
             username,
         )
         expenses = get_expenses_collection()
-        count = expenses.count_documents({"username": username})
+        count = expenses.count_documents(_active_filter(username, tenant_id))
         reached = (not disable_rate_limit) and count >= effective_limit
         remaining = None if disable_rate_limit else max(effective_limit - count, 0)
         return {
@@ -339,7 +497,7 @@ def _extract_invoice_number_from_text(text: str) -> str:
     return ""
 
 
-def monthly_summary(username: str, year: int):
+def monthly_summary(username: str, year: int, tenant_id: str | None = None):
     """Get monthly expense summary for a user for a specific year"""
     logger.debug(f"Fetching monthly summary for year {year}")
     try:
@@ -349,7 +507,7 @@ def monthly_summary(username: str, year: int):
         pipeline = [
             {
                 "$match": {
-                    "username": username,
+                    **_tenant_filter(username, tenant_id),
                     "expense_date": {"$gte": start, "$lt": end},
                 }
             },
@@ -388,13 +546,13 @@ def monthly_summary(username: str, year: int):
         raise
 
 
-def yearly_summary(username: str):
+def yearly_summary(username: str, tenant_id: str | None = None):
     """Get yearly expense summary for a user"""
     logger.debug("Fetching yearly summary for user")
     try:
         expenses = get_expenses_collection()
         pipeline = [
-            {"$match": {"username": username}},
+            {"$match": _tenant_filter(username, tenant_id)},
             {
                 "$group": {
                     "_id": {"year": {"$year": "$expense_date"}},
@@ -431,7 +589,7 @@ def yearly_summary(username: str):
         raise
 
 
-def daily_summary(username: str, year: int, month: int) -> list[dict]:
+def daily_summary(username: str, year: int, month: int, tenant_id: str | None = None) -> list[dict]:
     """Get daily expense totals for a user for a specific year+month."""
     import calendar
 
@@ -446,7 +604,7 @@ def daily_summary(username: str, year: int, month: int) -> list[dict]:
         pipeline = [
             {
                 "$match": {
-                    "username": username,
+                    **_tenant_filter(username, tenant_id),
                     "expense_date": {"$gte": start, "$lt": end},
                 }
             },
@@ -483,7 +641,7 @@ def daily_summary(username: str, year: int, month: int) -> list[dict]:
         raise
 
 
-def categories_monthly_summary(username: str, year: int, month: int) -> list[dict]:
+def categories_monthly_summary(username: str, year: int, month: int, tenant_id: str | None = None) -> list[dict]:
     """Get category-wise expense totals for a user for a specific year+month."""
     logger.debug(f"Fetching categories monthly summary for {year}-{month}")
     try:
@@ -496,7 +654,7 @@ def categories_monthly_summary(username: str, year: int, month: int) -> list[dic
         pipeline = [
             {
                 "$match": {
-                    "username": username,
+                    **_tenant_filter(username, tenant_id),
                     "expense_date": {"$gte": start, "$lt": end},
                 }
             },
@@ -535,7 +693,7 @@ def categories_monthly_summary(username: str, year: int, month: int) -> list[dic
         raise
 
 
-def vendors_monthly_summary(username: str, year: int, month: int) -> list[dict]:
+def vendors_monthly_summary(username: str, year: int, month: int, tenant_id: str | None = None) -> list[dict]:
     """Get vendor-wise expense totals for a user for a specific year+month."""
     logger.debug(f"Fetching vendors monthly summary for {year}-{month}")
     try:
@@ -548,7 +706,7 @@ def vendors_monthly_summary(username: str, year: int, month: int) -> list[dict]:
         pipeline = [
             {
                 "$match": {
-                    "username": username,
+                    **_tenant_filter(username, tenant_id),
                     "expense_date": {"$gte": start, "$lt": end},
                 }
             },
@@ -594,13 +752,14 @@ def category_summary(
     username: str,
     year: int | None = None,
     month: int | None = None,
+    tenant_id: str | None = None,
 ):
     """Get category-wise expense summary for a user"""
     period = f"year={year}, month={month}" if year else "all time"
     logger.debug(f"Fetching category summary for period: {period}")
     try:
         expenses = get_expenses_collection()
-        match: dict = {"username": username}
+        match: dict = _tenant_filter(username, tenant_id)
         if year is not None:
             start_month = month if month is not None else 1
             start = _as_mongo_datetime(date(year, start_month, 1))

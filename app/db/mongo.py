@@ -113,112 +113,58 @@ def get_database() -> Database:
 
 
 def get_users_collection() -> Collection:
-    """Get the users collection with indexes"""
+    """Get the users collection."""
     try:
         collection = get_database()["users"]
-        # Ensure unique index on username (best effort)
-        _safe_create_indexes(
-            collection,
-            [{"kind": "single", "field": "username", "unique": True}],
-        )
-        logger.debug("Users collection accessed with indexes ensured")
+        logger.debug("Users collection accessed")
         return collection
     except PyMongoError:
         logger.error("Failed to access users collection", exc_info=True)
         raise
     except Exception:
-        logger.error(
-            "Unexpected error accessing users collection",
-            exc_info=True,
-        )
+        logger.error("Unexpected error accessing users collection", exc_info=True)
         raise
 
 
 def get_expenses_collection() -> Collection:
-    """Get the expenses collection with indexes"""
+    """Get the expenses collection."""
     try:
         collection = get_database()["expenses"]
-        # Ensure indexes for efficient queries (best effort)
-        _safe_create_indexes(
-            collection,
-            [
-                {
-                    "kind": "compound",
-                    "fields": [("username", 1), ("expense_date", -1)],
-                },
-                {
-                    "kind": "compound",
-                    "fields": [("username", 1), ("bill_type", 1)],
-                },
-            ],
-        )
-        logger.debug("Expenses collection accessed with indexes ensured")
+        logger.debug("Expenses collection accessed")
         return collection
     except PyMongoError:
         logger.error("Failed to access expenses collection", exc_info=True)
         raise
     except Exception:
-        logger.error(
-            "Unexpected error accessing expenses collection",
-            exc_info=True,
-        )
+        logger.error("Unexpected error accessing expenses collection", exc_info=True)
         raise
 
 
 def get_expense_line_items_collection() -> Collection:
-    """Get dedicated expense line items collection with indexes."""
+    """Get dedicated expense line items collection."""
     try:
         collection = get_database()["expense_line_items"]
-        _safe_create_indexes(
-            collection,
-            [
-                {
-                    "kind": "compound",
-                    "fields": [("expense_id", 1), ("username", 1)],
-                },
-                {
-                    "kind": "compound",
-                    "fields": [("username", 1), ("created_at", -1)],
-                },
-            ],
-        )
-        logger.debug("Expense line items collection accessed with indexes ensured")
+        logger.debug("Expense line items collection accessed")
         return collection
     except PyMongoError:
-        logger.error(
-            "Failed to access expense line items collection",
-            exc_info=True,
-        )
+        logger.error("Failed to access expense line items collection", exc_info=True)
         raise
     except Exception:
-        logger.error(
-            "Unexpected error accessing expense line items collection",
-            exc_info=True,
-        )
+        logger.error("Unexpected error accessing expense line items collection", exc_info=True)
         raise
 
 
 def get_webauthn_credentials_collection() -> Collection:
-    """Get the webauthn_credentials collection with indexes"""
+    """Get the webauthn_credentials collection."""
     try:
         collection = get_database()["webauthn_credentials"]
-        _safe_create_indexes(
-            collection,
-            [
-                {"kind": "single", "field": "credential_id", "unique": True},
-                {"kind": "compound", "fields": [("username", 1), ("device_id", 1)]},
-            ],
-        )
         logger.debug("WebAuthn credentials collection accessed")
         return collection
     except PyMongoError:
         logger.error("Failed to access webauthn_credentials collection", exc_info=True)
         raise
     except Exception:
-        logger.error(
-            "Unexpected error accessing webauthn_credentials collection",
-            exc_info=True,
-        )
+        logger.error("Unexpected error accessing webauthn_credentials collection", exc_info=True)
         raise
 
 
@@ -226,58 +172,132 @@ def get_webauthn_challenges_collection() -> Collection:
     """Get the webauthn_challenges collection. Challenges expire after 5 minutes."""
     try:
         collection = get_database()["webauthn_challenges"]
-        _safe_create_indexes(
-            collection,
-            [
-                # TTL index: MongoDB auto-deletes documents after expires_at
-                {"kind": "single", "field": "expires_at", "unique": False},
-                {"kind": "compound", "fields": [("username", 1), ("type", 1)]},
-            ],
-        )
-        # Create TTL index separately (requires expireAfterSeconds)
-        try:
-            collection.create_index("expires_at", expireAfterSeconds=0)
-        except Exception:
-            pass
         logger.debug("WebAuthn challenges collection accessed")
         return collection
     except PyMongoError:
         logger.error("Failed to access webauthn_challenges collection", exc_info=True)
         raise
     except Exception:
-        logger.error(
-            "Unexpected error accessing webauthn_challenges collection",
-            exc_info=True,
-        )
+        logger.error("Unexpected error accessing webauthn_challenges collection", exc_info=True)
         raise
 
 
 def get_refresh_tokens_collection() -> Collection:
-    """Get the refresh_tokens collection with TTL index."""
+    """Get the refresh_tokens collection."""
     try:
         collection = get_database()["refresh_tokens"]
-        _safe_create_indexes(
-            collection,
-            [
-                {"kind": "single", "field": "token_hash", "unique": True},
-                {"kind": "compound", "fields": [("username", 1), ("device_id", 1)]},
-            ],
-        )
-        try:
-            collection.create_index("expires_at", expireAfterSeconds=0)
-        except Exception:
-            pass
         logger.debug("Refresh tokens collection accessed")
         return collection
     except PyMongoError:
         logger.error("Failed to access refresh_tokens collection", exc_info=True)
         raise
     except Exception:
-        logger.error(
-            "Unexpected error accessing refresh_tokens collection",
-            exc_info=True,
-        )
+        logger.error("Unexpected error accessing refresh_tokens collection", exc_info=True)
         raise
+
+
+def get_idempotency_collection() -> Collection:
+    """Get the idempotency_keys collection (24h TTL cache for POST dedupe)."""
+    try:
+        collection = get_database()["idempotency_keys"]
+        logger.debug("Idempotency keys collection accessed")
+        return collection
+    except PyMongoError:
+        logger.error("Failed to access idempotency_keys collection", exc_info=True)
+        raise
+    except Exception:
+        logger.error("Unexpected error accessing idempotency_keys collection", exc_info=True)
+        raise
+
+
+def bootstrap_indexes() -> None:
+    """Create all collection indexes once at application startup.
+
+    Replaces the per-request _safe_create_indexes calls that used to run
+    inside each get_*_collection() accessor. Calling create_index on an
+    already-existing index is a no-op on the server, but still incurs a
+    round-trip per request — running it once here removes that overhead.
+    """
+    try:
+        db = get_database()
+
+        _safe_create_indexes(
+            db["users"],
+            [
+                {"kind": "single", "field": "username", "unique": True},
+                {"kind": "single", "field": "tenant_id", "unique": False},
+            ],
+        )
+
+        _safe_create_indexes(
+            db["expenses"],
+            [
+                {"kind": "compound", "fields": [("username", 1), ("expense_date", -1)]},
+                {"kind": "compound", "fields": [("username", 1), ("bill_type", 1)]},
+                {"kind": "compound", "fields": [("tenant_id", 1), ("username", 1)]},
+                {"kind": "compound", "fields": [("tenant_id", 1), ("expense_date", -1)]},
+                {"kind": "single", "field": "is_deleted", "unique": False},
+            ],
+        )
+
+        _safe_create_indexes(
+            db["expense_line_items"],
+            [
+                {"kind": "compound", "fields": [("expense_id", 1), ("username", 1)]},
+                {"kind": "compound", "fields": [("username", 1), ("created_at", -1)]},
+            ],
+        )
+
+        _safe_create_indexes(
+            db["webauthn_credentials"],
+            [
+                {"kind": "single", "field": "credential_id", "unique": True},
+                {"kind": "compound", "fields": [("username", 1), ("device_id", 1)]},
+            ],
+        )
+
+        _safe_create_indexes(
+            db["webauthn_challenges"],
+            [
+                {"kind": "single", "field": "expires_at", "unique": False},
+                {"kind": "compound", "fields": [("username", 1), ("type", 1)]},
+            ],
+        )
+        try:
+            db["webauthn_challenges"].create_index("expires_at", expireAfterSeconds=0)
+        except Exception:
+            pass
+
+        _safe_create_indexes(
+            db["refresh_tokens"],
+            [
+                {"kind": "single", "field": "token_hash", "unique": True},
+                {"kind": "compound", "fields": [("username", 1), ("device_id", 1)]},
+            ],
+        )
+        try:
+            db["refresh_tokens"].create_index("expires_at", expireAfterSeconds=0)
+        except Exception:
+            pass
+
+        _safe_create_indexes(
+            db["idempotency_keys"],
+            [
+                {"kind": "compound", "fields": [("key", 1), ("user_id", 1)]},
+            ],
+        )
+        try:
+            db["idempotency_keys"].create_index(
+                "created_at",
+                expireAfterSeconds=86400,
+                unique=False,
+            )
+        except Exception:
+            pass
+
+        logger.info("Database indexes bootstrapped successfully")
+    except Exception:
+        logger.warning("Could not bootstrap indexes — will retry on next startup", exc_info=True)
 
 
 def ping_database() -> bool:
