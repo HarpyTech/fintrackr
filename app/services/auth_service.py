@@ -1,23 +1,38 @@
-from pymongo.errors import PyMongoError
+"""Core authentication service: login, registration, OTP, password reset.
+
+Everything else has been split into focused modules:
+  app/services/email_service.py    — OTP email delivery
+  app/services/profile_service.py  — user profile read/write
+  app/services/oauth_service.py    — Google OAuth2 flow
+  app/repositories/user_repository.py — thin DB seam
+
+Re-exports at the bottom of this file keep the routes layer unchanged.
+"""
+from __future__ import annotations
+
 import logging
 import random
 from datetime import datetime, timedelta, timezone
-import socket
-import smtplib
-from email.message import EmailMessage
 
-from app.core.security import verify_password, hash_password
+from pymongo.errors import PyMongoError
+
 from app.core.config import settings
 from app.core.plans import DEFAULT_PLAN, plan_user_fields
 from app.core.ratelimit import (
+    OtpRateLimitError,
     check_and_record_otp_request,
     clear_otp_attempts,
-    OtpRateLimitError,
 )
-from app.db.mongo import get_users_collection
+from app.core.security import hash_password, verify_password
+from app.repositories import user_repository
+from app.services.email_service import deliver_reset_otp, deliver_signup_otp
 
 logger = logging.getLogger(__name__)
 
+
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
@@ -36,257 +51,15 @@ def _generate_signup_otp() -> str:
     return "".join(random.choices("0123456789", k=digits))
 
 
-def _build_signup_otp_email_html(recipient: str, otp: str) -> str:
-    expiry_minutes = settings.SIGNUP_OTP_EXPIRY_MINUTES
-    return f"""<!doctype html>
-<html>
-<head>
-    <meta charset=\"utf-8\" />
-    <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />
-    <title>Verify your FinTrackr account</title>
-    <style>
-        @media only screen and (max-width: 620px) {{
-            .email-shell {{
-                width: 100% !important;
-            }}
-
-            .email-header {{
-                padding: 14px 16px !important;
-            }}
-
-            .email-body {{
-                padding: 20px 16px !important;
-                font-size: 15px !important;
-            }}
-
-            .brand-logo {{
-                height: 32px !important;
-            }}
-
-            .name-logo {{
-                height: 25px !important;
-            }}
-
-            .otp-value {{
-                font-size: 34px !important;
-                letter-spacing: 4px !important;
-            }}
-        }}
-
-        @media only screen and (max-width: 420px) {{
-            .email-body {{
-                padding: 18px 12px !important;
-            }}
-
-            .otp-value {{
-                font-size: 30px !important;
-                letter-spacing: 2px !important;
-            }}
-
-            .brand-logo {{
-                height: 28px !important;
-            }}
-
-            .name-logo {{
-                height: 22px !important;
-            }}
-        }}
-    </style>
-</head>
-<body style=\"margin:0;padding:24px 12px;background:#eef3f9;\">
-    <table
-        width=\"100%\"
-        role=\"presentation\"
-        cellspacing=\"0\"
-        cellpadding=\"0\"
-    >
-        <tr>
-            <td align=\"center\">
-                <table
-                    width=\"100%\"
-                    class=\"email-shell\"
-                    role=\"presentation\"
-                    cellspacing=\"0\"
-                    cellpadding=\"0\"
-                    style=\"max-width:620px;background:#ffffff;border:1px solid #d7e0ea;border-radius:12px;\"
-                >
-                    <tr>
-                        <td
-                            class=\"email-header\"
-                            style=\"padding:16px 20px;background:#1b3774;border-bottom:4px solid #1d9e5f;border-radius:12px 12px 0 0;\"
-                        >
-                            <table
-                                width=\"100%\"
-                                role=\"presentation\"
-                                cellspacing=\"0\"
-                                cellpadding=\"0\"
-                            >
-                                <tr>
-                                    <td align=\"left\" style=\"width:40%;\">
-                                        <img
-                                            class=\"brand-logo\"
-                                            src="https://fintrackr.harpytechco.in/assets/app_logo.png"
-                                            alt=\"FinTrackr Brand Logo\"
-                                            style=\"display:block;height:36px;width:auto;\"
-                                        />
-                                    </td>
-                                    <td align=\"right\" style=\"width:60%;\">
-                                        <img
-                                            class=\"name-logo\"
-                                            src=\"https://fintrackr.harpytechco.in/assets/name_logo.svg\"
-                                            alt=\"FinTrackr Name Logo\"
-                                            style=\"display:inline-block;height:30px;width:auto;\"
-                                        />
-                                    </td>
-                                </tr>
-                            </table>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td
-                            class=\"email-body\"
-                            style=\"padding:26px 24px 24px 24px;font:16px/1.55 Arial,Helvetica,sans-serif;color:#1f2b3a;\"
-                        >
-                            <p style=\"margin:0 0 14px 0;color:#13213a;\">
-                                Hello {recipient},
-                            </p>
-                            <p style=\"margin:0 0 14px 0;color:#2f3f53;\">
-                                You received this email because a verification request was made for your
-                                FinTrackr account.
-                            </p>
-                            <table
-                                width=\"100%\"
-                                role=\"presentation\"
-                                cellspacing=\"0\"
-                                cellpadding=\"0\"
-                                style=\"margin:0 0 16px 0;background:#f4f8ff;border:1px solid #dbe8ff;border-left:4px solid #1d9e5f;border-radius:8px;\"
-                            >
-                                <tr>
-                                    <td style=\"padding:14px 14px 6px 14px;color:#2e4569;font-size:14px;\">
-                                        <strong>Your OTP is:</strong>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td
-                                        class=\"otp-value\"
-                                        style=\"padding:0 14px 6px 14px;color:#214fba;font-size:40px;line-height:1.05;font-weight:800;letter-spacing:6px;\"
-                                    >
-                                        {otp}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td style=\"padding:0 14px 14px 14px;color:#4f5f73;font-size:13px;\">
-                                        This OTP expires in {expiry_minutes} minutes.
-                                    </td>
-                                </tr>
-                            </table>
-                            <p style=\"margin:0 0 16px 0;color:#435366;\">
-                                If you did not initiate this request, please ignore this email.
-                            </p>
-                            <p style=\"margin:0 0 8px 0;color:#1f2b3a;\">Thanks &amp; Regards,</p>
-                            <p style=\"margin:0;color:#1b3774;font-weight:700;\">Support Team</p>
-                            <p style=\"margin:6px 0 0 0;color:#1d9e5f;font-size:13px;font-weight:700;\">
-                                FinTrackr
-                            </p>
-                        </td>
-                    </tr>
-                </table>
-            </td>
-        </tr>
-    </table>
-</body>
-</html>
-"""
-
-
-def _deliver_signup_otp(email: str, otp: str) -> None:
-    subject = "Verify your FinTrackr account"
-    body = (
-        "Your FinTrackr verification code is: "
-        f"{otp}. "
-        "This code expires in "
-        f"{settings.SIGNUP_OTP_EXPIRY_MINUTES} minutes."
-    )
-
-    if not settings.SMTP_HOST:
-        logger.warning(
-            "SMTP is not configured. OTP for %s is %s (development fallback).",
-            email,
-            otp,
-        )
-        return
-
-    message = EmailMessage()
-    message["Subject"] = subject
-    message["From"] = settings.SMTP_FROM_EMAIL
-    message["To"] = email
-    if settings.SMTP_BCC_EMAILS:
-        message["Bcc"] = ", ".join(settings.SMTP_BCC_EMAILS)
-    message.set_content(body)
-    message.add_alternative(
-        _build_signup_otp_email_html(email, otp),
-        subtype="html",
-    )
-
-    try:
-        smtp_client = smtplib.SMTP_SSL if settings.SMTP_USE_SSL else smtplib.SMTP
-
-        with smtp_client(
-            settings.SMTP_HOST,
-            settings.SMTP_PORT,
-            timeout=settings.SMTP_TIMEOUT_SECONDS,
-        ) as server:
-            if not settings.SMTP_USE_SSL:
-                server.ehlo()
-                if settings.SMTP_USE_TLS:
-                    if not server.has_extn("STARTTLS"):
-                        raise RuntimeError(
-                            "SMTP server does not support STARTTLS. "
-                            "Disable SMTP_USE_TLS or use a TLS-capable server."
-                        )
-                    server.starttls()
-                    server.ehlo()
-
-            if settings.SMTP_USERNAME and settings.SMTP_PASSWORD:
-                server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
-
-            server.send_message(message)
-
-        logger.info("Verification OTP email sent to %s", email)
-    except (
-        TimeoutError,
-        socket.timeout,
-        smtplib.SMTPServerDisconnected,
-    ) as exc:
-        logger.error(
-            ("Failed to send OTP email to %s " "due to SMTP timeout/disconnect: %s"),
-            email,
-            str(exc),
-            exc_info=True,
-        )
-        mode = "ssl" if settings.SMTP_USE_SSL else "plain/starttls"
-        raise RuntimeError(
-            "SMTP connection timed out or was closed by server. "
-            f"host={settings.SMTP_HOST} "
-            f"port={settings.SMTP_PORT} "
-            f"mode={mode}."
-        ) from exc
-    except Exception as exc:
-        logger.error(
-            "Failed to send OTP email to %s: %s",
-            email,
-            str(exc),
-            exc_info=True,
-        )
-        raise RuntimeError("Failed to send verification email") from exc
-
+# ---------------------------------------------------------------------------
+# Public auth functions
+# ---------------------------------------------------------------------------
 
 def authenticate_user(username: str, password: str):
-    """Authenticate a user with username and password"""
+    """Authenticate a user with username and password."""
     logger.info("Authentication attempt initiated")
     try:
-        users = get_users_collection()
-        user = users.find_one({"username": username})
+        user = user_repository.find_by_username(username)
         if not user:
             logger.warning("Authentication failed: User not found")
             return None
@@ -300,10 +73,7 @@ def authenticate_user(username: str, password: str):
             return {"requires_verification": True}
 
         # Record the login timestamp to enable per-session rate limiting.
-        users.update_one(
-            {"_id": user["_id"]},
-            {"$set": {"last_login_at": _utcnow()}},
-        )
+        user_repository.update_by_id(user["_id"], set_fields={"last_login_at": _utcnow()})
 
         logger.info("User authenticated successfully")
         return {
@@ -329,8 +99,7 @@ def register_user(username: str, password: str, role: str = "user"):
     logger.info("User registration OTP request initiated")
     try:
         check_and_record_otp_request(username)
-        users = get_users_collection()
-        existing_user = users.find_one({"username": username})
+        existing_user = user_repository.find_by_username(username)
         if existing_user and existing_user.get("email_verified", False):
             logger.warning("Registration failed: User already exists and is verified")
             return None
@@ -351,14 +120,15 @@ def register_user(username: str, password: str, role: str = "user"):
         }
 
         if existing_user:
-            users.update_one(
-                {"_id": existing_user["_id"]},
-                {"$set": update_doc},
-            )
+            user_repository.update_by_id(existing_user["_id"], set_fields=update_doc)
         else:
-            users.insert_one({**update_doc, "created_at": _utcnow()})
+            user_repository.create({
+                **update_doc,
+                "tenant_id": username,
+                "created_at": _utcnow(),
+            })
 
-        _deliver_signup_otp(username, otp)
+        deliver_signup_otp(username, otp)
 
         logger.info(f"OTP generated for user registration with role: {role}")
         return {
@@ -388,8 +158,7 @@ def resend_signup_otp(username: str):
     logger.info("Signup OTP resend request initiated")
     try:
         check_and_record_otp_request(username)
-        users = get_users_collection()
-        user = users.find_one({"username": username})
+        user = user_repository.find_by_username(username)
         if not user:
             logger.warning("OTP resend failed: User not found")
             return None
@@ -403,18 +172,16 @@ def resend_signup_otp(username: str):
             minutes=settings.SIGNUP_OTP_EXPIRY_MINUTES
         )
 
-        users.update_one(
-            {"_id": user["_id"]},
-            {
-                "$set": {
-                    "signup_otp_hash": hash_password(otp),
-                    "signup_otp_expires_at": otp_expires_at,
-                    "updated_at": _utcnow(),
-                }
+        user_repository.update_by_id(
+            user["_id"],
+            set_fields={
+                "signup_otp_hash": hash_password(otp),
+                "signup_otp_expires_at": otp_expires_at,
+                "updated_at": _utcnow(),
             },
         )
 
-        _deliver_signup_otp(username, otp)
+        deliver_signup_otp(username, otp)
         logger.info("OTP resend successful")
         return {
             "username": username,
@@ -438,11 +205,10 @@ def resend_signup_otp(username: str):
 
 
 def verify_user_signup_otp(username: str, otp: str):
-    """Verify user OTP and activate account for login"""
+    """Verify user OTP and activate account for login."""
     logger.info("Signup OTP verification attempt initiated")
     try:
-        users = get_users_collection()
-        user = users.find_one({"username": username})
+        user = user_repository.find_by_username(username)
         if not user:
             logger.warning("Signup OTP verification failed: User not found")
             return None
@@ -465,17 +231,15 @@ def verify_user_signup_otp(username: str, otp: str):
             logger.warning("Signup OTP verification failed: Invalid OTP")
             return {"error": "Invalid OTP"}
 
-        users.update_one(
-            {"_id": user["_id"]},
-            {
-                "$set": {
-                    "email_verified": True,
-                    "updated_at": _utcnow(),
-                },
-                "$unset": {
-                    "signup_otp_hash": "",
-                    "signup_otp_expires_at": "",
-                },
+        user_repository.update_by_id(
+            user["_id"],
+            set_fields={
+                "email_verified": True,
+                "updated_at": _utcnow(),
+            },
+            unset_fields={
+                "signup_otp_hash": "",
+                "signup_otp_expires_at": "",
             },
         )
 
@@ -500,280 +264,6 @@ def verify_user_signup_otp(username: str, otp: str):
         raise
 
 
-def get_user(username: str):
-    """Get user information by username"""
-    logger.debug("Fetching user information")
-    try:
-        users = get_users_collection()
-        user = users.find_one({"username": username})
-        if not user:
-            logger.warning(f"User not found: {username}")
-            return None
-
-        logger.debug(f"User found: {username}")
-        return {
-            "username": user["username"],
-            "role": user.get("role", "user"),
-        }
-    except PyMongoError as exc:
-        logger.error(
-            f"Database error while fetching user {username}: {str(exc)}",
-            exc_info=True,
-        )
-        raise RuntimeError("Failed to fetch user due to database error") from exc
-    except Exception as exc:
-        logger.error(
-            f"Unexpected error while fetching user {username}: {str(exc)}",
-            exc_info=True,
-        )
-        raise
-
-
-def get_user_profile(username: str):
-    """Get user profile with editable PII fields"""
-    logger.debug("Fetching user profile")
-    try:
-        users = get_users_collection()
-        user = users.find_one({"username": username})
-        if not user:
-            logger.warning(f"User profile not found: {username}")
-            return None
-
-        logger.debug(f"User profile found: {username}")
-        return {
-            "username": user["username"],
-            "role": user.get("role", "user"),
-            "first_name": user.get("first_name"),
-            "last_name": user.get("last_name"),
-            "phone": user.get("phone"),
-            "address": user.get("address"),
-            "plan": user.get("plan", DEFAULT_PLAN),
-            "expense_limit": user.get("expense_limit", 10),
-            "disable_rate_limit": user.get("disable_rate_limit", False),
-        }
-    except PyMongoError as exc:
-        logger.error(
-            f"Database error while fetching profile {username}: {str(exc)}",
-            exc_info=True,
-        )
-        raise RuntimeError(
-            "Failed to fetch user profile due to database error"
-        ) from exc
-    except Exception as exc:
-        logger.error(
-            f"Unexpected error while fetching profile {username}: {str(exc)}",
-            exc_info=True,
-        )
-        raise
-
-
-def update_user_profile(
-    username: str,
-    first_name: str | None = None,
-    last_name: str | None = None,
-    phone: str | None = None,
-    address: str | None = None,
-):
-    """Update editable user PII profile fields"""
-    logger.info(f"Updating user profile: {username}")
-
-    def _clean(value: str | None):
-        if value is None:
-            return None
-        trimmed = value.strip()
-        return trimmed if trimmed else None
-
-    try:
-        users = get_users_collection()
-        update_doc = {
-            "first_name": _clean(first_name),
-            "last_name": _clean(last_name),
-            "phone": _clean(phone),
-            "address": _clean(address),
-        }
-
-        result = users.update_one({"username": username}, {"$set": update_doc})
-        if result.matched_count == 0:
-            logger.warning(f"User not found for profile update: {username}")
-            return None
-
-        return get_user_profile(username)
-    except PyMongoError as exc:
-        logger.error(
-            f"Database error while updating profile {username}: {str(exc)}",
-            exc_info=True,
-        )
-        raise RuntimeError(
-            "Failed to update user profile due to database error"
-        ) from exc
-    except Exception as exc:
-        logger.error(
-            f"Unexpected error while updating profile {username}: {str(exc)}",
-            exc_info=True,
-        )
-        raise
-
-
-# ---------------------------------------------------------------------------
-# Forgot / Reset Password
-# ---------------------------------------------------------------------------
-
-def _build_reset_otp_email_html(recipient: str, otp: str) -> str:
-    expiry_minutes = settings.SIGNUP_OTP_EXPIRY_MINUTES
-    return f"""<!doctype html>
-<html>
-<head>
-    <meta charset=\"utf-8\" />
-    <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />
-    <title>Reset your FinTrackr password</title>
-    <style>
-        @media only screen and (max-width: 620px) {{
-            .email-shell {{ width: 100% !important; }}
-            .email-header {{ padding: 14px 16px !important; }}
-            .email-body {{ padding: 20px 16px !important; font-size: 15px !important; }}
-            .brand-logo {{ height: 32px !important; }}
-            .name-logo {{ height: 25px !important; }}
-            .otp-value {{ font-size: 34px !important; letter-spacing: 4px !important; }}
-        }}
-        @media only screen and (max-width: 420px) {{
-            .email-body {{ padding: 18px 12px !important; }}
-            .otp-value {{ font-size: 30px !important; letter-spacing: 2px !important; }}
-            .brand-logo {{ height: 28px !important; }}
-            .name-logo {{ height: 22px !important; }}
-        }}
-    </style>
-</head>
-<body style=\"margin:0;padding:24px 12px;background:#eef3f9;\">
-    <table width=\"100%\" role=\"presentation\" cellspacing=\"0\" cellpadding=\"0\">
-        <tr>
-            <td align=\"center\">
-                <table width=\"100%\" class=\"email-shell\" role=\"presentation\" cellspacing=\"0\" cellpadding=\"0\"
-                    style=\"max-width:620px;background:#ffffff;border:1px solid #d7e0ea;border-radius:12px;\">
-                    <tr>
-                        <td class=\"email-header\"
-                            style=\"padding:16px 20px;background:#1b3774;border-bottom:4px solid #1d9e5f;border-radius:12px 12px 0 0;\">
-                            <table width=\"100%\" role=\"presentation\" cellspacing=\"0\" cellpadding=\"0\">
-                                <tr>
-                                    <td align=\"left\" style=\"width:40%;\">
-                                        <img class=\"brand-logo\"
-                                            src=\"https://fintrackr.harpytechco.in/assets/app_logo.png\"
-                                            alt=\"FinTrackr Brand Logo\"
-                                            style=\"display:block;height:36px;width:auto;\" />
-                                    </td>
-                                    <td align=\"right\" style=\"width:60%;\">
-                                        <img class=\"name-logo\"
-                                            src=\"https://fintrackr.harpytechco.in/assets/name_logo.svg\"
-                                            alt=\"FinTrackr Name Logo\"
-                                            style=\"display:inline-block;height:30px;width:auto;\" />
-                                    </td>
-                                </tr>
-                            </table>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class=\"email-body\"
-                            style=\"padding:26px 24px 24px 24px;font:16px/1.55 Arial,Helvetica,sans-serif;color:#1f2b3a;\">
-                            <p style=\"margin:0 0 14px 0;color:#13213a;\">Hello {recipient},</p>
-                            <p style=\"margin:0 0 14px 0;color:#2f3f53;\">
-                                We received a request to reset the password for your FinTrackr account.
-                                Use the OTP below to set a new password.
-                            </p>
-                            <table width=\"100%\" role=\"presentation\" cellspacing=\"0\" cellpadding=\"0\"
-                                style=\"margin:0 0 16px 0;background:#f4f8ff;border:1px solid #dbe8ff;border-left:4px solid #e05b00;border-radius:8px;\">
-                                <tr>
-                                    <td style=\"padding:14px 14px 6px 14px;color:#2e4569;font-size:14px;\">
-                                        <strong>Your password reset OTP is:</strong>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td class=\"otp-value\"
-                                        style=\"padding:0 14px 6px 14px;color:#c24200;font-size:40px;line-height:1.05;font-weight:800;letter-spacing:6px;\">
-                                        {otp}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td style=\"padding:0 14px 14px 14px;color:#4f5f73;font-size:13px;\">
-                                        This OTP expires in {expiry_minutes} minutes.
-                                    </td>
-                                </tr>
-                            </table>
-                            <p style=\"margin:0 0 16px 0;color:#435366;\">
-                                If you did not request a password reset, please ignore this email.
-                                Your password will remain unchanged.
-                            </p>
-                            <p style=\"margin:0 0 8px 0;color:#1f2b3a;\">Thanks &amp; Regards,</p>
-                            <p style=\"margin:0;color:#1b3774;font-weight:700;\">Support Team</p>
-                            <p style=\"margin:6px 0 0 0;color:#1d9e5f;font-size:13px;font-weight:700;\">FinTrackr</p>
-                        </td>
-                    </tr>
-                </table>
-            </td>
-        </tr>
-    </table>
-</body>
-</html>
-"""
-
-
-def _deliver_reset_otp(email: str, otp: str) -> None:
-    subject = "Reset your FinTrackr password"
-    body = (
-        "Your FinTrackr password reset code is: "
-        f"{otp}. "
-        "This code expires in "
-        f"{settings.SIGNUP_OTP_EXPIRY_MINUTES} minutes. "
-        "If you did not request this, please ignore this email."
-    )
-
-    if not settings.SMTP_HOST:
-        logger.warning(
-            "SMTP is not configured. Password reset OTP for %s is %s (development fallback).",
-            email,
-            otp,
-        )
-        return
-
-    message = EmailMessage()
-    message["Subject"] = subject
-    message["From"] = settings.SMTP_FROM_EMAIL
-    message["To"] = email
-    if settings.SMTP_BCC_EMAILS:
-        message["Bcc"] = ", ".join(settings.SMTP_BCC_EMAILS)
-    message.set_content(body)
-    message.add_alternative(_build_reset_otp_email_html(email, otp), subtype="html")
-
-    try:
-        smtp_client = smtplib.SMTP_SSL if settings.SMTP_USE_SSL else smtplib.SMTP
-        with smtp_client(settings.SMTP_HOST, settings.SMTP_PORT, timeout=settings.SMTP_TIMEOUT_SECONDS) as server:
-            if not settings.SMTP_USE_SSL:
-                server.ehlo()
-                if settings.SMTP_USE_TLS:
-                    if not server.has_extn("STARTTLS"):
-                        raise RuntimeError(
-                            "SMTP server does not support STARTTLS. "
-                            "Disable SMTP_USE_TLS or use a TLS-capable server."
-                        )
-                    server.starttls()
-                    server.ehlo()
-            if settings.SMTP_USERNAME and settings.SMTP_PASSWORD:
-                server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
-            server.send_message(message)
-        logger.info("Password reset OTP email sent to %s", email)
-    except (TimeoutError, socket.timeout, smtplib.SMTPServerDisconnected) as exc:
-        logger.error(
-            "Failed to send reset OTP email to %s due to SMTP timeout/disconnect: %s",
-            email, str(exc), exc_info=True,
-        )
-        mode = "ssl" if settings.SMTP_USE_SSL else "plain/starttls"
-        raise RuntimeError(
-            "SMTP connection timed out or was closed by server. "
-            f"host={settings.SMTP_HOST} port={settings.SMTP_PORT} mode={mode}."
-        ) from exc
-    except Exception as exc:
-        logger.error("Failed to send reset OTP email to %s: %s", email, str(exc), exc_info=True)
-        raise RuntimeError("Failed to send password reset email") from exc
-
-
 def request_password_reset(username: str):
     """Generate a password-reset OTP, store its hash, and email it to the user.
 
@@ -783,8 +273,7 @@ def request_password_reset(username: str):
     logger.info("Password reset OTP request initiated for %s", username)
     try:
         check_and_record_otp_request(username)
-        users = get_users_collection()
-        user = users.find_one({"username": username})
+        user = user_repository.find_by_username(username)
 
         if not user or not user.get("email_verified", False):
             # Do not reveal whether the account exists or is unverified.
@@ -796,18 +285,16 @@ def request_password_reset(username: str):
         otp = _generate_signup_otp()
         otp_expires_at = _utcnow() + timedelta(minutes=settings.SIGNUP_OTP_EXPIRY_MINUTES)
 
-        users.update_one(
-            {"_id": user["_id"]},
-            {
-                "$set": {
-                    "reset_otp_hash": hash_password(otp),
-                    "reset_otp_expires_at": otp_expires_at,
-                    "updated_at": _utcnow(),
-                }
+        user_repository.update_by_id(
+            user["_id"],
+            set_fields={
+                "reset_otp_hash": hash_password(otp),
+                "reset_otp_expires_at": otp_expires_at,
+                "updated_at": _utcnow(),
             },
         )
 
-        _deliver_reset_otp(username, otp)
+        deliver_reset_otp(username, otp)
         logger.info("Password reset OTP sent to %s", username)
         return {"sent": True}
 
@@ -826,8 +313,7 @@ def reset_password_with_otp(username: str, otp: str, new_password: str):
     """Verify the password-reset OTP and update the user's password."""
     logger.info("Password reset attempt for %s", username)
     try:
-        users = get_users_collection()
-        user = users.find_one({"username": username})
+        user = user_repository.find_by_username(username)
 
         if not user:
             logger.warning("Password reset failed: user not found %s", username)
@@ -844,17 +330,15 @@ def reset_password_with_otp(username: str, otp: str, new_password: str):
             logger.warning("Password reset failed: invalid OTP for %s", username)
             return {"error": "Invalid OTP"}
 
-        users.update_one(
-            {"_id": user["_id"]},
-            {
-                "$set": {
-                    "password_hash": hash_password(new_password),
-                    "updated_at": _utcnow(),
-                },
-                "$unset": {
-                    "reset_otp_hash": "",
-                    "reset_otp_expires_at": "",
-                },
+        user_repository.update_by_id(
+            user["_id"],
+            set_fields={
+                "password_hash": hash_password(new_password),
+                "updated_at": _utcnow(),
+            },
+            unset_fields={
+                "reset_otp_hash": "",
+                "reset_otp_expires_at": "",
             },
         )
 
@@ -868,3 +352,19 @@ def reset_password_with_otp(username: str, otp: str, new_password: str):
     except Exception as exc:
         logger.error("Unexpected error during password reset: %s", str(exc), exc_info=True)
         raise
+
+
+# ---------------------------------------------------------------------------
+# Re-exports for backward compatibility — routes import from here
+# ---------------------------------------------------------------------------
+
+from app.services.profile_service import (  # noqa: F401, E402
+    get_user,
+    get_user_profile,
+    update_user_profile,
+)
+from app.services.oauth_service import (  # noqa: F401, E402
+    build_google_auth_url,
+    exchange_google_code,
+    oauth_login_or_create,
+)
