@@ -69,20 +69,31 @@ export default function DashboardPage() {
    * receiving plain arrays.
    */
   const items = (response) => response?.items || [];
+  const queryEnabled = Boolean(session?.authenticated && session?.user);
+
+  // Do not reuse an empty dashboard cache after login, logout, or account
+  // switching. The API scopes the request to the authenticated tenant.
+  useEffect(() => {
+    if (!queryEnabled) return;
+    queryClient.invalidateQueries({ queryKey: queryKeys.expenses.all });
+  }, [queryClient, queryEnabled, session?.user]);
 
   const expensesQuery = useQuery({
     queryKey: queryKeys.expenses.list(),
     select: items,
+    enabled: queryEnabled,
   });
 
   const monthlyQuery = useQuery({
     queryKey: queryKeys.expenses.summary.monthly(currentYear),
     select: items,
+    enabled: queryEnabled,
   });
 
   const yearlyQuery = useQuery({
     queryKey: queryKeys.expenses.summary.yearly(),
     select: items,
+    enabled: queryEnabled,
   });
 
   // Shared by Category Split and, when the filter year matches, by the
@@ -90,26 +101,31 @@ export default function DashboardPage() {
   const categoriesYearQuery = useQuery({
     queryKey: queryKeys.expenses.summary.categories(currentYear),
     select: items,
+    enabled: queryEnabled,
   });
 
   const dailyQuery = useQuery({
     queryKey: queryKeys.expenses.summary.daily(filterYear, filterMonth),
     select: items,
+    enabled: queryEnabled,
   });
 
   const categoryMonthlyQuery = useQuery({
     queryKey: queryKeys.expenses.summary.categoriesMonthly(filterYear, filterMonth),
     select: items,
+    enabled: queryEnabled,
   });
 
   const vendorMonthlyQuery = useQuery({
     queryKey: queryKeys.expenses.summary.vendorsMonthly(filterYear, filterMonth),
     select: items,
+    enabled: queryEnabled,
   });
 
   const categoryFilterYearQuery = useQuery({
     queryKey: queryKeys.expenses.summary.categories(filterYear),
     select: items,
+    enabled: queryEnabled,
   });
 
   const expenses = expensesQuery.data || [];
