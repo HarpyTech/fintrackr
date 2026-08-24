@@ -38,5 +38,8 @@ def mongo(monkeypatch):
             lambda: line_items,
             raising=False,
         )
+        monkeypatch.setattr(
+            module, "get_mongo_client", lambda: client, raising=False
+        )
 
     return {"users": users, "expenses": expenses, "line_items": line_items}
