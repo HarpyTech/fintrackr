@@ -1,24 +1,26 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
+import Box from '@mui/material/Box';
+import Chip from '@mui/material/Chip';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
+import { DataGrid } from '@mui/x-data-grid';
+import { Pencil, Trash2 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { apiRequest } from '../lib/api';
-
-const inrCurrencyFormatter = new Intl.NumberFormat('en-IN', {
-  style: 'currency',
-  currency: 'INR',
-  maximumFractionDigits: 2,
-});
-
-function formatInr(value) {
-  return inrCurrencyFormatter.format(Number(value || 0));
-}
+import { formatInr } from '../lib/chartColors';
+import ErrorAlert from '../components/ErrorAlert';
+import PageSpinner from '../components/PageSpinner';
+import ConfirmDialog from '../components/ConfirmDialog';
+import ExpenseEditDialog from '../components/ExpenseEditDialog';
 
 export default function ReportPage() {
   const { logout } = useAuth();
   const navigate = useNavigate();
 
   const [expenses, setExpenses] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [historyView, setHistoryView] = useState('expense');
   const [historyFilters, setHistoryFilters] = useState({
     startDate: '',
@@ -27,33 +29,52 @@ export default function ReportPage() {
   });
   const [error, setError] = useState('');
 
+  // Edit dialog state
+  const [editTarget, setEditTarget] = useState(null);
+
+  // Delete confirm dialog state
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+
+  const loadExpenses = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const response = await apiRequest('/expenses?limit=200');
+      setExpenses(response.items || []);
+    } catch (err) {
+      setError(err.message || 'Unable to load expenses. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadExpenses();
-  }, []);
+  }, [loadExpenses]);
 
   useEffect(() => {
     function handleExpenseCreated() {
       loadExpenses();
     }
-
     window.addEventListener('expense:created', handleExpenseCreated);
-    return () => {
-      window.removeEventListener('expense:created', handleExpenseCreated);
-    };
-  }, []);
+    return () => window.removeEventListener('expense:created', handleExpenseCreated);
+  }, [loadExpenses]);
 
-  async function loadExpenses() {
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setDeleteError('');
     try {
-      const response = await apiRequest('/expenses');
-      setExpenses(response.items || []);
+      await apiRequest(`/expenses/${deleteTarget.id}`, { method: 'DELETE' });
+      setDeleteTarget(null);
+      loadExpenses();
     } catch (err) {
-      setError(err.message);
+      setDeleteError(err.message || 'Unable to delete expense. Please try again.');
+    } finally {
+      setDeleting(false);
     }
-  }
-
-  async function handleLogout() {
-    await logout();
-    navigate('/login');
   }
 
   const historyCategories = useMemo(() => {
@@ -62,31 +83,16 @@ export default function ReportPage() {
         .map((item) => String(item.category || '').trim().toLowerCase())
         .filter(Boolean)
     );
-
     return ['all', ...Array.from(values).sort()];
   }, [expenses]);
 
   const filteredExpenses = useMemo(() => {
     return expenses.filter((item) => {
-      const rawDate = String(item.expense_date || '');
-      const dateOnly = rawDate.slice(0, 10);
+      const dateOnly = String(item.expense_date || '').slice(0, 10);
       const category = String(item.category || '').trim().toLowerCase();
-
-      if (historyFilters.startDate && dateOnly < historyFilters.startDate) {
-        return false;
-      }
-
-      if (historyFilters.endDate && dateOnly > historyFilters.endDate) {
-        return false;
-      }
-
-      if (
-        historyFilters.category !== 'all' &&
-        category !== historyFilters.category
-      ) {
-        return false;
-      }
-
+      if (historyFilters.startDate && dateOnly < historyFilters.startDate) return false;
+      if (historyFilters.endDate && dateOnly > historyFilters.endDate) return false;
+      if (historyFilters.category !== 'all' && category !== historyFilters.category) return false;
       return true;
     });
   }, [expenses, historyFilters]);
@@ -94,11 +100,7 @@ export default function ReportPage() {
   const filteredLineItems = useMemo(() => {
     return filteredExpenses.flatMap((expense) => {
       const items = Array.isArray(expense.line_items) ? expense.line_items : [];
-
-      if (items.length === 0) {
-        return [];
-      }
-
+      if (items.length === 0) return [];
       return items.map((lineItem, index) => ({
         id: `${expense.id}-${index}`,
         expenseId: expense.id,
@@ -126,6 +128,97 @@ export default function ReportPage() {
       .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
       .join(' ');
   }
+
+  // DataGrid column definitions
+  const expenseColumns = useMemo(() => [
+    {
+      field: 'expense_date',
+      headerName: 'Date',
+      width: 110,
+      valueFormatter: (value) => String(value || '').slice(0, 10),
+    },
+    {
+      field: 'category',
+      headerName: 'Category',
+      width: 130,
+      valueFormatter: (value) => toTitleCase(value),
+    },
+    {
+      field: 'input_type',
+      headerName: 'Type',
+      width: 110,
+      renderCell: ({ value }) => (
+        <Chip
+          label={toTitleCase(value || 'manual')}
+          size="small"
+          color={String(value || '').toLowerCase().includes('ai') ? 'primary' : 'default'}
+          variant="outlined"
+          sx={{ fontSize: 11 }}
+        />
+      ),
+    },
+    {
+      field: 'vendor',
+      headerName: 'Vendor',
+      flex: 1,
+      minWidth: 120,
+      valueFormatter: (value) => value || '—',
+    },
+    {
+      field: 'invoice_number',
+      headerName: 'Invoice',
+      width: 110,
+      valueFormatter: (value) => value || '—',
+    },
+    {
+      field: 'description',
+      headerName: 'Description',
+      flex: 1,
+      minWidth: 140,
+      valueFormatter: (value) => value || '—',
+    },
+    {
+      field: 'amount',
+      headerName: 'Amount',
+      width: 130,
+      type: 'number',
+      valueFormatter: (value) => formatInr(value),
+      align: 'right',
+      headerAlign: 'right',
+    },
+    {
+      field: 'actions',
+      headerName: 'Actions',
+      width: 100,
+      sortable: false,
+      filterable: false,
+      align: 'center',
+      headerAlign: 'center',
+      renderCell: ({ row }) => (
+        <Box display="flex" gap={0.5}>
+          <Tooltip title="Edit expense">
+            <IconButton
+              size="small"
+              aria-label="Edit expense"
+              onClick={() => setEditTarget(row)}
+            >
+              <Pencil size={15} />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Delete expense">
+            <IconButton
+              size="small"
+              color="error"
+              aria-label="Delete expense"
+              onClick={() => { setDeleteTarget(row); setDeleteError(''); }}
+            >
+              <Trash2 size={15} />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      ),
+    },
+  ], []);
 
   return (
     <main className="report-proto">
@@ -209,57 +302,39 @@ export default function ReportPage() {
             </span>
           </div>
 
-          {error ? <p className="error-text">{error}</p> : null}
-
-          {/* ── Tables ── */}
-          <div className="report-proto-table-wrap">
-            {historyView === 'expense' ? (
-              <table className="report-proto-table">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Category</th>
-                    <th>Input Type</th>
-                    <th>Invoice No.</th>
-                    <th>Vendor</th>
-                    <th>Description</th>
-                    <th>Line Items</th>
-                    <th>Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredExpenses.length > 0 ? (
-                    filteredExpenses.map((item) => (
-                      <tr key={item.id}>
-                        <td>{String(item.expense_date || '').slice(0, 10)}</td>
-                        <td>{toTitleCase(item.category)}</td>
-                        <td>
-                          <span
-                            className={clsx(
-                              'report-proto-badge',
-                              (item.input_type || '').toLowerCase().includes('ai') ? 'ai' : 'manual'
-                            )}
-                          >
-                            {toTitleCase(item.input_type || 'manual')}
-                          </span>
-                        </td>
-                        <td>{item.invoice_number || '—'}</td>
-                        <td>{item.vendor || '—'}</td>
-                        <td>{item.description || '—'}</td>
-                        <td>{item.line_items?.length || 0}</td>
-                        <td className="amount">{formatInr(item.amount)}</td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={8} className="report-proto-empty">
-                        No expenses matched the selected filters.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            ) : (
+          {/* ── Content: loading / error / table ── */}
+          {loading ? (
+            <PageSpinner label="Loading expenses…" minHeight={160} />
+          ) : error ? (
+            <ErrorAlert message={error} onRetry={loadExpenses} />
+          ) : historyView === 'expense' ? (
+            <Box sx={{ width: '100%', mt: 1 }}>
+              <DataGrid
+                rows={filteredExpenses}
+                columns={expenseColumns}
+                getRowId={(row) => row.id}
+                initialState={{
+                  pagination: { paginationModel: { pageSize: 25 } },
+                  sorting: { sortModel: [{ field: 'expense_date', sort: 'desc' }] },
+                }}
+                pageSizeOptions={[10, 25, 50]}
+                disableRowSelectionOnClick
+                autoHeight
+                density="compact"
+                sx={{
+                  border: 'none',
+                  '& .MuiDataGrid-columnHeaders': {
+                    background: 'var(--surface-soft)',
+                    borderRadius: 'var(--radius-sm)',
+                  },
+                  '& .MuiDataGrid-cell': { borderColor: 'var(--line)' },
+                  '& .MuiDataGrid-footerContainer': { borderColor: 'var(--line)' },
+                }}
+              />
+            </Box>
+          ) : (
+            /* ── Line Items view — plain table (unchanged) ── */
+            <div className="report-proto-table-wrap">
               <table className="report-proto-table">
                 <thead>
                   <tr>
@@ -305,11 +380,36 @@ export default function ReportPage() {
                   )}
                 </tbody>
               </table>
-            )}
-          </div>
+            </div>
+          )}
+
+          {deleteError ? <ErrorAlert message={deleteError} /> : null}
         </div>
       </div>
+
+      {/* ── Edit Dialog ── */}
+      <ExpenseEditDialog
+        open={Boolean(editTarget)}
+        expense={editTarget}
+        onClose={() => setEditTarget(null)}
+        onSaved={loadExpenses}
+      />
+
+      {/* ── Delete Confirm Dialog ── */}
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Delete Expense"
+        message={
+          deleteTarget
+            ? `Delete the ${formatInr(deleteTarget.amount)} expense from ${String(deleteTarget.expense_date || '').slice(0, 10)}? This cannot be undone.`
+            : ''
+        }
+        confirmLabel="Delete"
+        danger
+        loading={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => { setDeleteTarget(null); setDeleteError(''); }}
+      />
     </main>
   );
 }
-
