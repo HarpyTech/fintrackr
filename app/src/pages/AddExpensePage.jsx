@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, Camera, Upload } from 'lucide-react';
+import CircularProgress from '@mui/material/CircularProgress';
 import { useAuth } from '../auth/AuthContext';
 import { apiRequest } from '../lib/api';
+import ErrorAlert from '../components/ErrorAlert';
 
 const CATEGORIES = ['Food', 'Travel', 'Utilities', 'Shopping', 'Health', 'Other'];
 const SUPPORT_EMAIL = 'support@harpytechco.in';
@@ -37,6 +39,7 @@ export default function AddExpensePage() {
   const [aiImageFile, setAiImageFile] = useState(null);
   const [cameraImageFile, setCameraImageFile] = useState(null);
   const [extracting, setExtracting] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [lastExtracted, setLastExtracted] = useState(null);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -94,6 +97,7 @@ export default function AddExpensePage() {
     event.preventDefault();
     setError('');
     setMessage('');
+    setSubmitting(true);
 
     try {
       const response = await apiRequest('/expenses', {
@@ -125,8 +129,10 @@ export default function AddExpensePage() {
       if (err.status === 429) {
         setSessionLimitReached(true);
       } else {
-        setError(err.message);
+        setError(err.message || 'Unable to save expense. Please try again.');
       }
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -174,7 +180,7 @@ export default function AddExpensePage() {
       if (err.status === 429) {
         setSessionLimitReached(true);
       } else {
-        setError(err.message);
+        setError(err.message || 'Unable to extract expense. Please try again.');
       }
     } finally {
       setExtracting(false);
@@ -307,11 +313,13 @@ export default function AddExpensePage() {
                 className="add-expense-proto-submit"
                 disabled={extracting || sessionLimitReached}
               >
-                {extracting ? 'Extracting…' : 'Extract + Save Expense'}
+                {extracting ? (
+                  <><CircularProgress size={16} color="inherit" style={{ marginRight: 8, verticalAlign: 'middle' }} /> Extracting…</>
+                ) : 'Extract + Save Expense'}
               </button>
 
               {message ? <p className="add-expense-proto-success">{message}</p> : null}
-              {error ? <p className="add-expense-proto-error">{error}</p> : null}
+              {error ? <ErrorAlert message={error} /> : null}
             </form>
 
             {lastExtracted ? (
@@ -327,12 +335,13 @@ export default function AddExpensePage() {
             <h2 className="add-expense-proto-card-title">Manual Entry</h2>
             <form onSubmit={addExpense} className="add-expense-proto-fields">
               <label className="add-expense-proto-label">
-                Amount
+                Amount <span aria-hidden="true">*</span>
                 <input
                   type="number"
                   min="0.01"
                   step="0.01"
                   required
+                  aria-required="true"
                   placeholder="0.00"
                   value={expenseForm.amount}
                   disabled={sessionLimitReached}
@@ -358,10 +367,11 @@ export default function AddExpensePage() {
               </label>
 
               <label className="add-expense-proto-label">
-                Date
+                Date <span aria-hidden="true">*</span>
                 <input
                   type="date"
                   required
+                  aria-required="true"
                   value={expenseForm.expense_date}
                   disabled={sessionLimitReached}
                   onChange={(e) =>
@@ -386,13 +396,15 @@ export default function AddExpensePage() {
               <button
                 type="submit"
                 className="add-expense-proto-submit"
-                disabled={sessionLimitReached}
+                disabled={sessionLimitReached || submitting}
               >
-                Save Expense
+                {submitting ? (
+                  <><CircularProgress size={16} color="inherit" style={{ marginRight: 8, verticalAlign: 'middle' }} /> Saving…</>
+                ) : 'Save Expense'}
               </button>
 
               {message ? <p className="add-expense-proto-success">{message}</p> : null}
-              {error ? <p className="add-expense-proto-error">{error}</p> : null}
+              {error ? <ErrorAlert message={error} /> : null}
             </form>
           </div>
 

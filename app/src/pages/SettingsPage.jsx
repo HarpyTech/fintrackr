@@ -6,6 +6,9 @@ import ThemeToggle from '../components/ThemeToggle';
 import { apiRequest } from '../lib/api';
 import { getOrCreateDeviceId, clearDeviceBinding } from '../lib/deviceBinding';
 import { useWebAuthn } from '../hooks/useWebAuthn';
+import ErrorAlert from '../components/ErrorAlert';
+import PageSpinner from '../components/PageSpinner';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 const PHONE_PATTERN = /^\+?[0-9]{8,15}$/;
 const ADDRESS_MIN_LENGTH = 10;
@@ -30,6 +33,7 @@ export default function SettingsPage() {
   const [devicesLoading, setDevicesLoading] = useState(false);
   const [devicesError, setDevicesError] = useState('');
   const [devicesInfo, setDevicesInfo] = useState('');
+  const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
   const [deletingDeviceId, setDeletingDeviceId] = useState(null);
   const [bulkRemoving, setBulkRemoving] = useState(false);
   const [confirmDevice, setConfirmDevice] = useState(null);
@@ -202,18 +206,13 @@ export default function SettingsPage() {
     await removeDevice(device);
   }
 
-  async function handleRemoveOtherDevices() {
-    if (removableOtherDevices.length === 0) {
-      return;
-    }
+  function handleRemoveOtherDevices() {
+    if (removableOtherDevices.length === 0) return;
+    setConfirmRemoveOpen(true);
+  }
 
-    const confirmed = window.confirm(
-      `Remove ${removableOtherDevices.length} other device${removableOtherDevices.length > 1 ? 's' : ''}?`
-    );
-    if (!confirmed) {
-      return;
-    }
-
+  async function doRemoveOtherDevices() {
+    setConfirmRemoveOpen(false);
     setBulkRemoving(true);
     setDevicesError('');
     setDevicesInfo('');
@@ -316,7 +315,7 @@ export default function SettingsPage() {
                 </span>
               </label>
 
-              {saveError ? <p className="error-text" role="alert">{saveError}</p> : null}
+              {saveError ? <ErrorAlert message={saveError} /> : null}
               {saveMessage ? <p className="help-text" role="status">{saveMessage}</p> : null}
 
               <div>
@@ -361,9 +360,9 @@ export default function SettingsPage() {
                 ) : null}
               </div>
               {devicesLoading ? (
-                <p className="help-text">Loading…</p>
+                <PageSpinner label="Loading devices…" minHeight={60} />
               ) : devicesError ? (
-                <p className="error-text" role="alert">{devicesError}</p>
+                <ErrorAlert message={devicesError} />
               ) : managedDevices.length === 0 ? (
                 <p className="help-text">No biometric devices registered.</p>
               ) : (
@@ -459,6 +458,16 @@ export default function SettingsPage() {
           </div>
         </div>
       ) : null}
+
+      <ConfirmDialog
+        open={confirmRemoveOpen}
+        title="Remove Other Devices"
+        message={`Remove ${removableOtherDevices.length} other device${removableOtherDevices.length !== 1 ? 's' : ''}? They will need to re-register biometrics.`}
+        confirmLabel="Remove"
+        danger
+        onConfirm={doRemoveOtherDevices}
+        onCancel={() => setConfirmRemoveOpen(false)}
+      />
     </div>
   );
 }
