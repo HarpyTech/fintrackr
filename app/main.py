@@ -13,7 +13,7 @@ from app.core.errors import AppError, http_code
 from app.core.telemetry import setup_telemetry
 from app.core.tracing import setup_trace_logging, get_trace_id
 from app.api.routes import auth, users, health, expenses, webauthn, analytics, admin
-from app.db.mongo import bootstrap_indexes
+from app.db.mongo import backfill_tenant_ids, bootstrap_indexes
 from app.middleware.tracing import TraceIDMiddleware
 from app.middleware.auth import AuthenticationMiddleware
 from app.middleware.csrf import CSRFProtectionMiddleware
@@ -34,6 +34,7 @@ async def lifespan(app: FastAPI):
     logger.info(f"Build version: {settings.BUILD_VERSION}")
     logger.info(f"API prefix: {settings.API_V1_STR}")
     setup_telemetry(app)
+    backfill_tenant_ids()
     bootstrap_indexes()
     yield
     logger.info(f"Shutting down {settings.PROJECT_NAME}")
@@ -73,9 +74,15 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
 
 
 @app.exception_handler(RequestValidationError)
-async def validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+async def validation_error_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
     first = exc.errors()[0] if exc.errors() else {}
-    message = first.get("msg", "Validation error") if isinstance(first, dict) else "Validation error"
+    message = (
+        first.get("msg", "Validation error")
+        if isinstance(first, dict)
+        else "Validation error"
+    )
     return _error_envelope("VALIDATION_ERROR", message, 422)
 
 

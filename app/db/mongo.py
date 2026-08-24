@@ -150,7 +150,9 @@ def get_expense_line_items_collection() -> Collection:
         logger.error("Failed to access expense line items collection", exc_info=True)
         raise
     except Exception:
-        logger.error("Unexpected error accessing expense line items collection", exc_info=True)
+        logger.error(
+            "Unexpected error accessing expense line items collection", exc_info=True
+        )
         raise
 
 
@@ -164,7 +166,9 @@ def get_webauthn_credentials_collection() -> Collection:
         logger.error("Failed to access webauthn_credentials collection", exc_info=True)
         raise
     except Exception:
-        logger.error("Unexpected error accessing webauthn_credentials collection", exc_info=True)
+        logger.error(
+            "Unexpected error accessing webauthn_credentials collection", exc_info=True
+        )
         raise
 
 
@@ -178,7 +182,9 @@ def get_webauthn_challenges_collection() -> Collection:
         logger.error("Failed to access webauthn_challenges collection", exc_info=True)
         raise
     except Exception:
-        logger.error("Unexpected error accessing webauthn_challenges collection", exc_info=True)
+        logger.error(
+            "Unexpected error accessing webauthn_challenges collection", exc_info=True
+        )
         raise
 
 
@@ -192,7 +198,9 @@ def get_refresh_tokens_collection() -> Collection:
         logger.error("Failed to access refresh_tokens collection", exc_info=True)
         raise
     except Exception:
-        logger.error("Unexpected error accessing refresh_tokens collection", exc_info=True)
+        logger.error(
+            "Unexpected error accessing refresh_tokens collection", exc_info=True
+        )
         raise
 
 
@@ -206,7 +214,9 @@ def get_idempotency_collection() -> Collection:
         logger.error("Failed to access idempotency_keys collection", exc_info=True)
         raise
     except Exception:
-        logger.error("Unexpected error accessing idempotency_keys collection", exc_info=True)
+        logger.error(
+            "Unexpected error accessing idempotency_keys collection", exc_info=True
+        )
         raise
 
 
@@ -235,7 +245,10 @@ def bootstrap_indexes() -> None:
                 {"kind": "compound", "fields": [("username", 1), ("expense_date", -1)]},
                 {"kind": "compound", "fields": [("username", 1), ("bill_type", 1)]},
                 {"kind": "compound", "fields": [("tenant_id", 1), ("username", 1)]},
-                {"kind": "compound", "fields": [("tenant_id", 1), ("expense_date", -1)]},
+                {
+                    "kind": "compound",
+                    "fields": [("tenant_id", 1), ("expense_date", -1)],
+                },
                 {"kind": "single", "field": "is_deleted", "unique": False},
             ],
         )
@@ -297,7 +310,32 @@ def bootstrap_indexes() -> None:
 
         logger.info("Database indexes bootstrapped successfully")
     except Exception:
-        logger.warning("Could not bootstrap indexes — will retry on next startup", exc_info=True)
+        logger.warning(
+            "Could not bootstrap indexes — will retry on next startup", exc_info=True
+        )
+
+
+def backfill_tenant_ids(db: Database | None = None) -> None:
+    """Populate tenant IDs on legacy documents that do not have one."""
+    try:
+        if db is None:
+            db = get_database()
+        for collection_name in ("users", "expenses", "expense_line_items"):
+            result = db[collection_name].update_many(
+                {"tenant_id": {"$exists": False}, "username": {"$exists": True}},
+                [{"$set": {"tenant_id": "$username"}}],
+            )
+            if result.modified_count:
+                logger.info(
+                    "Backfilled tenant_id for %d documents in %s",
+                    result.modified_count,
+                    collection_name,
+                )
+        logger.info("Tenant ID backfill completed")
+    except Exception:
+        logger.warning(
+            "Could not backfill tenant IDs — will retry on next startup", exc_info=True
+        )
 
 
 def ping_database() -> bool:
