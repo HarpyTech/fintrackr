@@ -27,6 +27,7 @@ const FeaturesPage = lazy(() => import('./pages/FeaturesPage'));
 const InsightsPage = lazy(() => import('./pages/InsightsPage'));
 const SupportPage = lazy(() => import('./pages/SupportPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const AdminUsersPage = lazy(() => import('./pages/AdminUsersPage'));
 
 function HomeRoute() {
   if (!isInstalledPwa()) {
@@ -45,6 +46,24 @@ function ProtectedRoute({ children }) {
 
   if (!session.authenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  return <ProtectedLayout>{children}</ProtectedLayout>;
+}
+
+function AdminRoute({ children }) {
+  const { session, loading } = useAuth();
+
+  if (loading) {
+    return <AppLoader label="Restoring your session…" full />;
+  }
+
+  if (!session.authenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (session.role !== 'admin') {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <ProtectedLayout>{children}</ProtectedLayout>;
@@ -129,6 +148,14 @@ export default function App() {
                 <ProtectedRoute>
                   <InsightsPage />
                 </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/users"
+              element={
+                <AdminRoute>
+                  <AdminUsersPage />
+                </AdminRoute>
               }
             />
             <Route path="*" element={<Navigate to="/" replace />} />

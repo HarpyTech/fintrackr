@@ -10,24 +10,26 @@ import {
   ChevronRight,
   LogOut,
   Settings,
+  Users,
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { isSupportPageEnabled } from '../lib/featureFlags';
 
-const MENU_ITEMS = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/insights', icon: MessageSquare, label: 'Insights' },
-  { to: '/report', icon: FileText, label: 'Report' },
-  { to: '/add-expense', icon: PlusCircle, label: 'Add Expense' },
-  { to: '/settings', icon: Settings, label: 'Settings' },
-  ...(isSupportPageEnabled
-    ? [{ to: '/support', icon: HelpCircle, label: 'Support' }]
-    : []),
-];
 
 export default function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { session, profile, logout } = useAuth();
+  const isAdmin = session?.role === 'admin';
+
+  const menuItems = [
+    { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { to: '/insights', icon: MessageSquare, label: 'Insights' },
+    { to: '/report', icon: FileText, label: 'Report' },
+    { to: '/add-expense', icon: PlusCircle, label: 'Add Expense' },
+    { to: '/settings', icon: Settings, label: 'Settings' },
+    ...(isSupportPageEnabled ? [{ to: '/support', icon: HelpCircle, label: 'Support' }] : []),
+    ...(isAdmin ? [{ to: '/admin/users', icon: Users, label: 'Admin' }] : []),
+  ];
 
   const displayName = useMemo(() => {
     const firstName = profile?.first_name?.trim();
@@ -79,7 +81,7 @@ export default function Sidebar() {
 
         {/* Navigation links */}
         <nav className="sidebar-proto-nav">
-          {MENU_ITEMS.map(({ to, icon: Icon, label }) => (
+          {menuItems.map(({ to, icon: Icon, label }) => (
             <NavLink
               key={to}
               to={to}
@@ -136,7 +138,7 @@ export default function Sidebar() {
 
       {/* Mobile bottom navigation */}
       <nav className="sidebar-proto-mobile-nav" aria-label="Mobile navigation">
-        {MENU_ITEMS.map(({ to, icon: Icon, label }) => (
+        {menuItems.map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}
             to={to}
