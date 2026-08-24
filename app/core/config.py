@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = ""
 
     SECRET_KEY: str
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 5
     ALGORITHM: str = "HS256"
 
     CORS_ORIGINS: list[str] = [
@@ -73,6 +73,10 @@ class Settings(BaseSettings):
     # Timeout for a single Gemini request, in seconds.
     ANALYTICS_LLM_TIMEOUT_SECONDS: int = 12
 
+    # OpenTelemetry — OTLP export endpoint (e.g. http://otel-collector:4318)
+    # Leave empty to disable OTel entirely (default: no-op).
+    OTEL_EXPORTER_OTLP_ENDPOINT: str = ""
+
     SIGNUP_OTP_EXPIRY_MINUTES: int = 2
     SIGNUP_OTP_LENGTH: int = 6
 
@@ -85,6 +89,23 @@ class Settings(BaseSettings):
     SMTP_TIMEOUT_SECONDS: int = 15
     SMTP_FROM_EMAIL: str = "no-reply@my-finance.local"
     SMTP_BCC_EMAILS: list[str] = ["no-reply@harpytechco.in"]
+
+    # --- Google OAuth2 ---------------------------------------------------
+    GOOGLE_CLIENT_ID: str | None = None
+    GOOGLE_CLIENT_SECRET: str | None = None
+    # Redirect URI must match what is registered in Google Cloud Console.
+    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/v1/auth/google/callback"
+    # Restrict sign-in to these domains (comma-separated). Empty = any account.
+    GOOGLE_ALLOWED_DOMAINS: list[str] = []
+
+    @field_validator("GOOGLE_ALLOWED_DOMAINS", mode="before")
+    @classmethod
+    def parse_google_allowed_domains(cls, value: Any) -> Any:
+        if not value:
+            return []
+        if not isinstance(value, str):
+            return value
+        return [d.strip().lower() for d in value.split(",") if d.strip()]
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
