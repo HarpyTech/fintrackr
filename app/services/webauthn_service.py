@@ -414,13 +414,14 @@ def verify_authentication(
         {"$set": {"sign_count": verified.new_sign_count, "last_used_at": _utcnow()}},
     )
 
-    # Fetch user role
+    # Fetch user role and tenant
     users = get_users_collection()
-    user_doc = users.find_one({"username": username}, {"role": 1})
+    user_doc = users.find_one({"username": username}, {"role": 1, "tenant_id": 1})
     role = user_doc.get("role", "user") if user_doc else "user"
+    tenant_id = (user_doc or {}).get("tenant_id", username)
 
     # Issue access token
-    token_data = {"username": username, "role": role}
+    token_data = {"username": username, "role": role, "tenant_id": tenant_id}
     access_token = create_access_token(token_data)
 
     # Set access token cookie (same as password login)
@@ -497,12 +498,13 @@ def exchange_refresh_token(token: str, response_obj) -> dict:
         col.delete_one({"token_hash": token_hash})
         raise ValueError("Refresh token expired.")
 
-    # Fetch role
+    # Fetch role and tenant
     users = get_users_collection()
-    user_doc = users.find_one({"username": username}, {"role": 1})
+    user_doc = users.find_one({"username": username}, {"role": 1, "tenant_id": 1})
     role = user_doc.get("role", "user") if user_doc else "user"
+    tenant_id = (user_doc or {}).get("tenant_id", username)
 
-    token_data = {"username": username, "role": role}
+    token_data = {"username": username, "role": role, "tenant_id": tenant_id}
     access_token = create_access_token(token_data)
 
     # Sliding expiry: issue a new refresh token and revoke the old one

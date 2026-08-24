@@ -33,13 +33,20 @@ def _serialize_user(user: dict, expense_count: int) -> dict:
     }
 
 
-def list_users(skip: int = 0, limit: int = 50, search: str | None = None) -> dict:
+def list_users(
+    skip: int = 0,
+    limit: int = 50,
+    search: str | None = None,
+    tenant_id: str | None = None,
+) -> dict:
     """Return a paginated list of users with their plan and usage."""
     try:
         users = get_users_collection()
         expenses = get_expenses_collection()
 
         query: dict = {}
+        if tenant_id:
+            query["tenant_id"] = tenant_id
         if search:
             query["username"] = {"$regex": search.strip(), "$options": "i"}
 
@@ -53,7 +60,10 @@ def list_users(skip: int = 0, limit: int = 50, search: str | None = None) -> dic
 
         items = []
         for user in cursor:
-            count = expenses.count_documents({"username": user["username"]})
+            expense_filter: dict = {"username": user["username"]}
+            if tenant_id:
+                expense_filter["tenant_id"] = tenant_id
+            count = expenses.count_documents(expense_filter)
             items.append(_serialize_user(user, count))
 
         return {"total": total, "skip": skip, "limit": limit, "items": items}
@@ -62,14 +72,20 @@ def list_users(skip: int = 0, limit: int = 50, search: str | None = None) -> dic
         raise RuntimeError("Failed to list users due to database error") from exc
 
 
-def get_user(username: str) -> dict:
+def get_user(username: str, tenant_id: str | None = None) -> dict:
     """Return a single user's admin view or raise UserNotFoundError."""
     try:
         users = get_users_collection()
-        user = users.find_one({"username": username})
+        user_filter: dict = {"username": username}
+        if tenant_id:
+            user_filter["tenant_id"] = tenant_id
+        user = users.find_one(user_filter)
         if not user:
             raise UserNotFoundError(username)
-        count = get_expenses_collection().count_documents({"username": username})
+        expense_filter: dict = {"username": username}
+        if tenant_id:
+            expense_filter["tenant_id"] = tenant_id
+        count = get_expenses_collection().count_documents(expense_filter)
         return _serialize_user(user, count)
     except UserNotFoundError:
         raise
@@ -85,6 +101,7 @@ def update_user(
     plan: str | None = None,
     expense_limit: int | None = None,
     disable_rate_limit: bool | None = None,
+    tenant_id: str | None = None,
 ) -> dict:
     """Apply admin edits to a user.
 
@@ -93,7 +110,10 @@ def update_user(
     """
     try:
         users = get_users_collection()
-        if not users.find_one({"username": username}, {"_id": 1}):
+        user_filter: dict = {"username": username}
+        if tenant_id:
+            user_filter["tenant_id"] = tenant_id
+        if not users.find_one(user_filter, {"_id": 1}):
             raise UserNotFoundError(username)
 
         update: dict = {}
@@ -108,9 +128,9 @@ def update_user(
             update["disable_rate_limit"] = bool(disable_rate_limit)
 
         update["updated_at"] = _utcnow()
-        users.update_one({"username": username}, {"$set": update})
+        users.update_one(user_filter, {"$set": update})
         logger.info("Admin updated user %s: %s", username, sorted(update.keys()))
-        return get_user(username)
+        return get_user(username, tenant_id=tenant_id)
     except UserNotFoundError:
         raise
     except PyMongoError as exc:
