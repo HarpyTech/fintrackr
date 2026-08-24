@@ -34,7 +34,9 @@ async def lifespan(app: FastAPI):
     logger.info(f"Build version: {settings.BUILD_VERSION}")
     logger.info(f"API prefix: {settings.API_V1_STR}")
     setup_telemetry(app)
+    logger.info("Running startup tenant ID migration")
     backfill_tenant_ids()
+    logger.info("Startup tenant ID migration finished")
     bootstrap_indexes()
     yield
     logger.info(f"Shutting down {settings.PROJECT_NAME}")

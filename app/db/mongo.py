@@ -318,20 +318,25 @@ def bootstrap_indexes() -> None:
 def backfill_tenant_ids(db: Database | None = None) -> None:
     """Populate tenant IDs on legacy documents that do not have one."""
     try:
+        logger.info("Starting tenant ID backfill")
         if db is None:
             db = get_database()
         for collection_name in ("users", "expenses", "expense_line_items"):
+            query = {
+                "tenant_id": {"$exists": False},
+                "username": {"$exists": True},
+            }
             result = db[collection_name].update_many(
-                {"tenant_id": {"$exists": False}, "username": {"$exists": True}},
+                query,
                 [{"$set": {"tenant_id": "$username"}}],
             )
-            if result.modified_count:
-                logger.info(
-                    "Backfilled tenant_id for %d documents in %s",
-                    result.modified_count,
-                    collection_name,
-                )
-        logger.info("Tenant ID backfill completed")
+            logger.info(
+                "Tenant ID backfill checked %s: matched=%d modified=%d",
+                collection_name,
+                result.matched_count,
+                result.modified_count,
+            )
+        logger.info("Tenant ID backfill completed successfully")
     except Exception:
         logger.warning(
             "Could not backfill tenant IDs — will retry on next startup", exc_info=True
