@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import Tooltip from '@mui/material/Tooltip';
 import { useAuth } from '../auth/AuthContext';
 import ThemeToggle from './ThemeToggle';
 import ProfileEditModal from './ProfileEditModal';
@@ -89,16 +90,18 @@ export default function AppHeader() {
           </div>
 
           <div className="app-header-menu" ref={menuRef}>
-            <button
-              type="button"
-              className="app-header-avatar"
-              onClick={() => setIsMenuOpen((open) => !open)}
-              aria-expanded={isMenuOpen}
-              aria-haspopup="menu"
-              aria-label="Account menu"
-            >
-              <span aria-hidden="true">{initials}</span>
-            </button>
+            <Tooltip title="Account menu" placement="bottom-end">
+              <button
+                type="button"
+                className="app-header-avatar"
+                onClick={() => setIsMenuOpen((open) => !open)}
+                aria-expanded={isMenuOpen}
+                aria-haspopup="menu"
+                aria-label="Account menu"
+              >
+                <span aria-hidden="true">{initials}</span>
+              </button>
+            </Tooltip>
 
             {isMenuOpen ? (
               <div className="app-header-dropdown" role="menu">
