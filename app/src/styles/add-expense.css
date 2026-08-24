@@ -2,6 +2,7 @@
    ADD EXPENSE — Styles for AddExpensePage.
    Includes prototype layout (add-expense-proto-*) matching
    design_code/src/app/pages/AddExpensePage.tsx exactly.
+   All colours use CSS design tokens — no raw hex values.
    ============================================================ */
 
 /* --- Page shell --- */
@@ -27,16 +28,11 @@
   display: flex;
   gap: 12px;
   align-items: flex-start;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-soft-border);
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 24px;
-}
-
-:root[data-theme='dark'] .add-expense-proto-limit {
-  background: rgba(185, 28, 28, 0.12);
-  border-color: rgba(248, 113, 113, 0.35);
 }
 
 .add-expense-proto-limit-icon {
@@ -44,7 +40,7 @@
   width: 20px;
   height: 20px;
   margin-top: 2px;
-  color: #dc2626;
+  color: var(--danger);
 }
 
 .add-expense-proto-limit-icon svg {
@@ -55,26 +51,18 @@
 .add-expense-proto-limit-title {
   margin: 0;
   font-weight: 600;
-  color: #991b1b;
-}
-
-:root[data-theme='dark'] .add-expense-proto-limit-title {
-  color: #fca5a5;
+  color: var(--danger);
 }
 
 .add-expense-proto-limit-text {
   margin: 4px 0 0;
   font-size: 14px;
-  color: #b91c1c;
+  color: var(--danger);
   line-height: 1.5;
 }
 
-:root[data-theme='dark'] .add-expense-proto-limit-text {
-  color: #f87171;
-}
-
 .add-expense-proto-limit-text a {
-  color: #b91c1c;
+  color: var(--danger);
   text-decoration: underline;
 }
 
@@ -87,14 +75,10 @@
 
 /* --- Card --- */
 .add-expense-proto-card {
-  background: #ffffff;
+  background: var(--surface);
   border-radius: 12px;
   padding: 24px;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
-}
-
-:root[data-theme='dark'] .add-expense-proto-card {
-  background: #1f2937;
 }
 
 .add-expense-proto-card-title {
@@ -157,7 +141,7 @@
 }
 
 .add-expense-proto-upload-zone:hover {
-  border-color: #3b82f6;
+  border-color: var(--brand);
 }
 
 .add-expense-proto-upload-zone input {
@@ -192,7 +176,7 @@
 .add-expense-proto-preview-remove {
   font-size: 13px;
   font-weight: 500;
-  color: #dc2626;
+  color: var(--danger);
   background: transparent;
   border: none;
   padding: 0;
@@ -259,17 +243,11 @@
 }
 
 .add-expense-proto-error {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-soft-border);
   border-radius: 8px;
   padding: 10px 14px;
   font-size: 13px;
-  color: #b91c1c;
+  color: var(--danger);
   margin-top: 8px;
-}
-
-:root[data-theme='dark'] .add-expense-proto-error {
-  background: rgba(185, 28, 28, 0.14);
-  border-color: rgba(248, 113, 113, 0.3);
-  color: #fca5a5;
 }

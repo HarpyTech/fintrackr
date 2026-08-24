@@ -37,6 +37,13 @@
   --warning-text: #7a4a00;
   --warning-soft: #fff7e8;
   --warning-soft-border: #f3c87b;
+  /* Violet semantic palette (badge and icon variants) */
+  --violet: #7c3aed;
+  --violet-soft: #f3e8ff;
+  --violet-soft-border: #d9c9ff;
+  /* Icon/badge on dark backgrounds (for dark-mode contrast) */
+  --brand-on-dark: #60a5fa;
+  --success-on-dark: #4ade80;
 
   /* Derived roles — overridden per theme so text-on-surface stays legible */
   --link: var(--brand);
@@ -106,6 +113,10 @@
   --danger-soft-border: rgba(226, 98, 125, 0.38);
   --warning-soft: rgba(138, 94, 26, 0.22);
   --warning-soft-border: rgba(234, 177, 86, 0.4);
+  --violet: #c4b5fd;
+  --violet-soft: rgba(107, 33, 168, 0.28);
+  --brand-on-dark: #60a5fa;
+  --success-on-dark: #4ade80;
 
   /* Status text colors must be lightened for dark surfaces.
      The light-mode values (#b42339, #0d6b4f, #7a4a00) are dark inks and

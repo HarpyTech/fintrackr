@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
+import Button from '@mui/material/Button';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogTitle from '@mui/material/DialogTitle';
 import { useAuth } from '../auth/AuthContext';
-import { useFocusTrap } from '../hooks/useFocusTrap';
+import ErrorAlert from './ErrorAlert';
 
 const PHONE_PATTERN = /^\+?[0-9]{8,15}$/;
 const ADDRESS_MIN_LENGTH = 10;
@@ -28,10 +33,6 @@ export default function ProfileEditModal({ isOpen, onClose }) {
     });
   }, [profile]);
 
-  // Traps Tab inside the dialog, closes on Escape, and restores focus to the
-  // trigger on close. Replaces the previous Escape-only listener.
-  const dialogRef = useFocusTrap(isOpen, onClose);
-
   const trimmedPhone = form.phone?.trim() || '';
   const normalizedPhone = trimmedPhone.replace(/[\s()-]/g, '');
   const trimmedAddress = form.address?.trim() || '';
@@ -44,9 +45,9 @@ export default function ProfileEditModal({ isOpen, onClose }) {
 
   let addressValidationError = '';
   if (trimmedAddress && addressLength < ADDRESS_MIN_LENGTH) {
-    addressValidationError = 'Address must be at least ' + ADDRESS_MIN_LENGTH + ' characters.';
+    addressValidationError = `Address must be at least ${ADDRESS_MIN_LENGTH} characters.`;
   } else if (addressLength > ADDRESS_MAX_LENGTH) {
-    addressValidationError = 'Address must be ' + ADDRESS_MAX_LENGTH + ' characters or fewer.';
+    addressValidationError = `Address must be ${ADDRESS_MAX_LENGTH} characters or fewer.`;
   }
 
   const hasValidationErrors = Boolean(phoneValidationError || addressValidationError);
@@ -72,83 +73,83 @@ export default function ProfileEditModal({ isOpen, onClose }) {
         onClose();
       }, 500);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Failed to save profile. Please try again.');
     } finally {
       setSaving(false);
     }
   }
 
-  if (!isOpen) return null;
-
   return (
-    <div className="profile-modal-backdrop" role="presentation" onClick={onClose}>
-      <section
-        ref={dialogRef}
-        className="profile-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="profile-modal-title"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <h2 id="profile-modal-title">Edit Profile</h2>
-        <p className="help-text">Update your personal details.</p>
+    <Dialog
+      open={isOpen}
+      onClose={saving ? undefined : onClose}
+      maxWidth="sm"
+      fullWidth
+      aria-labelledby="profile-modal-title"
+    >
+      <DialogTitle id="profile-modal-title">Edit Profile</DialogTitle>
 
-        <form className="stack-form" onSubmit={handleSaveProfile}>
-          <label>
-            First Name
-            <input
-              type="text"
-              value={form.first_name}
-              onChange={(event) => setForm((prev) => ({ ...prev, first_name: event.target.value }))}
-            />
-          </label>
-          <label>
-            Last Name
-            <input
-              type="text"
-              value={form.last_name}
-              onChange={(event) => setForm((prev) => ({ ...prev, last_name: event.target.value }))}
-            />
-          </label>
-          <label>
-            Phone
-            <input
-              type="tel"
-              placeholder="+14155552671"
-              value={form.phone}
-              onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))}
-            />
-            {phoneValidationError ? (
-              <span className="error-text">{phoneValidationError}</span>
-            ) : (
-              <span className="help-text">Include country code when possible.</span>
-            )}
-          </label>
-          <label>
-            Address
-            <textarea
-              maxLength={ADDRESS_MAX_LENGTH + 15}
-              value={form.address}
-              onChange={(event) => setForm((prev) => ({ ...prev, address: event.target.value }))}
-            />
-            <span className={addressValidationError ? 'error-text' : 'help-text'}>
-              {addressValidationError || (addressLength + '/' + ADDRESS_MAX_LENGTH + ' characters')}
-            </span>
-          </label>
+      <form onSubmit={handleSaveProfile}>
+        <DialogContent dividers>
+          <p className="help-text" style={{ marginTop: 0 }}>Update your personal details.</p>
 
-          {error ? <p className="error-text">{error}</p> : null}
-          {message ? <p className="help-text">{message}</p> : null}
+          <div className="stack-form">
+            <label>
+              First Name
+              <input
+                type="text"
+                value={form.first_name}
+                onChange={(e) => setForm((prev) => ({ ...prev, first_name: e.target.value }))}
+              />
+            </label>
+            <label>
+              Last Name
+              <input
+                type="text"
+                value={form.last_name}
+                onChange={(e) => setForm((prev) => ({ ...prev, last_name: e.target.value }))}
+              />
+            </label>
+            <label>
+              Phone
+              <input
+                type="tel"
+                placeholder="+14155552671"
+                value={form.phone}
+                onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
+              />
+              {phoneValidationError ? (
+                <span className="error-text">{phoneValidationError}</span>
+              ) : (
+                <span className="help-text">Include country code when possible.</span>
+              )}
+            </label>
+            <label>
+              Address
+              <textarea
+                maxLength={ADDRESS_MAX_LENGTH + 15}
+                value={form.address}
+                onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))}
+              />
+              <span className={addressValidationError ? 'error-text' : 'help-text'}>
+                {addressValidationError || `${addressLength}/${ADDRESS_MAX_LENGTH} characters`}
+              </span>
+            </label>
 
-          <div className="profile-modal-actions">
-            <button type="button" className="secondary-button" onClick={onClose}>
-              Cancel
-            </button>
-            <button type="submit" disabled={saving || hasValidationErrors}>
-              {saving ? 'Saving...' : 'Save'}
-            </button>
+            {error ? <ErrorAlert message={error} /> : null}
+            {message ? <p className="help-text" role="status">{message}</p> : null}
           </div>
-        </form>
-      </section>
-    </div>
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={onClose} disabled={saving} variant="outlined">
+            Cancel
+          </Button>
+          <Button type="submit" variant="contained" disabled={saving || hasValidationErrors}>
+            {saving ? 'Saving…' : 'Save'}
+          </Button>
+        </DialogActions>
+      </form>
+    </Dialog>
   );
 }

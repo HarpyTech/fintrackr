@@ -2,6 +2,7 @@
    REPORT — Styles for ReportPage.
    Includes legacy report classes and the prototype
    (report-proto-*) layout that matches the design spec.
+   All colours use CSS design tokens — no raw hex values.
    ============================================================ */
 
 /* ============================================================
@@ -27,15 +28,11 @@
 
 /* --- Main card --- */
 .report-proto-card {
-  background: #ffffff;
+  background: var(--surface);
   border-radius: 12px;
   padding: 24px;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
   margin-bottom: 24px;
-}
-
-:root[data-theme='dark'] .report-proto-card {
-  background: #1f2937;
 }
 
 /* --- View toggle tabs --- */
@@ -78,15 +75,10 @@
 }
 
 .report-proto-tab.active {
-  color: #2563eb;
-  border-bottom-color: #2563eb;
+  color: var(--brand);
+  border-bottom-color: var(--brand);
   background: transparent;
   box-shadow: none;
-}
-
-:root[data-theme='dark'] .report-proto-tab.active {
-  color: #60a5fa;
-  border-bottom-color: #60a5fa;
 }
 
 /* --- Filters --- */
@@ -122,13 +114,9 @@
   gap: 24px;
   flex-wrap: wrap;
   padding: 14px 18px;
-  background: #eff6ff;
+  background: var(--brand-soft);
   border-radius: 10px;
   margin-bottom: 24px;
-}
-
-:root[data-theme='dark'] .report-proto-summary {
-  background: rgba(37, 99, 235, 0.12);
 }
 
 .report-proto-summary-item {
@@ -156,23 +144,13 @@
 }
 
 .report-proto-badge.ai {
-  background: #f3e8ff;
-  color: #7e22ce;
+  background: var(--violet-soft);
+  color: var(--violet);
 }
 
 .report-proto-badge.manual {
-  background: #f3f4f6;
-  color: #374151;
-}
-
-:root[data-theme='dark'] .report-proto-badge.ai {
-  background: rgba(107, 33, 168, 0.28);
-  color: #c4b5fd;
-}
-
-:root[data-theme='dark'] .report-proto-badge.manual {
-  background: rgba(75, 85, 99, 0.3);
-  color: #d1d5db;
+  background: var(--surface-alt);
+  color: var(--muted-strong);
 }
 
 /* --- Table --- */
@@ -244,7 +222,7 @@
 
 .toggle-button.active {
   background: linear-gradient(120deg, var(--brand), var(--brand-strong));
-  color: #fff;
+  color: var(--surface);
 }
 
 .report-filters {
