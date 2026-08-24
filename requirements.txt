@@ -16,6 +16,12 @@ email-validator==2.2.0
 # Observability (optional but recommended)
 loguru==0.7.2
 
+# OpenTelemetry — OTLP export (no-op when OTEL_EXPORTER_OTLP_ENDPOINT is unset)
+opentelemetry-sdk>=1.20.0
+opentelemetry-exporter-otlp-proto-http>=0.41b0
+opentelemetry-instrumentation-fastapi>=0.41b0
+opentelemetry-instrumentation-pymongo>=0.41b0
+
 # Async support (future-ready)
 anyio==4.3.0
 requests

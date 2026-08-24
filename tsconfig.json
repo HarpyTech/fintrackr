@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Incremental migration — allow plain JS files */
+    "allowJs": true,
+    "checkJs": false,
+    "strict": false,
+
+    /* Path roots */
+    "baseUrl": "."
+  },
+  "include": ["app/src"],
+  "exclude": ["node_modules", "app/static"]
+}

@@ -31,14 +31,19 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-dev.txt
 
+      - name: Lint (ruff)
+        run: ruff check app/ tests/
+
+      - name: Type check (mypy)
+        run: mypy app/ --ignore-missing-imports
+
       - name: Run tests with coverage gate
         env:
           SECRET_KEY: "ci-test-secret-key-not-for-production-use-32chars"
+          MONGODB_URI: "mongodb://localhost:27017"
         run: |
           pytest \
-            --cov=app/core/plans.py \
-            --cov=app/services/admin_service.py \
-            --cov=app/models/admin.py \
+            --cov=app \
             --cov-report=term-missing \
             --cov-fail-under=80
 
