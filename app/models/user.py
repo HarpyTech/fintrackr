@@ -28,6 +28,7 @@ class UserPublic(BaseModel):
 class UserInDB(UserPublic):
     password_hash: str
     email_verified: bool = False
+    tenant_id: str = ""
 
 
 class UserProfile(BaseModel):

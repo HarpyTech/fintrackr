@@ -5,6 +5,23 @@ from app.core.config import settings
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
+def get_current_tenant(request: Request):
+    """Get the current user's tenant_id from request state.
+
+    Falls back to username for tokens issued before tenant_id was added.
+    """
+    tenant_id = getattr(request.state, "tenant_id", None)
+    if not tenant_id:
+        user = getattr(request.state, "user", None)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Not authenticated",
+            )
+        return user
+    return tenant_id
+
+
 def get_current_user(request: Request):
     """
     Get the current authenticated user from request state.
