@@ -2,6 +2,7 @@ from datetime import date
 from typing import Literal
 
 from pydantic import BaseModel, Field
+from typing import Optional
 
 
 BillType = Literal["grocery", "restaurant", "service", "utility", "other"]
@@ -50,3 +51,14 @@ class ExpenseItem(BaseModel):
     expense_date: date
     llm_model: ExpenseLlmModel | None = None
     line_items: list[ExpenseLineItem] = Field(default_factory=list)
+
+
+class ExpenseUpdate(BaseModel):
+    """Partial update model — all fields optional."""
+    amount: Optional[float] = Field(default=None, gt=0)
+    category: Optional[str] = Field(default=None, min_length=2, max_length=64)
+    bill_type: Optional[BillType] = None
+    invoice_number: Optional[str] = Field(default=None, max_length=64)
+    vendor: Optional[str] = Field(default=None, max_length=128)
+    description: Optional[str] = Field(default=None, max_length=255)
+    expense_date: Optional[date] = None
