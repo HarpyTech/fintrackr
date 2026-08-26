@@ -58,7 +58,15 @@ class ChartHint(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     chart: ChartKind = "table"
-    encoding: ChartEncoding = Field(default_factory=lambda: ChartEncoding())
+    encoding: ChartEncoding = Field(
+        default_factory=lambda: ChartEncoding(
+            x="",
+            value="",
+            series="",
+            name="",
+            x_label="",
+        )
+    )
     title: str = Field("", max_length=80)
     size: ChartSize = "md"
 
@@ -79,7 +87,20 @@ class MongoQueryEnvelope(BaseModel):
 
     limit: int = Field(50, ge=1, le=200)
 
-    chart_hint: ChartHint = Field(default_factory=lambda: ChartHint())
+    chart_hint: ChartHint = Field(
+        default_factory=lambda: ChartHint(
+            chart="table",
+            encoding=ChartEncoding(
+                x="",
+                value="",
+                series="",
+                name="",
+                x_label="",
+            ),
+            title="",
+            size="md",
+        )
+    )
 
     # Plain-language description of what the query does, surfaced verbatim in
     # the transparency panel.
