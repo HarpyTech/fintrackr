@@ -25,6 +25,9 @@ chance of mutating a query that already passed validation.
 
 from __future__ import annotations
 
+# The model response is narrowed from a runtime-selected Pydantic schema.
+# mypy: disable-error-code=attr-defined,call-arg
+
 import logging
 import time
 import uuid

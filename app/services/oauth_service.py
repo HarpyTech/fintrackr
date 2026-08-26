@@ -117,6 +117,8 @@ def oauth_login_or_create(userinfo: dict) -> dict:
                 )
             logger.info("Existing user signed in via Google OAuth: %s", email)
 
+        if user is None:
+            raise RuntimeError("Google OAuth user could not be loaded after creation")
         return user
     except PyMongoError as exc:
         logger.error("Database error during Google OAuth login: %s", str(exc), exc_info=True)

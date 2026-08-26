@@ -21,7 +21,7 @@ class AppError(Exception):
         self.message = message
         self.code = code or self.default_code
         if status_code is not None:
-            self.status_code = status_code  # type: ignore[assignment]
+            object.__setattr__(self, "status_code", status_code)
         super().__init__(message)
 
 

@@ -173,8 +173,10 @@ async def api_login(request: Request, response: Response):
         logger.debug("JSON login attempt received")
     else:
         form = await request.form()
-        username = form.get("username", "")
-        password = form.get("password", "")
+        form_username = form.get("username", "")
+        form_password = form.get("password", "")
+        username = form_username if isinstance(form_username, str) else ""
+        password = form_password if isinstance(form_password, str) else ""
         logger.debug("Form login attempt received")
 
     if not username or not password:

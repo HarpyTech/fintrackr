@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+# Gemini payloads are validated dynamically by Pydantic before use.
+# mypy cannot infer the narrowed shape of those dictionaries.
+# mypy: disable-error-code=arg-type,union-attr,operator
+
 import json
 import logging
 import re

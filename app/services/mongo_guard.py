@@ -26,6 +26,9 @@ Guarantees provided by validate_and_compile():
 
 from __future__ import annotations
 
+# MongoDB query documents remain intentionally dynamic after validation.
+# mypy: disable-error-code=arg-type,assignment
+
 import re
 from dataclasses import dataclass, field
 from typing import Any
