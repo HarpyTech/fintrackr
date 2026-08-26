@@ -209,11 +209,13 @@ async def api_login(request: Request, response: Response):
             detail="Email not verified. Please verify your email using OTP.",
         )
 
-    token = create_access_token({
-        "username": user["username"],
-        "role": user["role"],
-        "tenant_id": user.get("tenant_id", user["username"]),
-    })
+    token = create_access_token(
+        {
+            "username": user["username"],
+            "role": user["role"],
+            "tenant_id": user.get("tenant_id", user["username"]),
+        }
+    )
 
     _set_session_cookie(response, token)
 
@@ -357,6 +359,7 @@ def get_csrf_token(request: Request):
 # Google OAuth2
 # ---------------------------------------------------------------------------
 
+
 @router.get("/google")
 def google_auth_redirect(response: Response):
     """Redirect the browser to Google's OAuth2 consent screen."""
@@ -417,11 +420,13 @@ def google_auth_callback(
         logger.error("Google OAuth callback failed: %s", str(exc), exc_info=True)
         return RedirectResponse(url="/?error=oauth_failed", status_code=302)
 
-    token = create_access_token({
-        "username": user["username"],
-        "role": user.get("role", "user"),
-        "tenant_id": user.get("tenant_id", user["username"]),
-    })
+    token = create_access_token(
+        {
+            "username": user["username"],
+            "role": user.get("role", "user"),
+            "tenant_id": user.get("tenant_id", user["username"]),
+        }
+    )
 
     resp = RedirectResponse(url="/dashboard", status_code=302)
     resp.set_cookie(

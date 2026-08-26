@@ -1,7 +1,7 @@
-from __future__ import annotations
+from __future__ import annotations  # noqa: I001
 
 # MongoDB aggregation stages are dynamically assembled and validated at runtime.
-# mypy: disable-error-code=arg-type,misc
+# mypy: disable-error-code="arg-type, misc"
 
 import json
 import logging

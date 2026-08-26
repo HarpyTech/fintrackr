@@ -210,7 +210,7 @@ class Settings(BaseSettings):
 
 
 try:
-    settings = Settings()  # type: ignore[call-arg]
+    settings = Settings()
     logger.info("Configuration loaded successfully")
     logger.info(f"Project: {settings.PROJECT_NAME}")
     logger.info(f"MongoDB Database: {settings.MONGODB_DB}")

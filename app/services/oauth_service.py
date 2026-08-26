@@ -6,6 +6,7 @@ build_google_auth_url(state)          — build redirect URL for Google consent 
 exchange_google_code(code)            — exchange auth code for userinfo dict
 oauth_login_or_create(userinfo)       — find or create a user from Google userinfo
 """
+
 from __future__ import annotations
 
 import logging
@@ -121,5 +122,9 @@ def oauth_login_or_create(userinfo: dict) -> dict:
             raise RuntimeError("Google OAuth user could not be loaded after creation")
         return user
     except PyMongoError as exc:
-        logger.error("Database error during Google OAuth login: %s", str(exc), exc_info=True)
-        raise RuntimeError("Failed to complete Google sign-in due to database error") from exc
+        logger.error(
+            "Database error during Google OAuth login: %s", str(exc), exc_info=True
+        )
+        raise RuntimeError(
+            "Failed to complete Google sign-in due to database error"
+        ) from exc

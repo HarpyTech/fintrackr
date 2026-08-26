@@ -24,10 +24,10 @@ Guarantees provided by validate_and_compile():
      and server-side execution time all have hard caps.
 """
 
-from __future__ import annotations
+from __future__ import annotations  # noqa: I001
 
 # MongoDB query documents remain intentionally dynamic after validation.
-# mypy: disable-error-code=arg-type,assignment
+# mypy: disable-error-code="arg-type, assignment"
 
 import re
 from dataclasses import dataclass, field
@@ -659,8 +659,10 @@ def validate_and_compile(envelope: MongoQueryEnvelope, username: str) -> Compile
         date_predicate = first_body.pop("expense_date", None)
         if date_predicate is not None:
             scope_match["expense_date"] = date_predicate
-            remaining[0] = {"$match": first_body} if first_body else None
-            remaining = [s for s in remaining if s is not None]
+            if first_body:
+                remaining[0] = {"$match": first_body}
+            else:
+                del remaining[0]
 
     compiled: list[dict] = [{"$match": scope_match}]
     compiled.extend(remaining)

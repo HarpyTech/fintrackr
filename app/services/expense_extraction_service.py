@@ -1,8 +1,8 @@
-from __future__ import annotations
+from __future__ import annotations  # noqa: I001
 
 # Gemini payloads are validated dynamically by Pydantic before use.
 # mypy cannot infer the narrowed shape of those dictionaries.
-# mypy: disable-error-code=arg-type,union-attr,operator
+# mypy: disable-error-code="arg-type, union-attr, operator"
 
 import json
 import logging
@@ -327,6 +327,7 @@ def _normalize_payload(
     )
 
     expense_date = _normalize_date(raw.get("expense_date") or raw.get("date"))
+    expense_date = expense_date or date.today()
 
     payload = {
         "amount": round(amount, 2),
@@ -436,6 +437,9 @@ def _normalize_line_items(raw_items: Any) -> list[dict[str, Any]]:
             or total <= 0
         )
         if invalid_row:
+            continue
+
+        if total is None:
             continue
 
         if unit_price is None:

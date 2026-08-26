@@ -17,7 +17,9 @@ class AppError(Exception):
     status_code: ClassVar[int] = 400
     default_code: ClassVar[str] = "APP_ERROR"
 
-    def __init__(self, message: str, code: str | None = None, status_code: int | None = None):
+    def __init__(
+        self, message: str, code: str | None = None, status_code: int | None = None
+    ):
         self.message = message
         self.code = code or self.default_code
         if status_code is not None:

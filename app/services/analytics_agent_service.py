@@ -23,10 +23,10 @@ right answers, and putting a model in that path would add latency, cost, and a
 chance of mutating a query that already passed validation.
 """
 
-from __future__ import annotations
+from __future__ import annotations  # noqa: I001
 
 # The model response is narrowed from a runtime-selected Pydantic schema.
-# mypy: disable-error-code=attr-defined,call-arg
+# mypy: disable-error-code="attr-defined, call-arg"
 
 import logging
 import time
