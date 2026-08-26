@@ -204,6 +204,20 @@ def get_refresh_tokens_collection() -> Collection:
         raise
 
 
+def get_insight_history_collection() -> Collection:
+    """Get the insight_history collection (90-day TTL chat log per user)."""
+    try:
+        collection = get_database()["insight_history"]
+        logger.debug("Insight history collection accessed")
+        return collection
+    except PyMongoError:
+        logger.error("Failed to access insight_history collection", exc_info=True)
+        raise
+    except Exception:
+        logger.error("Unexpected error accessing insight_history collection", exc_info=True)
+        raise
+
+
 def get_idempotency_collection() -> Collection:
     """Get the idempotency_keys collection (24h TTL cache for POST dedupe)."""
     try:
@@ -303,6 +317,22 @@ def bootstrap_indexes() -> None:
             db["idempotency_keys"].create_index(
                 "created_at",
                 expireAfterSeconds=86400,
+                unique=False,
+            )
+        except Exception:
+            pass
+
+        _safe_create_indexes(
+            db["insight_history"],
+            [
+                {"kind": "compound", "fields": [("username", 1), ("created_at", -1)]},
+            ],
+        )
+        try:
+            # 90-day TTL: insight chat history expires automatically.
+            db["insight_history"].create_index(
+                "created_at",
+                expireAfterSeconds=7776000,
                 unique=False,
             )
         except Exception:
