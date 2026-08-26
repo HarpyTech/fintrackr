@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
 import logging
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.api.deps import get_current_tenant, require_admin
 from app.core.plans import plan_catalog

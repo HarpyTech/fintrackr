@@ -5,9 +5,10 @@ This middleware generates a unique trace ID for each request
 and makes it available throughout the request lifecycle.
 """
 
+import logging
+
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
-import logging
 
 from app.core.tracing import (
     generate_trace_id,

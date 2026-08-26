@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+
 from app.api.deps import get_current_user
 from app.models.user import UserProfileUpdate
 from app.services.auth_service import get_user_profile, update_user_profile

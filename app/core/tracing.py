@@ -5,10 +5,10 @@ This module provides trace ID management to avoid logging personally
 identifiable information (PII) such as usernames, emails, etc.
 """
 
+import logging
 import uuid
 from contextvars import ContextVar
 from typing import Optional
-import logging
 
 
 # Context variable to store trace ID for the current request

@@ -6,7 +6,7 @@ two different users can reuse the same Idempotency-Key value without
 collision.
 """
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.db.mongo import get_idempotency_collection
 
@@ -39,7 +39,7 @@ def store_idempotency_response(key: str, user_id: str, response_body: dict) -> N
                     "key": key,
                     "user_id": user_id,
                     "response_body": response_body,
-                    "created_at": datetime.now(timezone.utc),
+                    "created_at": datetime.now(UTC),
                 }
             },
             upsert=True,

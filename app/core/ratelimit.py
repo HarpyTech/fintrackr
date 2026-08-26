@@ -1,7 +1,7 @@
 """Rate limiting utilities for signup OTP requests."""
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from app.db.mongo import get_users_collection
 
@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class OtpRateLimitError(Exception):

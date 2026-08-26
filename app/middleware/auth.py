@@ -1,9 +1,11 @@
+import logging
+
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
+from jose import JWTError, jwt
 from starlette.middleware.base import BaseHTTPMiddleware
-from jose import jwt, JWTError
+
 from app.core.config import settings
-import logging
 
 logger = logging.getLogger(__name__)
 

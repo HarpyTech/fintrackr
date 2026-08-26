@@ -1,30 +1,30 @@
+import logging
 import secrets
 
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
-import logging
 
 from app.core.config import settings
-from app.core.security import create_access_token
 from app.core.ratelimit import OtpRateLimitError
+from app.core.security import create_access_token
+from app.models.user import (
+    ForgotPasswordRequest,
+    ResetPasswordPayload,
+    UserCreate,
+    UserLogin,
+    UserResendOtp,
+    UserVerifySignup,
+)
 from app.services.auth_service import (
     authenticate_user,
     build_google_auth_url,
     exchange_google_code,
     oauth_login_or_create,
     register_user,
-    resend_signup_otp,
-    verify_user_signup_otp,
     request_password_reset,
+    resend_signup_otp,
     reset_password_with_otp,
-)
-from app.models.user import (
-    UserCreate,
-    UserLogin,
-    UserResendOtp,
-    UserVerifySignup,
-    ForgotPasswordRequest,
-    ResetPasswordPayload,
+    verify_user_signup_otp,
 )
 
 router = APIRouter()
@@ -408,7 +408,7 @@ def google_auth_callback(
     except PermissionError as exc:
         logger.warning("Google OAuth domain not allowed: %s", str(exc))
         return RedirectResponse(
-            url=f"/?error=domain_not_allowed",
+            url="/?error=domain_not_allowed",
             status_code=302,
         )
     except Exception as exc:

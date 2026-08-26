@@ -1,22 +1,23 @@
-from fastapi import APIRouter, HTTPException, Request, Response, status
 import logging
 
+from fastapi import APIRouter, HTTPException, Request, Response, status
+
+from app.api.deps import get_current_user
 from app.core.ratelimit import WebAuthnRateLimitError, check_webauthn_rate_limit
 from app.models.user import (
-    WebAuthnRegisterRequest,
-    WebAuthnRegisterVerifyRequest,
     WebAuthnAuthenticateRequest,
     WebAuthnAuthenticateVerifyRequest,
+    WebAuthnRegisterRequest,
+    WebAuthnRegisterVerifyRequest,
 )
 from app.services.webauthn_service import (
-    generate_registration_challenge,
-    verify_registration,
-    generate_authentication_challenge,
-    verify_authentication,
-    get_user_credentials,
     delete_credential,
+    generate_authentication_challenge,
+    generate_registration_challenge,
+    get_user_credentials,
+    verify_authentication,
+    verify_registration,
 )
-from app.api.deps import get_current_user
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

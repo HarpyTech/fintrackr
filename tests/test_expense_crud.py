@@ -1,9 +1,5 @@
 """Tests for expense CRUD service functions (mongomock-backed)."""
 
-from datetime import date
-
-import pytest
-
 from app.services import expense_service
 
 
@@ -20,7 +16,7 @@ def _seed_user(mongo, username, **fields):
 
 def _seed_expense(mongo, username, **fields):
     """Insert a raw expense document and return its string ID."""
-    from datetime import datetime, timezone
+    from datetime import UTC, datetime
     doc = {
         "username": username,
         "amount": 10.0,
@@ -33,7 +29,7 @@ def _seed_expense(mongo, username, **fields):
         "expense_date": datetime(2024, 1, 15),
         "llm_model": None,
         "line_items_count": 0,
-        "created_at": datetime.now(timezone.utc),
+        "created_at": datetime.now(UTC),
     }
     doc.update(fields)
     result = mongo["expenses"].insert_one(doc)

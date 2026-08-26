@@ -1,10 +1,11 @@
-from contextlib import contextmanager
-from datetime import date, datetime, time, timezone
+import logging
 import re
+from contextlib import contextmanager
+from datetime import UTC, date, datetime, time
+
 from bson import ObjectId
 from bson.errors import InvalidId
 from pymongo.errors import PyMongoError
-import logging
 
 from app.db.mongo import (
     get_expense_line_items_collection,
@@ -85,7 +86,7 @@ def add_expense(
             "expense_date": _as_mongo_datetime(expense_date),
             "llm_model": normalized_llm_model,
             "line_items_count": len(normalized_items),
-            "created_at": datetime.now(timezone.utc),
+            "created_at": datetime.now(UTC),
         }
         if tenant_id:
             doc["tenant_id"] = tenant_id
@@ -102,7 +103,7 @@ def add_expense(
                         "quantity": item["quantity"],
                         "unit_price": item["unit_price"],
                         "total": item["total"],
-                        "created_at": datetime.now(timezone.utc),
+                        "created_at": datetime.now(UTC),
                     }
                     for item in normalized_items
                 ]
@@ -321,7 +322,7 @@ def update_expense(username: str, expense_id: str, updates: dict, tenant_id: str
             set_fields["expense_date"] = _as_mongo_datetime(updates["expense_date"])
         if not set_fields:
             return get_expense(username, expense_id, tenant_id)
-        set_fields["updated_at"] = datetime.now(timezone.utc)
+        set_fields["updated_at"] = datetime.now(UTC)
         result = expenses.update_one(
             {"_id": oid, **_active_filter(username, tenant_id)},
             {"$set": set_fields},
@@ -347,7 +348,7 @@ def delete_expense(username: str, expense_id: str, tenant_id: str | None = None)
         expenses = get_expenses_collection()
         result = expenses.update_one(
             {"_id": oid, **_active_filter(username, tenant_id)},
-            {"$set": {"is_deleted": True, "deleted_at": datetime.now(timezone.utc)}},
+            {"$set": {"is_deleted": True, "deleted_at": datetime.now(UTC)}},
         )
         return result.matched_count > 0
     except ValueError:

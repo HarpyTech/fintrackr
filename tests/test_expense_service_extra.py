@@ -1,6 +1,6 @@
 """Additional expense_service coverage: soft-delete, limit status, limit check."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -32,7 +32,7 @@ def _seed_expense(mongo, username, **fields):
         "expense_date": datetime(2024, 1, 15),
         "llm_model": None,
         "line_items_count": 0,
-        "created_at": datetime.now(timezone.utc),
+        "created_at": datetime.now(UTC),
     }
     doc.update(fields)
     result = mongo["expenses"].insert_one(doc)

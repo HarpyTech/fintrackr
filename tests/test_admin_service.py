@@ -21,14 +21,14 @@ def _seed_user(mongo, username, **fields):
 
 
 def _seed_expense(mongo, username, tenant_id=None):
-    from datetime import datetime, timezone
+    from datetime import UTC, datetime
     mongo["expenses"].insert_one({
         "username": username,
         "tenant_id": tenant_id or username,
         "amount": 5.0,
         "category": "food",
-        "expense_date": datetime.now(timezone.utc),
-        "created_at": datetime.now(timezone.utc),
+        "expense_date": datetime.now(UTC),
+        "created_at": datetime.now(UTC),
     })
 
 

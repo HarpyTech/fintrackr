@@ -8,8 +8,6 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from bson import ObjectId
-
 from app.db.mongo import get_users_collection
 
 logger = logging.getLogger(__name__)

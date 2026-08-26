@@ -1,6 +1,7 @@
+import logging
+
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
-import logging
 
 from app.core.config import settings
 from app.db.mongo import ping_database

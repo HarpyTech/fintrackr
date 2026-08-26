@@ -1,9 +1,11 @@
+import logging
+
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
-from app.core.security import create_csrf_token
+
 from app.core.config import settings
-import logging
+from app.core.security import create_csrf_token
 
 logger = logging.getLogger(__name__)
 

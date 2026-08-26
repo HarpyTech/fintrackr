@@ -28,8 +28,9 @@ from __future__ import annotations
 import logging
 import time
 import uuid
-from datetime import date, datetime, timezone
-from typing import Any, Callable
+from collections.abc import Callable
+from datetime import UTC, date, datetime
+from typing import Any
 
 from pydantic import ValidationError
 
@@ -54,7 +55,6 @@ from app.services.gemini_client import (
     is_configured,
 )
 from app.services.mongo_guard import (
-    COLLECTION_FIELDS,
     QueryRejected,
     validate_and_compile,
 )
@@ -294,7 +294,7 @@ def _jsonable(value: Any) -> Any:
         return value.date().isoformat()
     if isinstance(value, date):
         return value.isoformat()
-    if isinstance(value, (str, int, float, bool)) or value is None:
+    if isinstance(value, str | int | float | bool) or value is None:
         return value
     return str(value)
 
@@ -578,7 +578,7 @@ def run_analytics_agent(
             "llm_calls": budget.used,
             "latency_ms": int((time.perf_counter() - started) * 1000),
             "model": settings.GEMINI_MODEL,
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
         },
     )
 

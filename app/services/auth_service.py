@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 import random
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from pymongo.errors import PyMongoError
 
@@ -35,14 +35,14 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _is_otp_expired(expires_at: datetime | None) -> bool:
     if not expires_at:
         return True
     if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=timezone.utc)
+        expires_at = expires_at.replace(tzinfo=UTC)
     return _utcnow() > expires_at
 
 

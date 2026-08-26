@@ -1,7 +1,7 @@
 """Admin-only user management: listing users and managing plans / limits."""
 
-from datetime import datetime, timezone
 import logging
+from datetime import UTC, datetime
 
 from pymongo.errors import PyMongoError
 
@@ -18,7 +18,7 @@ class UserNotFoundError(Exception):
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _serialize_user(user: dict, expense_count: int) -> dict:
