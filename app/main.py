@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api.routes import auth, users, health, expenses, webauthn, analytics, admin
+from app.api.routes import admin, analytics, auth, expenses, health, users, webauthn
 from app.core.config import settings
 from app.core.errors import AppError, http_code
 from app.core.telemetry import setup_telemetry
