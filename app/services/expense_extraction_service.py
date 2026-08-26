@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from datetime import date, datetime
-from io import BytesIO
 import json
 import logging
 import re
+from datetime import date, datetime
+from io import BytesIO
 from typing import Any
 
 import google.generativeai as genai
@@ -470,7 +470,7 @@ def _to_float(value: Any) -> float | None:
     if value is None:
         return None
 
-    if isinstance(value, (int, float)):
+    if isinstance(value, int | float):
         return float(value)
 
     text = str(value).strip()

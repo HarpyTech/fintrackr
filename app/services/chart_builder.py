@@ -35,25 +35,43 @@ _VALID_CHARTS = {"trend_bar", "breakdown", "category_trend", "table", "kpi"}
 # Result keys that represent a point in time rather than a category. A grouping
 # key from this set means the data is a series and should trend, not a donut.
 _TEMPORAL_KEYS = {
-    "day", "week", "month", "year", "date", "expense_date",
-    "_id", "period", "day_of_week", "weekday", "hour",
+    "day",
+    "week",
+    "month",
+    "year",
+    "date",
+    "expense_date",
+    "_id",
+    "period",
+    "day_of_week",
+    "weekday",
+    "hour",
 }
 
 # Keys that are measures rather than labels.
 _MEASURE_KEYS = {
-    "total", "amount", "sum", "avg", "average", "count", "min", "max",
-    "quantity", "unit_price", "value",
+    "total",
+    "amount",
+    "sum",
+    "avg",
+    "average",
+    "count",
+    "min",
+    "max",
+    "quantity",
+    "unit_price",
+    "value",
 }
 
 _MAX_TABLE_COLUMNS = 8
 
 
 def _is_number(value: Any) -> bool:
-    return isinstance(value, (int, float)) and not isinstance(value, bool)
+    return isinstance(value, int | float) and not isinstance(value, bool)
 
 
 def _is_temporal(value: Any) -> bool:
-    return isinstance(value, (date, datetime))
+    return isinstance(value, date | datetime)
 
 
 def _column_type(key: str, values: list[Any]) -> str:
@@ -86,11 +104,13 @@ def describe_columns(rows: list[dict]) -> list[dict]:
     columns = []
     for key in ordered[:_MAX_TABLE_COLUMNS]:
         values = [row.get(key) for row in rows]
-        columns.append({
-            "key": key,
-            "label": _humanize(key),
-            "type": _column_type(key, values),
-        })
+        columns.append(
+            {
+                "key": key,
+                "label": _humanize(key),
+                "type": _column_type(key, values),
+            }
+        )
     return columns
 
 

@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from typing import Any
 
+
 # Indian digit grouping (1,23,456) matches the frontend's en-IN formatter.
 def format_inr(value: Any) -> str:
     try:
@@ -57,7 +58,7 @@ def _sum(rows: list[dict], key: str) -> float:
     total = 0.0
     for row in rows:
         value = row.get(key)
-        if isinstance(value, (int, float)) and not isinstance(value, bool):
+        if isinstance(value, int | float) and not isinstance(value, bool):
             total += float(value)
     return total
 
@@ -106,14 +107,20 @@ def build_narrative(
     if chart == "kpi" and measure:
         value = rows[0].get(measure)
         headline = f"{format_inr(value)} in total"
-        highlights.append({
-            "label": _title(measure),
-            "value": value,
-            "format": "currency",
-        })
+        highlights.append(
+            {
+                "label": _title(measure),
+                "value": value,
+                "format": "currency",
+            }
+        )
         if explain:
             lines.append(explain)
-        return {"headline": headline, "body_md": "\n\n".join(lines), "highlights": highlights}
+        return {
+            "headline": headline,
+            "body_md": "\n\n".join(lines),
+            "highlights": highlights,
+        }
 
     # --- Ranked categorical ---------------------------------------------
     if chart == "breakdown" and measure and label_key:
@@ -126,19 +133,23 @@ def build_narrative(
         headline = f"{top_label} leads at {format_inr(top_value)}"
 
         highlights.append({"label": "Total", "value": total, "format": "currency"})
-        highlights.append({
-            "label": f"Top: {top_label}",
-            "value": top_value,
-            "format": "currency",
-            "delta_pct": round(share, 1),
-            "direction": "flat",
-            "tone": "info",
-        })
-        highlights.append({
-            "label": "Distinct entries",
-            "value": len(rows),
-            "format": "number",
-        })
+        highlights.append(
+            {
+                "label": f"Top: {top_label}",
+                "value": top_value,
+                "format": "currency",
+                "delta_pct": round(share, 1),
+                "direction": "flat",
+                "tone": "info",
+            }
+        )
+        highlights.append(
+            {
+                "label": "Distinct entries",
+                "value": len(rows),
+                "format": "number",
+            }
+        )
 
         lines.append(
             f"Across **{len(rows)}** entries totalling **{format_inr(total)}**, "
@@ -156,11 +167,13 @@ def build_narrative(
         top_three = _sum(rows[:3], measure)
         if total > 0 and len(rows) > 3:
             concentration = top_three / total * 100.0
-            lines.append(
-                f"The top 3 make up **{concentration:.0f}%** of the total."
-            )
+            lines.append(f"The top 3 make up **{concentration:.0f}%** of the total.")
 
-        return {"headline": headline, "body_md": "\n\n".join(lines), "highlights": highlights}
+        return {
+            "headline": headline,
+            "body_md": "\n\n".join(lines),
+            "highlights": highlights,
+        }
 
     # --- Time series -----------------------------------------------------
     if chart == "trend_bar" and measure:
@@ -168,7 +181,7 @@ def build_narrative(
         values = [
             float(r.get(measure) or 0)
             for r in rows
-            if isinstance(r.get(measure), (int, float))
+            if isinstance(r.get(measure), int | float)
         ]
         non_zero = [v for v in values if v > 0]
         average = (sum(non_zero) / len(non_zero)) if non_zero else 0.0
@@ -180,19 +193,25 @@ def build_narrative(
         headline = f"{format_inr(total)} across {len(rows)} periods"
 
         highlights.append({"label": "Total", "value": total, "format": "currency"})
-        highlights.append({"label": "Average", "value": round(average, 2), "format": "currency"})
-        highlights.append({
-            "label": f"Peak{f': {peak_label}' if peak_label else ''}",
-            "value": peak_value,
-            "format": "currency",
-        })
+        highlights.append(
+            {"label": "Average", "value": round(average, 2), "format": "currency"}
+        )
+        highlights.append(
+            {
+                "label": f"Peak{f': {peak_label}' if peak_label else ''}",
+                "value": peak_value,
+                "format": "currency",
+            }
+        )
 
         lines.append(
             f"Total **{format_inr(total)}**, averaging **{format_inr(average)}** "
             f"per active period."
         )
         if peak_label:
-            lines.append(f"Highest was **{peak_label}** at **{format_inr(peak_value)}**.")
+            lines.append(
+                f"Highest was **{peak_label}** at **{format_inr(peak_value)}**."
+            )
 
         # First-vs-last is an actual measured change, stated as such — not a
         # projection.
@@ -206,16 +225,22 @@ def build_narrative(
                     f"**{direction} {abs(change):.0f}%** "
                     f"({format_inr(first)} → {format_inr(last)})."
                 )
-                highlights.append({
-                    "label": "Change",
-                    "value": last,
-                    "format": "currency",
-                    "delta_pct": round(abs(change), 1),
-                    "direction": direction,
-                    "tone": "warn" if direction == "up" else "good",
-                })
+                highlights.append(
+                    {
+                        "label": "Change",
+                        "value": last,
+                        "format": "currency",
+                        "delta_pct": round(abs(change), 1),
+                        "direction": direction,
+                        "tone": "warn" if direction == "up" else "good",
+                    }
+                )
 
-        return {"headline": headline, "body_md": "\n\n".join(lines), "highlights": highlights}
+        return {
+            "headline": headline,
+            "body_md": "\n\n".join(lines),
+            "highlights": highlights,
+        }
 
     # --- Multi-series ----------------------------------------------------
     if chart == "category_trend" and measure:
@@ -227,7 +252,11 @@ def build_narrative(
             f"Grouped comparison over **{len(rows)}** rows totalling "
             f"**{format_inr(total)}**."
         )
-        return {"headline": headline, "body_md": "\n\n".join(lines), "highlights": highlights}
+        return {
+            "headline": headline,
+            "body_md": "\n\n".join(lines),
+            "highlights": highlights,
+        }
 
     # --- Fallback: table -------------------------------------------------
     headline = f"{len(rows)} result{'s' if len(rows) != 1 else ''}"
@@ -238,7 +267,11 @@ def build_narrative(
     if explain:
         lines.append(explain)
 
-    return {"headline": headline, "body_md": "\n\n".join(lines), "highlights": highlights}
+    return {
+        "headline": headline,
+        "body_md": "\n\n".join(lines),
+        "highlights": highlights,
+    }
 
 
 def _title(key: str) -> str:

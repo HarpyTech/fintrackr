@@ -27,7 +27,7 @@ from app.models.mongo_query import MongoQueryEnvelope  # noqa: E402
 from app.services.mongo_guard import (  # noqa: E402
     MAX_RESULT_LIMIT,
     MAX_TIME_MS,
-    QueryRejected,
+    QueryRejectedError,
     validate_and_compile,
 )
 
@@ -50,7 +50,7 @@ def _find(filter_, collection="expenses", **kwargs):
 def _rejects(envelope, because: str) -> None:
     try:
         validate_and_compile(envelope, USER)
-    except QueryRejected:
+    except QueryRejectedError:
         return
     raise AssertionError(f"SHOULD HAVE BEEN REJECTED ({because}): {envelope!r}")
 
@@ -63,14 +63,19 @@ def _accepts(envelope):
 # 1. Forbidden stages and operators
 # --------------------------------------------------------------------------
 
+
 def test_rejects_javascript_execution():
     _rejects(_agg([{"$match": {"$where": "this.amount > 0"}}]), "$where runs JS")
     _rejects(
-        _agg([{"$group": {"_id": None, "t": {"$accumulator": {"init": "function(){}"}}}}]),
+        _agg(
+            [{"$group": {"_id": None, "t": {"$accumulator": {"init": "function(){}"}}}}]
+        ),
         "$accumulator runs JS",
     )
     _rejects(
-        _agg([{"$project": {"x": {"$function": {"body": "function(){}", "args": []}}}}]),
+        _agg(
+            [{"$project": {"x": {"$function": {"body": "function(){}", "args": []}}}}]
+        ),
         "$function runs JS",
     )
 
@@ -82,8 +87,18 @@ def test_rejects_writes():
 
 def test_rejects_cross_collection_access():
     _rejects(
-        _agg([{"$lookup": {"from": "users", "localField": "username",
-                           "foreignField": "username", "as": "u"}}]),
+        _agg(
+            [
+                {
+                    "$lookup": {
+                        "from": "users",
+                        "localField": "username",
+                        "foreignField": "username",
+                        "as": "u",
+                    }
+                }
+            ]
+        ),
         "$lookup can reach the users collection",
     )
     _rejects(_agg([{"$graphLookup": {"from": "users"}}]), "$graphLookup joins")
@@ -124,6 +139,7 @@ def test_rejects_unknown_operator_by_default():
 # 2. Tenant isolation
 # --------------------------------------------------------------------------
 
+
 def test_rejects_any_mention_of_username():
     """The model must never author scoping; the guard owns it exclusively."""
     _rejects(_agg([{"$match": {"username": ATTACKER}}]), "sets username directly")
@@ -137,15 +153,21 @@ def test_rejects_any_mention_of_username():
 
 
 def test_scope_is_always_stage_zero():
-    compiled = _accepts(_agg([{"$group": {"_id": "$category", "total": {"$sum": "$amount"}}}]))
+    compiled = _accepts(
+        _agg([{"$group": {"_id": "$category", "total": {"$sum": "$amount"}}}])
+    )
     assert compiled.pipeline[0] == {"$match": {"username": USER}}, compiled.pipeline[0]
 
 
 def test_scope_survives_a_leading_match():
-    compiled = _accepts(_agg([
-        {"$match": {"category": "grocery"}},
-        {"$group": {"_id": "$vendor", "total": {"$sum": "$amount"}}},
-    ]))
+    compiled = _accepts(
+        _agg(
+            [
+                {"$match": {"category": "grocery"}},
+                {"$group": {"_id": "$vendor", "total": {"$sum": "$amount"}}},
+            ]
+        )
+    )
     assert compiled.pipeline[0]["$match"]["username"] == USER
     # The user's own predicate is preserved, not dropped.
     assert any(
@@ -165,10 +187,14 @@ def test_date_predicate_is_hoisted_for_index_use():
     A date predicate must end up in stage 0 beside username or the compound
     index cannot be used.
     """
-    compiled = _accepts(_agg([
-        {"$match": {"expense_date": {"$gte": "2026-01-01"}}},
-        {"$group": {"_id": "$category", "total": {"$sum": "$amount"}}},
-    ]))
+    compiled = _accepts(
+        _agg(
+            [
+                {"$match": {"expense_date": {"$gte": "2026-01-01"}}},
+                {"$group": {"_id": "$category", "total": {"$sum": "$amount"}}},
+            ]
+        )
+    )
     stage0 = compiled.pipeline[0]["$match"]
     assert stage0["username"] == USER
     assert "expense_date" in stage0, compiled.pipeline
@@ -178,6 +204,7 @@ def test_date_predicate_is_hoisted_for_index_use():
 # 3. Field allow-list
 # --------------------------------------------------------------------------
 
+
 def test_rejects_unknown_fields():
     _rejects(_agg([{"$match": {"password_hash": {"$exists": True}}}]), "not a field")
     _rejects(_agg([{"$match": {"credential_id": "x"}}]), "not a field")
@@ -186,7 +213,9 @@ def test_rejects_unknown_fields():
 
 
 def test_rejects_system_variables():
-    _rejects(_agg([{"$project": {"everything": "$$ROOT"}}]), "$$ROOT dumps the document")
+    _rejects(
+        _agg([{"$project": {"everything": "$$ROOT"}}]), "$$ROOT dumps the document"
+    )
 
 
 def test_line_items_uses_its_own_field_list():
@@ -201,6 +230,7 @@ def test_line_items_uses_its_own_field_list():
 # --------------------------------------------------------------------------
 # 4. Structural and resource limits
 # --------------------------------------------------------------------------
+
 
 def test_rejects_oversized_pipelines():
     _rejects(_agg([{"$match": {"amount": {"$gt": 1}}}] * 13), "too many stages")
@@ -229,10 +259,12 @@ def test_rejects_redos_regex():
 
 
 def test_limit_is_capped_and_always_appended():
-    compiled = _accepts(_agg(
-        [{"$group": {"_id": "$vendor", "total": {"$sum": "$amount"}}}],
-        limit=200,
-    ))
+    compiled = _accepts(
+        _agg(
+            [{"$group": {"_id": "$vendor", "total": {"$sum": "$amount"}}}],
+            limit=200,
+        )
+    )
     assert compiled.pipeline[-1] == {"$limit": MAX_RESULT_LIMIT}
     assert compiled.max_time_ms == MAX_TIME_MS
 
@@ -248,37 +280,70 @@ def test_limit_cannot_be_raised_past_the_cap():
 # 5. Legitimate queries must still work
 # --------------------------------------------------------------------------
 
+
 def test_accepts_realistic_analytics():
-    _accepts(_agg([
-        {"$match": {"expense_date": {"$gte": "2026-01-01", "$lt": "2026-07-01"}}},
-        {"$group": {"_id": "$vendor", "total": {"$sum": "$amount"}}},
-        {"$sort": {"total": -1}},
-        {"$limit": 10},
-    ]))
-    _accepts(_agg([
-        {"$group": {
-            "_id": {"$dateToString": {"format": "%Y-%m", "date": "$expense_date"}},
-            "total": {"$sum": "$amount"},
-            "count": {"$sum": 1},
-        }},
-        {"$sort": {"_id": 1}},
-    ]))
-    _accepts(_agg([
-        {"$match": {"category": {"$in": ["grocery", "utility"]}}},
-        {"$group": {"_id": "$category", "avg": {"$avg": "$amount"}}},
-    ]))
-    _accepts(_find({"amount": {"$gte": 500}}, projection={"amount": 1, "vendor": 1},
-                   sort={"expense_date": -1}))
-    _accepts(_agg([
-        {"$match": {"vendor": {"$regex": "^amazon", "$options": "i"}}},
-        {"$count": "matches"},
-    ]))
+    _accepts(
+        _agg(
+            [
+                {
+                    "$match": {
+                        "expense_date": {"$gte": "2026-01-01", "$lt": "2026-07-01"}
+                    }
+                },
+                {"$group": {"_id": "$vendor", "total": {"$sum": "$amount"}}},
+                {"$sort": {"total": -1}},
+                {"$limit": 10},
+            ]
+        )
+    )
+    _accepts(
+        _agg(
+            [
+                {
+                    "$group": {
+                        "_id": {
+                            "$dateToString": {
+                                "format": "%Y-%m",
+                                "date": "$expense_date",
+                            }
+                        },
+                        "total": {"$sum": "$amount"},
+                        "count": {"$sum": 1},
+                    }
+                },
+                {"$sort": {"_id": 1}},
+            ]
+        )
+    )
+    _accepts(
+        _agg(
+            [
+                {"$match": {"category": {"$in": ["grocery", "utility"]}}},
+                {"$group": {"_id": "$category", "avg": {"$avg": "$amount"}}},
+            ]
+        )
+    )
+    _accepts(
+        _find(
+            {"amount": {"$gte": 500}},
+            projection={"amount": 1, "vendor": 1},
+            sort={"expense_date": -1},
+        )
+    )
+    _accepts(
+        _agg(
+            [
+                {"$match": {"vendor": {"$regex": "^amazon", "$options": "i"}}},
+                {"$count": "matches"},
+            ]
+        )
+    )
 
 
 def test_no_authenticated_user_is_rejected():
     try:
         validate_and_compile(_agg([{"$match": {"amount": {"$gt": 0}}}]), "")
-    except QueryRejected:
+    except QueryRejectedError:
         return
     raise AssertionError("an unauthenticated query must never compile")
 
@@ -286,6 +351,7 @@ def test_no_authenticated_user_is_rejected():
 # --------------------------------------------------------------------------
 # Runner
 # --------------------------------------------------------------------------
+
 
 def _run_all() -> int:
     tests = [

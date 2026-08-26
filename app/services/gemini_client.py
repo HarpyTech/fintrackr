@@ -31,11 +31,11 @@ _GEMINI_MODEL = "gemini-2.5-flash"
 _models: dict[str, genai.GenerativeModel] = {}
 
 
-class GeminiUnavailable(RuntimeError):
+class GeminiUnavailableError(RuntimeError):
     """Gemini is not configured, unreachable, or refused the request."""
 
 
-class LlmBudgetExhausted(RuntimeError):
+class LlmBudgetExhaustedError(RuntimeError):
     """The per-message model-call budget is spent."""
 
 
@@ -54,7 +54,7 @@ class LlmBudget:
 
     def spend(self, label: str) -> None:
         if self.used >= self.max_calls:
-            raise LlmBudgetExhausted(
+            raise LlmBudgetExhaustedError(
                 f"model-call budget of {self.max_calls} exhausted"
             )
         self.used += 1
@@ -73,9 +73,9 @@ def is_configured() -> bool:
 def _resolve_model_name() -> str:
     model_name = (settings.GEMINI_MODEL or "").strip()
     if not model_name:
-        raise GeminiUnavailable("GEMINI_MODEL is not configured")
+        raise GeminiUnavailableError("GEMINI_MODEL is not configured")
     if model_name != _GEMINI_MODEL:
-        raise GeminiUnavailable(f"GEMINI_MODEL must be set to {_GEMINI_MODEL}")
+        raise GeminiUnavailableError(f"GEMINI_MODEL must be set to {_GEMINI_MODEL}")
     return model_name
 
 
@@ -86,7 +86,7 @@ def _get_model(model_name: str) -> genai.GenerativeModel:
         return cached
 
     if not settings.GEMINI_API_KEY:
-        raise GeminiUnavailable("GEMINI_API_KEY is not configured")
+        raise GeminiUnavailableError("GEMINI_API_KEY is not configured")
 
     genai.configure(api_key=settings.GEMINI_API_KEY)
     instance = genai.GenerativeModel(model_name)
@@ -108,9 +108,9 @@ def generate_structured(
     Ask Gemini for a JSON object matching `schema` and return it validated.
 
     Raises:
-        LlmBudgetExhausted  — per-message ceiling reached
+        LlmBudgetExhaustedError  — per-message ceiling reached
         LlmRateLimitError   — per-user window exceeded
-        GeminiUnavailable   — not configured, blocked, timed out, or unparseable
+        GeminiUnavailableError   — not configured, blocked, timed out, or unparseable
         ValidationError     — well-formed JSON that does not match the schema
                               (the caller repairs this, so it is not wrapped)
     """
@@ -141,19 +141,19 @@ def generate_structured(
             ),
             request_options={"timeout": settings.ANALYTICS_LLM_TIMEOUT_SECONDS},
         )
-    except (LlmRateLimitError, LlmBudgetExhausted):
+    except (LlmRateLimitError, LlmBudgetExhaustedError):
         raise
     except Exception as exc:  # SDK raises a wide variety of transport errors
         logger.warning("Gemini request failed (%s): %s", label, exc)
-        raise GeminiUnavailable(f"Gemini request failed: {exc}") from exc
+        raise GeminiUnavailableError(f"Gemini request failed: {exc}") from exc
 
     # finish_reason 2 is SAFETY in the v1beta enum.
     if response.candidates and response.candidates[0].finish_reason == 2:
-        raise GeminiUnavailable("Gemini blocked the request")
+        raise GeminiUnavailableError("Gemini blocked the request")
 
     raw = (getattr(response, "text", "") or "").strip()
     if not raw:
-        raise GeminiUnavailable("Gemini returned an empty response")
+        raise GeminiUnavailableError("Gemini returned an empty response")
 
     # Let ValidationError propagate: the orchestrator turns it into a repair
     # prompt, which is more useful than a generic failure.
@@ -164,7 +164,7 @@ def describe_last_error(exc: Exception) -> str:
     """Short, user-safe description of a model failure."""
     if isinstance(exc, LlmRateLimitError):
         return "AI request limit reached."
-    if isinstance(exc, LlmBudgetExhausted):
+    if isinstance(exc, LlmBudgetExhaustedError):
         return "This question needed more AI steps than allowed."
     if isinstance(exc, ValidationError):
         return "The AI returned a malformed query."

@@ -23,6 +23,7 @@ from app.models.expense import (
     ExpenseUpdate,
 )
 from app.services.expense_service import (
+    SessionExpenseLimitError,
     add_expense,
     category_summary,
     categories_monthly_summary,
@@ -36,7 +37,6 @@ from app.services.expense_service import (
     update_expense,
     vendors_monthly_summary,
     yearly_summary,
-    SessionExpenseLimitError,
 )
 from app.services.expense_chat_service import (
     answer_expense_analysis_query,
@@ -64,7 +64,9 @@ def create_expense(
     if idempotency_key:
         cached = get_idempotency_response(idempotency_key, user)
         if cached is not None:
-            logger.info("Returning cached response for Idempotency-Key=%s", idempotency_key)
+            logger.info(
+                "Returning cached response for Idempotency-Key=%s", idempotency_key
+            )
             return cached
     try:
         check_session_expense_limit(user, tenant_id=tenant_id)
@@ -123,7 +125,9 @@ async def extract_and_create_expense(
     if idempotency_key:
         cached = get_idempotency_response(idempotency_key, user)
         if cached is not None:
-            logger.info("Returning cached response for Idempotency-Key=%s", idempotency_key)
+            logger.info(
+                "Returning cached response for Idempotency-Key=%s", idempotency_key
+            )
             return cached
     try:
         # Enforce limit before reading image bytes or calling Gemini.
@@ -212,7 +216,9 @@ async def create_expense_from_chat(
     if idempotency_key:
         cached = get_idempotency_response(idempotency_key, user)
         if cached is not None:
-            logger.info("Returning cached response for Idempotency-Key=%s", idempotency_key)
+            logger.info(
+                "Returning cached response for Idempotency-Key=%s", idempotency_key
+            )
             return cached
     try:
         if looks_like_expense_analysis_request(payload.message):
@@ -338,7 +344,9 @@ def get_expenses(
     """
     logger.info("Get expenses request received (limit=%d, offset=%d)", limit, offset)
     try:
-        result = list_expenses(user, limit=limit, offset=offset, sort_dir=sort_dir, tenant_id=tenant_id)
+        result = list_expenses(
+            user, limit=limit, offset=offset, sort_dir=sort_dir, tenant_id=tenant_id
+        )
         logger.info("Retrieved %d/%d expenses", len(result["items"]), result["total"])
         return result
     except RuntimeError as exc:
@@ -450,7 +458,9 @@ def get_category_summary(
     """Get category-wise expense summary"""
     logger.info(f"Category summary request (year={year}, month={month})")
     try:
-        result = {"items": category_summary(user, year=year, month=month, tenant_id=tenant_id)}
+        result = {
+            "items": category_summary(user, year=year, month=month, tenant_id=tenant_id)
+        }
         logger.info(f"Category summary retrieved (year={year}, month={month})")
         return result
     except RuntimeError as exc:
@@ -504,7 +514,9 @@ def get_categories_monthly_summary(
     """Get category breakdown for a given year and month"""
     logger.info(f"Categories monthly summary request for {year}-{month}")
     try:
-        result = {"items": categories_monthly_summary(user, year, month, tenant_id=tenant_id)}
+        result = {
+            "items": categories_monthly_summary(user, year, month, tenant_id=tenant_id)
+        }
         logger.info(f"Categories monthly summary retrieved for {year}-{month}")
         return result
     except RuntimeError as exc:
@@ -535,7 +547,9 @@ def get_vendors_monthly_summary(
     """Get vendor breakdown for a given year and month"""
     logger.info(f"Vendors monthly summary request for {year}-{month}")
     try:
-        result = {"items": vendors_monthly_summary(user, year, month, tenant_id=tenant_id)}
+        result = {
+            "items": vendors_monthly_summary(user, year, month, tenant_id=tenant_id)
+        }
         logger.info(f"Vendors monthly summary retrieved for {year}-{month}")
         return result
     except RuntimeError as exc:
@@ -556,6 +570,7 @@ def get_vendors_monthly_summary(
 
 
 # ---------- Per-expense CRUD ----------
+
 
 @router.get("/{expense_id}")
 def get_expense_by_id(
@@ -590,7 +605,9 @@ def patch_expense(
 ):
     """Partially update an expense (must be owned by the current user)."""
     try:
-        updated = update_expense(user, expense_id, body.model_dump(exclude_none=True), tenant_id=tenant_id)
+        updated = update_expense(
+            user, expense_id, body.model_dump(exclude_none=True), tenant_id=tenant_id
+        )
         if updated is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

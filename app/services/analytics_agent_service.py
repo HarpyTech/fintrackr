@@ -48,14 +48,14 @@ from app.models.mongo_query import (
 from app.services import analytics_narrative as narrative
 from app.services import chart_builder
 from app.services.gemini_client import (
-    GeminiUnavailable,
+    GeminiUnavailableError,
     LlmBudget,
-    LlmBudgetExhausted,
+    LlmBudgetExhaustedError,
     generate_structured,
     is_configured,
 )
 from app.services.mongo_guard import (
-    QueryRejected,
+    QueryRejectedError,
     validate_and_compile,
 )
 
@@ -75,6 +75,7 @@ def _noop_phase(name: str, label: str) -> None:
 # --------------------------------------------------------------------------
 # Tool: schema_context
 # --------------------------------------------------------------------------
+
 
 def build_schema_context(username: str) -> dict:
     """
@@ -111,11 +112,13 @@ def build_schema_context(username: str) -> dict:
     bounds: dict[str, str] = {}
     try:
         oldest = collection.find_one(
-            {"username": username}, sort=[("expense_date", 1)],
+            {"username": username},
+            sort=[("expense_date", 1)],
             projection={"expense_date": 1},
         )
         newest = collection.find_one(
-            {"username": username}, sort=[("expense_date", -1)],
+            {"username": username},
+            sort=[("expense_date", -1)],
             projection={"expense_date": 1},
         )
         if oldest and oldest.get("expense_date"):
@@ -194,7 +197,8 @@ def _author_prompt(message: str, context: dict, repair: str = "") -> str:
     bounds = context.get("date_bounds") or {}
     span = (
         f"{bounds.get('earliest', '?')} to {bounds.get('latest', '?')}"
-        if bounds else "(no expenses recorded)"
+        if bounds
+        else "(no expenses recorded)"
     )
 
     prompt = f"""{_AUTHOR_RULES}
@@ -247,13 +251,14 @@ def author_query(
 # Tool: query_executor
 # --------------------------------------------------------------------------
 
+
 def _collection_for(name: str):
     if name == "expenses":
         return get_expenses_collection()
     if name == "expense_line_items":
         return get_expense_line_items_collection()
     # Unreachable: the guard validates `collection` first.
-    raise QueryRejected(f"collection '{name}' is not permitted")
+    raise QueryRejectedError(f"collection '{name}' is not permitted")
 
 
 def execute_query(compiled) -> tuple[list[dict], int]:
@@ -302,6 +307,7 @@ def _jsonable(value: Any) -> Any:
 # --------------------------------------------------------------------------
 # Orchestrator
 # --------------------------------------------------------------------------
+
 
 def _answer_envelope(**kwargs) -> dict:
     """Build the response envelope with every key always present."""
@@ -352,8 +358,8 @@ def _fallback(username: str, message: str, reason: str) -> dict:
             narrative={
                 "headline": "I could not answer that",
                 "body_md": (
-                    "Try rephrasing — for example \"how much did I spend last "
-                    "month\" or \"top 5 vendors this year\"."
+                    'Try rephrasing — for example "how much did I spend last '
+                    'month" or "top 5 vendors this year".'
                 ),
                 "highlights": [],
             },
@@ -408,10 +414,12 @@ def run_analytics_agent(
 
     if not question:
         return _answer_envelope(
-            question="", status="refused",
+            question="",
+            status="refused",
             narrative={
                 "headline": "Ask a question to get started",
-                "body_md": "", "highlights": [],
+                "body_md": "",
+                "highlights": [],
             },
         )
 
@@ -440,14 +448,21 @@ def run_analytics_agent(
     for attempt in range(2):
         try:
             envelope = author_query(
-                question, context,
-                username=username, budget=budget, repair=repair_hint,
+                question,
+                context,
+                username=username,
+                budget=budget,
+                repair=repair_hint,
             )
-        except (LlmRateLimitError, LlmBudgetExhausted) as exc:
+        except (LlmRateLimitError, LlmBudgetExhaustedError) as exc:
             phase("fallback", "Using offline analytics")
             return _fallback(username, question, str(exc))
-        except (GeminiUnavailable, ValidationError, ValueError) as exc:
-            if attempt == 0 and budget.remaining > 0 and not isinstance(exc, GeminiUnavailable):
+        except (GeminiUnavailableError, ValidationError, ValueError) as exc:
+            if (
+                attempt == 0
+                and budget.remaining > 0
+                and not isinstance(exc, GeminiUnavailableError)
+            ):
                 repair_hint = str(exc)[:400]
                 repaired = True
                 phase("planning", "Refining the query")
@@ -458,7 +473,9 @@ def run_analytics_agent(
         # Model chose to ask rather than guess.
         if envelope.clarification and not envelope.pipeline and not envelope.filter:
             return _answer_envelope(
-                question=question, session_id=session_id, status="refused",
+                question=question,
+                session_id=session_id,
+                status="refused",
                 narrative={
                     "headline": "I need a bit more detail",
                     "body_md": envelope.clarification,
@@ -481,12 +498,14 @@ def run_analytics_agent(
         try:
             compiled = validate_and_compile(envelope, username)
             break
-        except QueryRejected as exc:
+        except QueryRejectedError as exc:
             guard_error = str(exc)
             # Rejected queries are logged, never executed.
             logger.warning(
                 "Guard rejected generated query for %s: %s | envelope=%r",
-                username, guard_error, envelope.pipeline or envelope.filter,
+                username,
+                guard_error,
+                envelope.pipeline or envelope.filter,
             )
             if attempt == 0 and budget.remaining > 0:
                 repair_hint = guard_error
@@ -508,7 +527,9 @@ def run_analytics_agent(
         text = str(exc).lower()
         if "exceeded time limit" in text or "maxtimems" in text:
             return _answer_envelope(
-                question=question, session_id=session_id, status="refused",
+                question=question,
+                session_id=session_id,
+                status="refused",
                 narrative={
                     "headline": "That query was too broad",
                     "body_md": (
@@ -587,6 +608,7 @@ def run_analytics_agent(
 # Overview (KPI strip)
 # --------------------------------------------------------------------------
 
+
 def build_overview(username: str) -> dict:
     """
     Real figures for the Insights KPI strip.
@@ -603,35 +625,42 @@ def build_overview(username: str) -> dict:
     prev_start = datetime(prev_year, prev_month, 1)
 
     def _total(match: dict) -> tuple[float, int]:
-        rows = list(collection.aggregate(
-            [
-                {"$match": match},
-                {"$group": {"_id": None, "total": {"$sum": "$amount"},
-                            "n": {"$sum": 1}}},
-            ],
-            maxTimeMS=3000,
-        ))
+        rows = list(
+            collection.aggregate(
+                [
+                    {"$match": match},
+                    {
+                        "$group": {
+                            "_id": None,
+                            "total": {"$sum": "$amount"},
+                            "n": {"$sum": 1},
+                        }
+                    },
+                ],
+                maxTimeMS=3000,
+            )
+        )
         if not rows:
             return 0.0, 0
         return round(float(rows[0].get("total") or 0), 2), int(rows[0].get("n") or 0)
 
     scope = {"username": username}
     all_total, all_count = _total(scope)
-    this_month, this_count = _total(
-        {**scope, "expense_date": {"$gte": month_start}}
-    )
+    this_month, this_count = _total({**scope, "expense_date": {"$gte": month_start}})
     last_month, _ = _total(
         {**scope, "expense_date": {"$gte": prev_start, "$lt": month_start}}
     )
 
-    categories = list(collection.aggregate(
-        [
-            {"$match": scope},
-            {"$group": {"_id": "$category", "total": {"$sum": "$amount"}}},
-            {"$sort": {"total": -1}},
-        ],
-        maxTimeMS=3000,
-    ))
+    categories = list(
+        collection.aggregate(
+            [
+                {"$match": scope},
+                {"$group": {"_id": "$category", "total": {"$sum": "$amount"}}},
+                {"$sort": {"total": -1}},
+            ],
+            maxTimeMS=3000,
+        )
+    )
 
     delta_pct = None
     if last_month > 0:
@@ -646,7 +675,11 @@ def build_overview(username: str) -> dict:
         "month_delta_pct": delta_pct,
         "active_categories": len([c for c in categories if c.get("_id")]),
         "top_category": (
-            {"name": categories[0]["_id"], "total": round(float(categories[0]["total"]), 2)}
-            if categories and categories[0].get("_id") else None
+            {
+                "name": categories[0]["_id"],
+                "total": round(float(categories[0]["total"]), 2),
+            }
+            if categories and categories[0].get("_id")
+            else None
         ),
     }

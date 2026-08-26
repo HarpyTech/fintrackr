@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import date, datetime, time, timedelta
 import json
 import logging
 import re
+from dataclasses import dataclass
+from datetime import date, datetime, time, timedelta
 
 from pymongo.errors import PyMongoError
 
@@ -108,7 +108,9 @@ def looks_like_expense_analysis_request(message: str) -> bool:
     return False
 
 
-def answer_expense_analysis_query(username: str, message: str, tenant_id: str | None = None) -> dict:
+def answer_expense_analysis_query(
+    username: str, message: str, tenant_id: str | None = None
+) -> dict:
     """Run a read-only expense analysis based on a chat message."""
     if not message or not message.strip():
         raise ValueError("message is required")
@@ -241,7 +243,9 @@ def _start_of_day(value: date) -> datetime:
     return datetime.combine(value, time.min)
 
 
-def _build_expense_match(username: str, window: TimeWindow, tenant_id: str | None = None) -> dict:
+def _build_expense_match(
+    username: str, window: TimeWindow, tenant_id: str | None = None
+) -> dict:
     match: dict = {"username": username}
     if tenant_id:
         match["tenant_id"] = tenant_id

@@ -8,6 +8,7 @@ Everything else has been split into focused modules:
 
 Re-exports at the bottom of this file keep the routes layer unchanged.
 """
+
 from __future__ import annotations
 
 import logging
@@ -34,6 +35,7 @@ logger = logging.getLogger(__name__)
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
 def _utcnow() -> datetime:
     return datetime.now(UTC)
 
@@ -55,6 +57,7 @@ def _generate_signup_otp() -> str:
 # Public auth functions
 # ---------------------------------------------------------------------------
 
+
 def authenticate_user(username: str, password: str):
     """Authenticate a user with username and password."""
     logger.info("Authentication attempt initiated")
@@ -73,7 +76,9 @@ def authenticate_user(username: str, password: str):
             return {"requires_verification": True}
 
         # Record the login timestamp to enable per-session rate limiting.
-        user_repository.update_by_id(user["_id"], set_fields={"last_login_at": _utcnow()})
+        user_repository.update_by_id(
+            user["_id"], set_fields={"last_login_at": _utcnow()}
+        )
 
         logger.info("User authenticated successfully")
         return {
@@ -122,11 +127,13 @@ def register_user(username: str, password: str, role: str = "user"):
         if existing_user:
             user_repository.update_by_id(existing_user["_id"], set_fields=update_doc)
         else:
-            user_repository.create({
-                **update_doc,
-                "tenant_id": username,
-                "created_at": _utcnow(),
-            })
+            user_repository.create(
+                {
+                    **update_doc,
+                    "tenant_id": username,
+                    "created_at": _utcnow(),
+                }
+            )
 
         deliver_signup_otp(username, otp)
 
@@ -283,7 +290,9 @@ def request_password_reset(username: str):
             return {"sent": True}
 
         otp = _generate_signup_otp()
-        otp_expires_at = _utcnow() + timedelta(minutes=settings.SIGNUP_OTP_EXPIRY_MINUTES)
+        otp_expires_at = _utcnow() + timedelta(
+            minutes=settings.SIGNUP_OTP_EXPIRY_MINUTES
+        )
 
         user_repository.update_by_id(
             user["_id"],
@@ -302,10 +311,18 @@ def request_password_reset(username: str):
         logger.warning("OTP rate limit exceeded for password reset: %s", username)
         raise
     except PyMongoError as exc:
-        logger.error("Database error during password reset request: %s", str(exc), exc_info=True)
-        raise RuntimeError("Failed to process password reset due to database error") from exc
+        logger.error(
+            "Database error during password reset request: %s", str(exc), exc_info=True
+        )
+        raise RuntimeError(
+            "Failed to process password reset due to database error"
+        ) from exc
     except Exception as exc:
-        logger.error("Unexpected error during password reset request: %s", str(exc), exc_info=True)
+        logger.error(
+            "Unexpected error during password reset request: %s",
+            str(exc),
+            exc_info=True,
+        )
         raise
 
 
@@ -323,7 +340,9 @@ def reset_password_with_otp(username: str, otp: str, new_password: str):
         otp_expires_at = user.get("reset_otp_expires_at")
 
         if not otp_hash or _is_otp_expired(otp_expires_at):
-            logger.warning("Password reset failed: OTP expired or missing for %s", username)
+            logger.warning(
+                "Password reset failed: OTP expired or missing for %s", username
+            )
             return {"error": "OTP expired"}
 
         if not verify_password(otp, otp_hash):
@@ -347,10 +366,14 @@ def reset_password_with_otp(username: str, otp: str, new_password: str):
         return {"reset": True}
 
     except PyMongoError as exc:
-        logger.error("Database error during password reset: %s", str(exc), exc_info=True)
+        logger.error(
+            "Database error during password reset: %s", str(exc), exc_info=True
+        )
         raise RuntimeError("Failed to reset password due to database error") from exc
     except Exception as exc:
-        logger.error("Unexpected error during password reset: %s", str(exc), exc_info=True)
+        logger.error(
+            "Unexpected error during password reset: %s", str(exc), exc_info=True
+        )
         raise
 
 
@@ -358,12 +381,12 @@ def reset_password_with_otp(username: str, otp: str, new_password: str):
 # Re-exports for backward compatibility — routes import from here
 # ---------------------------------------------------------------------------
 
-from app.services.profile_service import (  # noqa: F401, E402
+from app.services.profile_service import (  # noqa: E402, F401, I001
     get_user,
     get_user_profile,
     update_user_profile,
 )
-from app.services.oauth_service import (  # noqa: F401, E402
+from app.services.oauth_service import (  # noqa: E402, F401, I001
     build_google_auth_url,
     exchange_google_code,
     oauth_login_or_create,

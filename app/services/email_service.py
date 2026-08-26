@@ -7,6 +7,7 @@ deliver_reset_otp(email, otp)    — sends password-reset OTP
 
 Both functions are no-ops (log only) when SMTP is not configured.
 """
+
 from __future__ import annotations
 
 import logging
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # HTML builders
 # ---------------------------------------------------------------------------
+
 
 def _build_signup_otp_email_html(recipient: str, otp: str) -> str:
     expiry_minutes = settings.SIGNUP_OTP_EXPIRY_MINUTES
@@ -287,6 +289,7 @@ def _build_reset_otp_email_html(recipient: str, otp: str) -> str:
 # Shared SMTP transport
 # ---------------------------------------------------------------------------
 
+
 def _smtp_send(message: EmailMessage) -> None:
     """Connect to the configured SMTP server and send *message*.
 
@@ -315,11 +318,7 @@ def _smtp_send(message: EmailMessage) -> None:
                 server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
 
             server.send_message(message)
-    except (
-        TimeoutError,
-        socket.timeout,
-        smtplib.SMTPServerDisconnected,
-    ) as exc:
+    except TimeoutError as exc:
         mode = "ssl" if settings.SMTP_USE_SSL else "plain/starttls"
         raise RuntimeError(
             "SMTP connection timed out or was closed by server. "
@@ -336,6 +335,7 @@ def _smtp_send(message: EmailMessage) -> None:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def deliver_signup_otp(email: str, otp: str) -> None:
     """Send the signup verification OTP to *email*.

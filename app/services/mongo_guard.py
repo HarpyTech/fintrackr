@@ -51,66 +51,167 @@ MAX_TIME_MS = 5000
 # $out, $merge, $collStats, $indexStats, $planCacheStats, $currentOp,
 # $listSessions, $documents, $changeStream. They are not "denied" — they are
 # simply not present, which is what makes this list safe against additions.
-ALLOWED_STAGES = frozenset({
-    "$match", "$group", "$sort", "$limit", "$skip", "$project",
-    "$addFields", "$set", "$unwind", "$count", "$sortByCount",
-    "$bucket", "$facet", "$replaceRoot",
-})
+ALLOWED_STAGES = frozenset(
+    {
+        "$match",
+        "$group",
+        "$sort",
+        "$limit",
+        "$skip",
+        "$project",
+        "$addFields",
+        "$set",
+        "$unwind",
+        "$count",
+        "$sortByCount",
+        "$bucket",
+        "$facet",
+        "$replaceRoot",
+    }
+)
 
 # Operators valid inside a query predicate ($match / find filter).
-ALLOWED_QUERY_OPERATORS = frozenset({
-    "$eq", "$ne", "$gt", "$gte", "$lt", "$lte", "$in", "$nin",
-    "$and", "$or", "$not", "$nor",
-    "$exists", "$type",
-    "$regex", "$options",
-    "$elemMatch", "$size", "$all",
-})
+ALLOWED_QUERY_OPERATORS = frozenset(
+    {
+        "$eq",
+        "$ne",
+        "$gt",
+        "$gte",
+        "$lt",
+        "$lte",
+        "$in",
+        "$nin",
+        "$and",
+        "$or",
+        "$not",
+        "$nor",
+        "$exists",
+        "$type",
+        "$regex",
+        "$options",
+        "$elemMatch",
+        "$size",
+        "$all",
+    }
+)
 
 # Operators valid inside an aggregation expression ($group / $project /
 # $addFields). $function and $accumulator are absent by design.
-ALLOWED_EXPRESSION_OPERATORS = frozenset({
-    # accumulators
-    "$sum", "$avg", "$min", "$max", "$count", "$first", "$last",
-    "$push", "$addToSet",
-    # date
-    "$year", "$month", "$dayOfMonth", "$dayOfWeek", "$dayOfYear",
-    "$week", "$hour", "$dateToString", "$dateTrunc", "$dateFromParts",
-    # arithmetic
-    "$add", "$subtract", "$multiply", "$divide", "$mod",
-    "$abs", "$round", "$trunc", "$ceil", "$floor",
-    # comparison (valid inside expressions too)
-    "$eq", "$ne", "$gt", "$gte", "$lt", "$lte", "$cmp",
-    # logical
-    "$and", "$or", "$not",
-    # conditional
-    "$cond", "$ifNull", "$switch", "$case", "$then", "$default",
-    "$branches",
-    # string
-    "$toLower", "$toUpper", "$concat", "$substr", "$substrBytes",
-    "$strLenCP", "$split", "$trim", "$ltrim", "$rtrim",
-    # type conversion (no $toObjectId — no cross-collection use for it here)
-    "$toString", "$toDouble", "$toInt", "$toLong", "$toDecimal",
-    # array (read-only shaping)
-    "$size", "$arrayElemAt", "$slice", "$in", "$filter",
-    # literal escape hatch, still walked
-    "$literal",
-    # $expr is allowed as a bridge into expression context
-    "$expr",
-})
+ALLOWED_EXPRESSION_OPERATORS = frozenset(
+    {
+        # accumulators
+        "$sum",
+        "$avg",
+        "$min",
+        "$max",
+        "$count",
+        "$first",
+        "$last",
+        "$push",
+        "$addToSet",
+        # date
+        "$year",
+        "$month",
+        "$dayOfMonth",
+        "$dayOfWeek",
+        "$dayOfYear",
+        "$week",
+        "$hour",
+        "$dateToString",
+        "$dateTrunc",
+        "$dateFromParts",
+        # arithmetic
+        "$add",
+        "$subtract",
+        "$multiply",
+        "$divide",
+        "$mod",
+        "$abs",
+        "$round",
+        "$trunc",
+        "$ceil",
+        "$floor",
+        # comparison (valid inside expressions too)
+        "$eq",
+        "$ne",
+        "$gt",
+        "$gte",
+        "$lt",
+        "$lte",
+        "$cmp",
+        # logical
+        "$and",
+        "$or",
+        "$not",
+        # conditional
+        "$cond",
+        "$ifNull",
+        "$switch",
+        "$case",
+        "$then",
+        "$default",
+        "$branches",
+        # string
+        "$toLower",
+        "$toUpper",
+        "$concat",
+        "$substr",
+        "$substrBytes",
+        "$strLenCP",
+        "$split",
+        "$trim",
+        "$ltrim",
+        "$rtrim",
+        # type conversion (no $toObjectId — no cross-collection use for it here)
+        "$toString",
+        "$toDouble",
+        "$toInt",
+        "$toLong",
+        "$toDecimal",
+        # array (read-only shaping)
+        "$size",
+        "$arrayElemAt",
+        "$slice",
+        "$in",
+        "$filter",
+        # literal escape hatch, still walked
+        "$literal",
+        # $expr is allowed as a bridge into expression context
+        "$expr",
+    }
+)
 
 # Fields that exist on each collection. Any other field reference — whether as
 # a key or as a "$fieldPath" — is rejected, so the model cannot probe for
 # columns it was not told about.
 COLLECTION_FIELDS: dict[str, frozenset[str]] = {
-    "expenses": frozenset({
-        "_id", "amount", "category", "bill_type", "input_type",
-        "invoice_number", "vendor", "description", "expense_date",
-        "line_items_count", "created_at", "llm_model",
-    }),
-    "expense_line_items": frozenset({
-        "_id", "expense_id", "name", "quantity", "unit_price", "total",
-        "created_at",
-    }),
+    "expenses": frozenset(
+        {
+            "_id",
+            "amount",
+            "category",
+            "bill_type",
+            "input_type",
+            "invoice_number",
+            "vendor",
+            "description",
+            "expense_date",
+            "line_items_count",
+            "created_at",
+            "llm_model",
+        }
+    ),
+    "expense_line_items": frozenset(
+        {
+            "_id",
+            "expense_id",
+            "name",
+            "quantity",
+            "unit_price",
+            "total",
+            "created_at",
+        }
+    ),
 }
 
 # The scoping field. The model must never mention it; the guard owns it.
@@ -118,7 +219,7 @@ SCOPE_FIELD = "username"
 
 # Regex constructs with catastrophic backtracking potential.
 _REDOS_PATTERNS = (
-    re.compile(r"\([^)]*[+*]\)[+*]"),   # (a+)+ / (a*)*
+    re.compile(r"\([^)]*[+*]\)[+*]"),  # (a+)+ / (a*)*
     re.compile(r"\([^)]*\{\d+,\}\)[+*]"),  # (a{2,})+
 )
 
@@ -139,7 +240,7 @@ def _is_alias(name: str) -> bool:
     return name == "_id" or bool(_SAFE_ALIAS.match(name))
 
 
-class QueryRejected(ValueError):
+class QueryRejectedError(ValueError):
     """Raised when a generated query fails validation. Never executed."""
 
     def __init__(self, reason: str, path: str = ""):
@@ -166,8 +267,9 @@ class CompiledQuery:
 # Recursive walkers
 # --------------------------------------------------------------------------
 
+
 def _fail(reason: str, path: str = "") -> None:
-    raise QueryRejected(reason, path)
+    raise QueryRejectedError(reason, path)
 
 
 def _check_depth(depth: int, path: str) -> None:
@@ -342,7 +444,9 @@ def _walk_predicate(node: Any, fields: frozenset[str], path: str, depth: int) ->
         _walk_predicate_value(value, fields, child, depth + 1)
 
 
-def _walk_predicate_value(node: Any, fields: frozenset[str], path: str, depth: int) -> None:
+def _walk_predicate_value(
+    node: Any, fields: frozenset[str], path: str, depth: int
+) -> None:
     """Validate the right-hand side of a predicate."""
     _check_depth(depth, path)
 
@@ -406,7 +510,6 @@ def _walk_stage(stage: Any, fields: frozenset[str], path: str, depth: int) -> st
         if not isinstance(body, str) or not _SAFE_ALIAS.match(body):
             _fail("$count expects a simple output name", child)
 
-
     elif name == "$sort":
         if not isinstance(body, dict) or not body:
             _fail("$sort expects a non-empty object", child)
@@ -461,24 +564,27 @@ def _walk_stage(stage: Any, fields: frozenset[str], path: str, depth: int) -> st
 # Public entry point
 # --------------------------------------------------------------------------
 
+
 def validate_and_compile(envelope: MongoQueryEnvelope, username: str) -> CompiledQuery:
     """
     Validate an LLM-authored query and return an executable, scoped version.
 
-    Raises QueryRejected on any violation. The caller must never fall back to
+    Raises QueryRejectedError on any violation. The caller must never fall back to
     executing the original envelope.
     """
     if not username:
-        raise QueryRejected("no authenticated user to scope the query to")
+        raise QueryRejectedError("no authenticated user to scope the query to")
 
     fields = COLLECTION_FIELDS.get(envelope.collection)
     if fields is None:
-        raise QueryRejected(f"collection '{envelope.collection}' is not permitted")
+        raise QueryRejectedError(f"collection '{envelope.collection}' is not permitted")
 
     # Cheap structural guards before walking anything.
-    payload = repr(envelope.pipeline) + repr(envelope.filter) + repr(envelope.projection)
+    payload = (
+        repr(envelope.pipeline) + repr(envelope.filter) + repr(envelope.projection)
+    )
     if len(payload) > MAX_SERIALIZED_BYTES:
-        raise QueryRejected(f"query exceeds {MAX_SERIALIZED_BYTES} bytes")
+        raise QueryRejectedError(f"query exceeds {MAX_SERIALIZED_BYTES} bytes")
 
     limit = max(1, min(int(envelope.limit or 50), MAX_RESULT_LIMIT))
 
@@ -489,10 +595,12 @@ def validate_and_compile(envelope: MongoQueryEnvelope, username: str) -> Compile
         if envelope.projection:
             for key, value in envelope.projection.items():
                 if key.startswith("$"):
-                    raise QueryRejected(f"operator '{key}' is not permitted in a projection")
+                    raise QueryRejectedError(
+                        f"operator '{key}' is not permitted in a projection"
+                    )
                 _check_field_name(key, fields, f"projection.{key}")
                 if value not in (0, 1, True, False):
-                    raise QueryRejected(
+                    raise QueryRejectedError(
                         "projection values must be 0 or 1", f"projection.{key}"
                     )
             projection = dict(envelope.projection)
@@ -501,7 +609,9 @@ def validate_and_compile(envelope: MongoQueryEnvelope, username: str) -> Compile
         if envelope.sort:
             for key, value in envelope.sort.items():
                 if value not in (1, -1):
-                    raise QueryRejected("sort direction must be 1 or -1", f"sort.{key}")
+                    raise QueryRejectedError(
+                        "sort direction must be 1 or -1", f"sort.{key}"
+                    )
                 _check_field_name(key, fields, f"sort.{key}")
             sort = [(k, v) for k, v in envelope.sort.items()]
 
@@ -523,9 +633,9 @@ def validate_and_compile(envelope: MongoQueryEnvelope, username: str) -> Compile
     # --- aggregate ---
     stages = envelope.pipeline or []
     if not isinstance(stages, list):
-        raise QueryRejected("pipeline must be an array")
+        raise QueryRejectedError("pipeline must be an array")
     if len(stages) > MAX_STAGES:
-        raise QueryRejected(f"pipeline exceeds {MAX_STAGES} stages")
+        raise QueryRejectedError(f"pipeline exceeds {MAX_STAGES} stages")
 
     for index, stage in enumerate(stages):
         _walk_stage(stage, fields, f"pipeline[{index}]", 0)

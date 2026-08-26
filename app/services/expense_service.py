@@ -7,6 +7,7 @@ from bson import ObjectId
 from bson.errors import InvalidId
 from pymongo.errors import PyMongoError
 
+from app.core.plans import DEFAULT_PLAN
 from app.db.mongo import (
     get_expense_line_items_collection,
     get_expenses_collection,
@@ -26,7 +27,6 @@ def _expense_transaction():
     except (NotImplementedError, AttributeError):
         yield None
 
-from app.core.plans import DEFAULT_PLAN
 
 logger = logging.getLogger(__name__)
 
@@ -162,10 +162,7 @@ def list_expenses(
         base = _active_filter(username, tenant_id)
         total = expenses.count_documents(base)
         docs = list(
-            expenses.find(base)
-            .sort("expense_date", sort_dir)
-            .skip(offset)
-            .limit(limit)
+            expenses.find(base).sort("expense_date", sort_dir).skip(offset).limit(limit)
         )
 
         expense_ids = [str(doc["_id"]) for doc in docs]
@@ -275,7 +272,9 @@ def _serialize_expense(doc: dict, line_items: list[dict] | None = None) -> dict:
     }
 
 
-def get_expense(username: str, expense_id: str, tenant_id: str | None = None) -> dict | None:
+def get_expense(
+    username: str, expense_id: str, tenant_id: str | None = None
+) -> dict | None:
     """Return a single expense owned by username, or None if not found."""
     try:
         oid = _parse_expense_id(expense_id)
@@ -297,7 +296,9 @@ def get_expense(username: str, expense_id: str, tenant_id: str | None = None) ->
         raise RuntimeError("Failed to fetch expense") from exc
 
 
-def update_expense(username: str, expense_id: str, updates: dict, tenant_id: str | None = None) -> dict | None:
+def update_expense(
+    username: str, expense_id: str, updates: dict, tenant_id: str | None = None
+) -> dict | None:
     """Apply a partial update to an expense owned by username.
 
     Returns the updated expense dict, or None if the expense wasn't found.
@@ -336,7 +337,9 @@ def update_expense(username: str, expense_id: str, updates: dict, tenant_id: str
         raise RuntimeError("Failed to update expense") from exc
 
 
-def delete_expense(username: str, expense_id: str, tenant_id: str | None = None) -> bool:
+def delete_expense(
+    username: str, expense_id: str, tenant_id: str | None = None
+) -> bool:
     """Soft-delete an expense owned by username.
 
     Sets is_deleted=True and deleted_at timestamp instead of removing the
@@ -590,7 +593,9 @@ def yearly_summary(username: str, tenant_id: str | None = None):
         raise
 
 
-def daily_summary(username: str, year: int, month: int, tenant_id: str | None = None) -> list[dict]:
+def daily_summary(
+    username: str, year: int, month: int, tenant_id: str | None = None
+) -> list[dict]:
     """Get daily expense totals for a user for a specific year+month."""
     import calendar
 
@@ -642,7 +647,9 @@ def daily_summary(username: str, year: int, month: int, tenant_id: str | None = 
         raise
 
 
-def categories_monthly_summary(username: str, year: int, month: int, tenant_id: str | None = None) -> list[dict]:
+def categories_monthly_summary(
+    username: str, year: int, month: int, tenant_id: str | None = None
+) -> list[dict]:
     """Get category-wise expense totals for a user for a specific year+month."""
     logger.debug(f"Fetching categories monthly summary for {year}-{month}")
     try:
@@ -694,7 +701,9 @@ def categories_monthly_summary(username: str, year: int, month: int, tenant_id: 
         raise
 
 
-def vendors_monthly_summary(username: str, year: int, month: int, tenant_id: str | None = None) -> list[dict]:
+def vendors_monthly_summary(
+    username: str, year: int, month: int, tenant_id: str | None = None
+) -> list[dict]:
     """Get vendor-wise expense totals for a user for a specific year+month."""
     logger.debug(f"Fetching vendors monthly summary for {year}-{month}")
     try:
