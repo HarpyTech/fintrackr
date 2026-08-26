@@ -3,7 +3,6 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
-
 BillType = Literal["grocery", "restaurant", "service", "utility", "other"]
 ExpenseInputType = Literal[
     "manual",
@@ -54,6 +53,7 @@ class ExpenseItem(BaseModel):
 
 class ExpenseUpdate(BaseModel):
     """Partial update model — all fields optional."""
+
     amount: Optional[float] = Field(default=None, gt=0)
     category: Optional[str] = Field(default=None, min_length=2, max_length=64)
     bill_type: Optional[BillType] = None

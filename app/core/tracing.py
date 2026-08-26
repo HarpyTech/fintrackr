@@ -10,7 +10,6 @@ import uuid
 from contextvars import ContextVar
 from typing import Optional
 
-
 # Context variable to store trace ID for the current request
 _trace_id_context: ContextVar[Optional[str]] = ContextVar("trace_id", default=None)
 

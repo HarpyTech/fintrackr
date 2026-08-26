@@ -331,7 +331,7 @@ def _walk_expression(node: Any, fields: frozenset[str], path: str, depth: int) -
             _check_field_path(node, fields, path)
         return
 
-    if isinstance(node, (int, float, bool)) or node is None:
+    if isinstance(node, int | float | bool) or node is None:
         return
 
     if isinstance(node, list):

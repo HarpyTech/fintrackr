@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import logging
 import smtplib
-import socket
 from email.message import EmailMessage
 
 from app.core.config import settings

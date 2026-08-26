@@ -22,8 +22,16 @@ from app.models.expense import (
     ExpenseInputType,
     ExpenseUpdate,
 )
+from app.services.expense_chat_service import (
+    answer_expense_analysis_query,
+    looks_like_expense_analysis_request,
+)
+from app.services.expense_extraction_service import (
+    ExpenseExtractionValidationError,
+    extract_expense_payload,
+    extract_text_chat_expense_payload,
+)
 from app.services.expense_service import (
-    SessionExpenseLimitError,
     add_expense,
     category_summary,
     categories_monthly_summary,
@@ -34,18 +42,10 @@ from app.services.expense_service import (
     get_expense_limit_status,
     list_expenses,
     monthly_summary,
+    SessionExpenseLimitError,
     update_expense,
     vendors_monthly_summary,
     yearly_summary,
-)
-from app.services.expense_chat_service import (
-    answer_expense_analysis_query,
-    looks_like_expense_analysis_request,
-)
-from app.services.expense_extraction_service import (
-    ExpenseExtractionValidationError,
-    extract_expense_payload,
-    extract_text_chat_expense_payload,
 )
 
 router = APIRouter()

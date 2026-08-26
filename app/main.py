@@ -9,16 +9,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from app.api.routes import auth, users, health, expenses, webauthn, analytics, admin
 from app.core.config import settings
 from app.core.errors import AppError, http_code
 from app.core.telemetry import setup_telemetry
-from app.api.routes import auth, users, health, expenses, webauthn, analytics, admin
 from app.core.tracing import get_trace_id, setup_trace_logging
 from app.db.mongo import backfill_tenant_ids, bootstrap_indexes
-from app.middleware.tracing import TraceIDMiddleware
 from app.middleware.auth import AuthenticationMiddleware
 from app.middleware.csrf import CSRFProtectionMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
+from app.middleware.tracing import TraceIDMiddleware
 
 # Configure logging with trace ID support
 logging.basicConfig(
