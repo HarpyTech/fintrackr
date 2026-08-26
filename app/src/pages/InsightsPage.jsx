@@ -18,23 +18,6 @@ import { useAgentQuery } from '../hooks/useAgentQuery';
 import { formatInr } from '../lib/chartColors';
 import { queryKeys } from '../lib/queryClient';
 
-/**
- * Insights — natural-language analytics over the user's expenses.
- *
- * Replaces a page that had no AI in it. Previously `analyzeComplexQuery()`
- * answered from a hardcoded `if (q.includes(...))` keyword cascade, and its
- * numbers were fabricated: forecasts were `total * 1.085`, growth used the
- * literal multipliers [1.05, 1.03, 1.12, 1.0], and "you could save 15%" was a
- * constant. A `setTimeout(…, 1200)` faked the thinking time.
- *
- * Now every figure comes from a MongoDB query the agent generated, validated
- * and executed, and each answer can show the exact pipeline that produced it.
- *
- * Layout is a query-bar dashboard rather than a chat: answers contain charts,
- * which need full content width, and comparing two answers should not require
- * scrolling back through a transcript.
- */
-
 const SUGGESTIONS = [
   'How much did I spend last month?',
   'Top 5 vendors this year',
@@ -76,24 +59,20 @@ function KpiTile({ icon: Icon, tone, label, value, meta, deltaPct, direction }) 
 export default function InsightsPage() {
   const [input, setInput] = useState('');
   const textareaRef = useRef(null);
-  const resultsRef = useRef(null);
+  const chatRef = useRef(null);
 
   const {
     answers, ask, cancel, streaming, phase, phaseLabel, pendingQuestion, error,
   } = useAgentQuery();
 
-  // Real KPI figures from the server, replacing the old client-side
-  // deriveInsightData() that fetched every expense to compute them.
   const overviewQuery = useQuery({
     queryKey: queryKeys.insights.overview(),
   });
   const overview = overviewQuery.data;
 
-  // Bring a new answer into view without yanking the page while streaming.
+  // Scroll chat to bottom whenever a new answer lands or streaming starts.
   useEffect(() => {
-    if (!streaming && answers.length > 0) {
-      resultsRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: 'smooth' });
   }, [answers.length, streaming]);
 
   function submit(question) {
@@ -112,65 +91,13 @@ export default function InsightsPage() {
   }
 
   const monthDelta = overview?.month_delta_pct;
+  const hasHistory = answers.length > 0 || streaming;
 
   return (
     <div className="insights-proto">
       <div className="insights-proto-body">
-        {/* ── Query bar (pinned) ── */}
-        <div className="insights-query-bar">
-          <div className="insights-query-inner">
-            <div className="insights-query-field">
-              <Sparkles size={18} className="insights-query-icon" aria-hidden="true" />
-              <textarea
-                ref={textareaRef}
-                className="insights-proto-textarea insights-query-textarea"
-                placeholder="Ask anything about your spending…"
-                value={input}
-                rows={1}
-                onChange={(event) => setInput(event.target.value)}
-                onKeyDown={handleKeyDown}
-                disabled={streaming}
-                aria-label="Ask a question about your expenses"
-              />
-              {streaming ? (
-                <button
-                  type="button"
-                  className="insights-query-send insights-query-send--cancel"
-                  onClick={cancel}
-                  aria-label="Cancel"
-                >
-                  <X size={17} />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="insights-query-send"
-                  onClick={() => submit()}
-                  disabled={!input.trim()}
-                  aria-label="Ask"
-                >
-                  <Send size={17} />
-                </button>
-              )}
-            </div>
 
-            <div className="insights-proto-quick-pills">
-              {SUGGESTIONS.map((suggestion) => (
-                <button
-                  key={suggestion}
-                  type="button"
-                  className="insights-proto-quick-btn"
-                  onClick={() => submit(suggestion)}
-                  disabled={streaming}
-                >
-                  {suggestion}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* ── KPI strip ── */}
+        {/* ── KPI strip (top) ── */}
         <div className="insights-proto-stats-bar">
           <div className="insights-proto-stats-inner">
             {overviewQuery.isPending ? (
@@ -219,31 +146,9 @@ export default function InsightsPage() {
           </div>
         </div>
 
-        {/* ── Results ── */}
-        <div className="insights-results" ref={resultsRef}>
-          {streaming ? (
-            <div className="insights-result insights-result--pending">
-              <p className="insights-result-question">{pendingQuestion}</p>
-              <AgentProgress phase={phase} label={phaseLabel} />
-            </div>
-          ) : null}
-
-          {error ? (
-            <p className="error-text insights-results-error">{error}</p>
-          ) : null}
-
-          {answers.map((answer) => (
-            <ErrorBoundary
-              key={answer.answer_id}
-              label={`answer ${answer.answer_id}`}
-              title="This answer could not be displayed"
-              body="Try asking the question again."
-            >
-              <AgentResult answer={answer} onFollowup={submit} />
-            </ErrorBoundary>
-          ))}
-
-          {!streaming && answers.length === 0 && !error ? (
+        {/* ── Chat transcript (scrollable middle) ── */}
+        <div className="insights-chat" ref={chatRef}>
+          {!hasHistory && !error ? (
             <EmptyState
               icon={Sparkles}
               title="Ask your first question"
@@ -251,7 +156,98 @@ export default function InsightsPage() {
                     expenses, and you can inspect exactly what was run."
             />
           ) : null}
+
+          {error ? (
+            <p className="error-text insights-results-error">{error}</p>
+          ) : null}
+
+          {/* Completed turns — oldest first */}
+          {answers.map((answer) => (
+            <div key={answer.answer_id} className="insights-chat-turn">
+              <div className="insights-chat-bubble">
+                <p>{answer.question}</p>
+              </div>
+              <div className="insights-chat-response">
+                <ErrorBoundary
+                  label={`answer ${answer.answer_id}`}
+                  title="This answer could not be displayed"
+                  body="Try asking the question again."
+                >
+                  <AgentResult answer={answer} onFollowup={submit} />
+                </ErrorBoundary>
+              </div>
+            </div>
+          ))}
+
+          {/* In-flight turn */}
+          {streaming ? (
+            <div className="insights-chat-turn">
+              <div className="insights-chat-bubble">
+                <p>{pendingQuestion}</p>
+              </div>
+              <div className="insights-chat-response">
+                <AgentProgress phase={phase} label={phaseLabel} />
+              </div>
+            </div>
+          ) : null}
         </div>
+
+        {/* ── Query bar (pinned bottom) ── */}
+        <div className="insights-query-bar">
+          <div className="insights-query-inner">
+            {!hasHistory ? (
+              <div className="insights-proto-quick-pills">
+                {SUGGESTIONS.map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    className="insights-proto-quick-btn"
+                    onClick={() => submit(suggestion)}
+                    disabled={streaming}
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            <div className="insights-query-field">
+              <Sparkles size={18} className="insights-query-icon" aria-hidden="true" />
+              <textarea
+                ref={textareaRef}
+                className="insights-proto-textarea insights-query-textarea"
+                placeholder="Ask anything about your spending…"
+                value={input}
+                rows={1}
+                onChange={(event) => setInput(event.target.value)}
+                onKeyDown={handleKeyDown}
+                disabled={streaming}
+                aria-label="Ask a question about your expenses"
+              />
+              {streaming ? (
+                <button
+                  type="button"
+                  className="insights-query-send insights-query-send--cancel"
+                  onClick={cancel}
+                  aria-label="Cancel"
+                >
+                  <X size={17} />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="insights-query-send"
+                  onClick={() => submit()}
+                  disabled={!input.trim()}
+                  aria-label="Ask"
+                >
+                  <Send size={17} />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   );

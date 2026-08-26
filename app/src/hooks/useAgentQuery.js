@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { apiRequest } from '../lib/api';
 import { ask, streamAsk, supportsStreaming } from '../lib/insightsStream';
 
 /**
@@ -8,6 +9,9 @@ import { ask, streamAsk, supportsStreaming } from '../lib/insightsStream';
  * when the browser can, and silently falls back to the plain POST endpoint
  * when it cannot — both return the identical envelope, so nothing downstream
  * branches on which path was used.
+ *
+ * History is seeded on mount from the server so the conversation survives
+ * navigation and page refreshes (90-day TTL on the backend).
  */
 export function useAgentQuery() {
   const [answers, setAnswers] = useState([]);
@@ -26,6 +30,21 @@ export function useAgentQuery() {
       mountedRef.current = false;
       abortRef.current?.abort();
     };
+  }, []);
+
+  // Load the last 20 answers from the server on mount.
+  useEffect(() => {
+    let active = true;
+    apiRequest('/insights/history')
+      .then((data) => {
+        if (active && data?.items?.length) {
+          setAnswers(data.items);
+        }
+      })
+      .catch(() => {
+        // History is non-critical — silently ignore failures.
+      });
+    return () => { active = false; };
   }, []);
 
   const cancel = useCallback(() => {
@@ -56,8 +75,8 @@ export function useAgentQuery() {
 
     const receive = (answer) => {
       if (!mountedRef.current || !answer) return;
-      // Newest first — the page shows the latest answer at the top.
-      setAnswers((current) => [answer, ...current]);
+      // Oldest first — chat transcript order.
+      setAnswers((prev) => [...prev, answer]);
     };
 
     try {

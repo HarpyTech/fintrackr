@@ -6,12 +6,12 @@
    with the rest of the page.
    ============================================================ */
 
-/* --- Query bar (pinned above the KPI strip) --- */
+/* --- Query bar (pinned at the bottom of the chat layout) --- */
 .insights-query-bar {
   flex-shrink: 0;
   background: var(--surface);
-  border-bottom: 1px solid var(--line);
-  padding: var(--space-4) 0 var(--space-3);
+  border-top: 1px solid var(--line);
+  padding: var(--space-3) 0 var(--space-4);
 }
 
 .insights-query-inner {
@@ -75,7 +75,54 @@
   color: var(--danger);
 }
 
-/* --- Results column --- */
+/* --- Chat transcript column (replaces .insights-results) --- */
+.insights-chat {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-5) 0 var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+/* One question + answer pair */
+.insights-chat-turn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: min(1280px, 100% - 48px);
+  margin: 0 auto;
+}
+
+/* User bubble — right-aligned */
+.insights-chat-bubble {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.insights-chat-bubble p {
+  margin: 0;
+  background: var(--brand);
+  color: var(--surface);
+  border-radius: 18px 18px 4px 18px;
+  padding: 10px 16px;
+  max-width: 72%;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+/* Agent response — left-aligned */
+.insights-chat-response {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.insights-chat-response > * {
+  max-width: 100%;
+}
+
+/* --- Results column (kept for error banner selector) --- */
 .insights-results {
   flex: 1;
   min-height: 0;
@@ -270,49 +317,32 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* --- Agent progress (real SSE phases) --- */
+/* --- Agent progress — single animated line (replaces multi-step stepper) --- */
 .insights-progress {
-  display: grid;
-  gap: var(--space-2);
-}
-
-.insights-progress-step {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  font-size: var(--text-base);
+  gap: 8px;
+  padding: 10px 0;
   color: var(--muted);
-  opacity: 0.55;
+  font-size: var(--text-sm);
 }
 
-.insights-progress-step--active {
-  color: var(--ink);
-  opacity: 1;
-  font-weight: 500;
-}
-
-.insights-progress-step--done {
-  color: var(--success);
-  opacity: 1;
-}
-
-.insights-progress-dot {
-  width: 14px;
-  height: 14px;
-  border-radius: var(--radius-pill);
-  border: 2px solid var(--line-strong);
+.insights-progress-dot-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--brand);
+  animation: insights-pulse 1.2s ease-in-out infinite;
   flex-shrink: 0;
 }
 
-.insights-progress-spin {
-  animation: insights-spin 900ms linear infinite;
-  flex-shrink: 0;
+@keyframes insights-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.75); }
 }
 
-@keyframes insights-spin {
-  to {
-    transform: rotate(360deg);
-  }
+.insights-progress-text {
+  transition: opacity 0.15s ease;
 }
 
 /* --- Transparency panel --- */
@@ -466,7 +496,7 @@
   }
 
   .insights-query-bar {
-    padding: var(--space-3) 0 var(--space-2);
+    padding: var(--space-2) 0 var(--space-3);
   }
 
   /* Suggestions scroll sideways instead of stacking into three rows. */
@@ -494,9 +524,17 @@
     font-size: var(--text-lg);
   }
 
-  .insights-results {
-    padding: var(--space-4) 0 var(--space-6);
+  .insights-chat {
+    padding: var(--space-4) 0 var(--space-4);
     gap: var(--space-4);
+  }
+
+  .insights-chat-turn {
+    width: calc(100% - 24px);
+  }
+
+  .insights-chat-bubble p {
+    max-width: 85%;
   }
 
   .insights-kpi-grid {

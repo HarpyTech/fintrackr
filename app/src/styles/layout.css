@@ -240,4 +240,16 @@
   .protected-layout-content {
     margin-bottom: 0;
   }
+
+  /* The sidebar already shows the FinTrackr brand on desktop — hide the
+     duplicate that lives in the top header. The vertical rule between brand
+     and page-title is also removed since there is no brand to divide from. */
+  .app-header-brand {
+    display: none;
+  }
+
+  .app-header-titles {
+    border-left: none;
+    padding-left: 0;
+  }
 }
