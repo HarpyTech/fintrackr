@@ -1,7 +1,7 @@
 """Tests for app/core/ratelimit.py — OTP rate limiting with mongomock."""
 
-import pytest
 import mongomock
+import pytest
 
 from app.core import ratelimit
 from app.core.ratelimit import OtpRateLimitError

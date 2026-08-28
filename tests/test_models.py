@@ -1,5 +1,7 @@
 """Tests for Pydantic models in app/models/ — pure validation, no DB."""
 
+from datetime import date
+
 import pytest
 from pydantic import ValidationError
 
@@ -19,9 +21,6 @@ from app.models.user import (
     WebAuthnAuthenticateRequest,
     WebAuthnRegisterRequest,
 )
-
-from datetime import date
-
 
 # ── AdminUserUpdate ────────────────────────────────────────────────────────────
 

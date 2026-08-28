@@ -1,7 +1,7 @@
 """Tests for app/repositories/user_repository.py — mongomock-backed."""
 
-import pytest
 import mongomock
+import pytest
 from bson import ObjectId
 
 from app.repositories import user_repository
