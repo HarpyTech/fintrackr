@@ -170,13 +170,17 @@ def test_delete_expense_wrong_owner_returns_false(mongo):
     assert expense_service.get_expense("a@x.com", eid) is not None
 
 
-def test_delete_removes_line_items(mongo):
+def test_delete_soft_deletes_expense_and_preserves_line_items(mongo):
+    # delete_expense is a soft-delete (sets is_deleted=True on the expense).
+    # Line items are kept intact; audit history is preserved.
     _seed_user(mongo, "u@x.com")
     eid = _seed_expense(mongo, "u@x.com")
     mongo["line_items"].insert_many([
         {"expense_id": eid, "username": "u@x.com", "name": "item1"},
         {"expense_id": eid, "username": "u@x.com", "name": "item2"},
     ])
-    expense_service.delete_expense("u@x.com", eid)
+    result = expense_service.delete_expense("u@x.com", eid)
+    assert result is True
+    # Line items are preserved (soft-delete does not cascade)
     remaining = list(mongo["line_items"].find({"expense_id": eid}))
-    assert remaining == []
+    assert len(remaining) == 2

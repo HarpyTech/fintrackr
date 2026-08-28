@@ -128,8 +128,8 @@ def test_update_user_role(mongo):
 
 def test_update_user_plan_sets_limit(mongo):
     _seed_user(mongo, "u@x.com")
-    result = admin_service.update_user("u@x.com", plan="pro")
-    assert result["plan"] == "pro"
+    result = admin_service.update_user("u@x.com", plan="go")
+    assert result["plan"] == "go"
     assert result["expense_limit"] == 100
 
 

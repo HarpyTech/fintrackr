@@ -19,9 +19,9 @@ class Plan:
 
 
 PLANS: dict[str, Plan] = {
-    "Free": Plan("Free", "Free", 15),
-    "Go": Plan("Go", "Go", 100),
-    "Max": Plan("Max", "Max", None),
+    "free": Plan("free", "Free", 15),
+    "go": Plan("go", "Go", 100),
+    "max": Plan("max", "Max", None),
 }
 
 
