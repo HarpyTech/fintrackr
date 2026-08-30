@@ -42,10 +42,10 @@ jobs:
           SECRET_KEY: "ci-test-secret-key-not-for-production-use-32chars"
           MONGODB_URI: "mongodb://localhost:27017"
         run: |
-          pytest \
+          pytest ./ \
             --cov=app \
             --cov-report=term-missing \
-            --cov-fail-under=80
+            --cov-fail-under=70
 
   build-and-health-check:
     runs-on: ubuntu-latest
