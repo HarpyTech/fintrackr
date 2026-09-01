@@ -156,7 +156,9 @@ def test_scope_is_always_stage_zero():
     compiled = _accepts(
         _agg([{"$group": {"_id": "$category", "total": {"$sum": "$amount"}}}])
     )
-    assert compiled.pipeline[0] == {"$match": {"username": USER}}, compiled.pipeline[0]
+    scope_match = compiled.pipeline[0]["$match"]
+    assert scope_match["username"] == USER, compiled.pipeline[0]
+    assert scope_match.get("is_deleted") == {"$ne": True}, compiled.pipeline[0]
 
 
 def test_scope_survives_a_leading_match():

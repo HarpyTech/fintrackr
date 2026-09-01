@@ -12,6 +12,12 @@ import { createQueryClient } from './lib/queryClient';
 import { ExpenseCacheSync } from './lib/ExpenseCacheSync';
 import './styles.css';
 
+// Inter font — loaded here so it's available for both CSS vars and MUI theme
+const interLink = document.createElement('link');
+interLink.rel = 'stylesheet';
+interLink.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap';
+document.head.appendChild(interLink);
+
 const queryClient = createQueryClient();
 
 ReactDOM.createRoot(document.getElementById('root')).render(

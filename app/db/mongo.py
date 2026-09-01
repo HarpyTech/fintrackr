@@ -250,6 +250,7 @@ def bootstrap_indexes() -> None:
             [
                 {"kind": "single", "field": "username", "unique": True},
                 {"kind": "single", "field": "tenant_id", "unique": False},
+                {"kind": "single", "field": "email_verified", "unique": False},
             ],
         )
 
@@ -258,6 +259,8 @@ def bootstrap_indexes() -> None:
             [
                 {"kind": "compound", "fields": [("username", 1), ("expense_date", -1)]},
                 {"kind": "compound", "fields": [("username", 1), ("bill_type", 1)]},
+                {"kind": "compound", "fields": [("username", 1), ("category", 1)]},
+                {"kind": "compound", "fields": [("username", 1), ("vendor", 1)]},
                 {"kind": "compound", "fields": [("tenant_id", 1), ("username", 1)]},
                 {
                     "kind": "compound",
@@ -337,6 +340,15 @@ def bootstrap_indexes() -> None:
             )
         except Exception:
             pass
+
+        # Rate-limit collections — TTL cleans up old attempt records automatically.
+        # These are created here rather than per-request inside ratelimit.py.
+        _rate_limit_window = 600  # 10 minutes in seconds
+        for rl_col in ("signup_otp_attempts", "webauthn_attempts", "llm_call_attempts", "login_attempts"):
+            try:
+                db[rl_col].create_index("created_at", expireAfterSeconds=_rate_limit_window)
+            except Exception:
+                pass
 
         logger.info("Database indexes bootstrapped successfully")
     except Exception:

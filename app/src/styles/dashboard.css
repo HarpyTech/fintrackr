@@ -480,6 +480,7 @@
   font-size: 1.875rem;
   font-weight: 700;
   color: var(--ink);
+  font-variant-numeric: tabular-nums;
 }
 
 /* --- Mobile / Desktop visibility --- */

@@ -1,0 +1,23 @@
+# syntax=docker/dockerfile:1
+# Local PR-checklist image. Mirrors the GitHub Actions "tests" job
+# (.github/workflows/pr_check.yml): pip-audit, ruff, mypy, pytest + coverage.
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    SKIP_AUDIT=1
+
+WORKDIR /code
+
+# Install runtime + dev deps first for layer caching; add pip-audit explicitly
+# (CI installs it separately, so it is not pinned in requirements-dev.txt).
+COPY requirements.txt requirements-dev.txt ./
+RUN pip install --no-cache-dir -r requirements.txt -r requirements-dev.txt \
+    && pip install --no-cache-dir pip-audit
+
+# Copy the project so the image runs standalone; docker-compose.ci.yml also
+# bind-mounts the source for live edits without rebuilding.
+COPY . .
+
+CMD ["bash", "scripts/ci_checks.sh"]

@@ -4,6 +4,84 @@
    ExpenseChatWidget. The app header is in layout.css.
    ============================================================ */
 
+/* --- OnboardingBanner --- */
+.onboarding-banner {
+  background: var(--brand-soft);
+  border-bottom: 1px solid var(--brand-soft-border, var(--line));
+  padding: 14px 20px;
+  flex-shrink: 0;
+}
+
+.onboarding-banner-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.onboarding-banner-title {
+  font-size: 14px;
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--heading);
+  margin: 0;
+}
+
+.onboarding-banner-dismiss {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.onboarding-banner-dismiss:hover {
+  background: var(--surface-soft);
+  color: var(--heading);
+}
+
+.onboarding-banner-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+}
+
+.onboarding-banner-step {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--body);
+}
+
+.onboarding-banner-step.done {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.onboarding-banner-step-icon {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.onboarding-banner-step-icon.done {
+  color: var(--teal, #0f9488);
+}
+
+.onboarding-banner-step-link {
+  color: var(--brand);
+  font-weight: var(--font-weight-medium, 500);
+  text-decoration: none;
+}
+.onboarding-banner-step-link:hover { text-decoration: underline; }
+
 /* --- ThemeToggle --- */
 .theme-toggle {
   display: inline-flex;

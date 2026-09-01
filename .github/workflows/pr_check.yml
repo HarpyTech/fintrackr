@@ -24,12 +24,17 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-dev.txt
+
+      # - name: Scan dependencies for vulnerabilities
+      #   run: |
+      #     pip install pip-audit
+      #     pip-audit -r requirements.txt
 
       - name: Lint (ruff)
         run: ruff check app/ tests/
@@ -42,10 +47,10 @@ jobs:
           SECRET_KEY: "ci-test-secret-key-not-for-production-use-32chars"
           MONGODB_URI: "mongodb://localhost:27017"
         run: |
-          pytest ./ \
+          pytest \
             --cov=app \
             --cov-report=term-missing \
-            --cov-fail-under=70
+            --cov-fail-under=80
 
   build-and-health-check:
     runs-on: ubuntu-latest

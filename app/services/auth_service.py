@@ -12,7 +12,7 @@ Re-exports at the bottom of this file keep the routes layer unchanged.
 from __future__ import annotations
 
 import logging
-import random
+import secrets
 from datetime import UTC, datetime, timedelta
 
 from pymongo.errors import PyMongoError
@@ -50,7 +50,7 @@ def _is_otp_expired(expires_at: datetime | None) -> bool:
 
 def _generate_signup_otp() -> str:
     digits = max(4, min(settings.SIGNUP_OTP_LENGTH, 8))
-    return "".join(random.choices("0123456789", k=digits))
+    return "".join(str(secrets.randbelow(10)) for _ in range(digits))
 
 
 # ---------------------------------------------------------------------------

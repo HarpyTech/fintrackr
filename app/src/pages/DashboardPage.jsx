@@ -12,6 +12,7 @@ import { apiRequest } from '../lib/api';
 import { queryKeys } from '../lib/queryClient';
 import { CHART_ACCENT, CHART_ACCENT_ALT, formatInr } from '../lib/chartColors';
 import { useToast } from '../components/ToastProvider';
+import OnboardingBanner from '../components/OnboardingBanner';
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
@@ -225,8 +226,17 @@ export default function DashboardPage() {
     [expenses]
   );
 
+  const completedOnboardingSteps = useMemo(() => {
+    const steps = [];
+    if (expenses.length > 0) steps.push('add_expense');
+    return steps;
+  }, [expenses]);
+
   return (
     <main className="dashboard-proto">
+      {!summaryLoading && (
+        <OnboardingBanner completedStepIds={completedOnboardingSteps} />
+      )}
       <div className="dashboard-proto-container">
         {/* ── Header ── */}
 
@@ -314,7 +324,7 @@ export default function DashboardPage() {
             </button>
           </form>
 
-          {lastExtracted ? (
+          {import.meta.env.DEV && lastExtracted ? (
             <div className="extract-output">
               <h3>Last Extracted</h3>
               <pre>{JSON.stringify(lastExtracted, null, 2)}</pre>

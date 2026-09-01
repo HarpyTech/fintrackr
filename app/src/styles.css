@@ -29,6 +29,7 @@
 @import './styles/insights-agent.css';
 @import './styles/support.css';
 @import './styles/settings.css';
+@import './styles/billing.css';
 
 /* Responsive overrides (kept last so they win) */
 @import './styles/responsive.css';

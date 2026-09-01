@@ -84,9 +84,15 @@
 /* --- Filters --- */
 .report-proto-filters {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
   gap: 16px;
   margin-bottom: 24px;
+}
+
+.report-proto-clear {
+  align-self: end;
+  height: 38px;
+  white-space: nowrap;
 }
 
 .report-proto-label {
@@ -131,6 +137,7 @@
   font-weight: 600;
   color: var(--heading);
   margin-left: 4px;
+  font-variant-numeric: tabular-nums;
 }
 
 /* --- Input-type badges --- */
@@ -187,6 +194,7 @@
 
 .report-proto-table td.amount {
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .report-proto-empty {

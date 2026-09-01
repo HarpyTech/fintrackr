@@ -17,6 +17,8 @@ import ErrorBoundary from '../components/ErrorBoundary';
 import { useAgentQuery } from '../hooks/useAgentQuery';
 import { formatInr } from '../lib/chartColors';
 import { queryKeys } from '../lib/queryClient';
+import { usePlan } from '../lib/featureFlags';
+import { Link } from 'react-router-dom';
 
 const SUGGESTIONS = [
   'How much did I spend last month?',
@@ -60,6 +62,7 @@ export default function InsightsPage() {
   const [input, setInput] = useState('');
   const textareaRef = useRef(null);
   const chatRef = useRef(null);
+  const { isFree } = usePlan();
 
   const {
     answers, ask, cancel, streaming, phase, phaseLabel, pendingQuestion, error,
@@ -95,6 +98,15 @@ export default function InsightsPage() {
 
   return (
     <div className="insights-proto">
+      {isFree ? (
+        <div className="insights-proto-upgrade-nudge" role="note">
+          <Sparkles size={16} aria-hidden="true" />
+          <span>
+            AI Insights works best with the <strong>Go</strong> plan — unlimited history, deeper analysis.{' '}
+            <Link to="/billing" className="insights-proto-upgrade-link">Upgrade now</Link>
+          </span>
+        </div>
+      ) : null}
       <div className="insights-proto-body">
 
         {/* ── KPI strip (top) ── */}

@@ -9,6 +9,9 @@ logger = logging.getLogger(__name__)
 
 
 def _utcnow() -> datetime:
+    # MongoDB (and mongomock) stores and returns datetimes as naive UTC.
+    # We use naive UTC here so that DB round-trip arithmetic never mixes
+    # offset-naive and offset-aware datetimes.
     return datetime.now(UTC).replace(tzinfo=None)
 
 
@@ -32,15 +35,6 @@ def check_and_record_otp_request(
     """
     try:
         rate_limit_col = get_users_collection().database["signup_otp_attempts"]
-
-        # Create TTL index for auto-cleanup (optional but recommended)
-        try:
-            rate_limit_col.create_index(
-                "created_at",
-                expireAfterSeconds=window_minutes * 60,
-            )
-        except Exception:
-            pass
 
         now = _utcnow()
         window_start = now - timedelta(minutes=window_minutes)
@@ -132,10 +126,6 @@ def check_webauthn_rate_limit(
     """
     try:
         col = get_users_collection().database["webauthn_attempts"]
-        try:
-            col.create_index("created_at", expireAfterSeconds=window_minutes * 60)
-        except Exception:
-            pass
 
         now = _utcnow()
         window_start = now - timedelta(minutes=window_minutes)
@@ -222,10 +212,6 @@ def check_and_record_llm_call(
     """
     try:
         col = get_users_collection().database["llm_call_attempts"]
-        try:
-            col.create_index("created_at", expireAfterSeconds=window_minutes * 60)
-        except Exception:
-            pass
 
         now = _utcnow()
         window_start = now - timedelta(minutes=window_minutes)
@@ -283,6 +269,79 @@ def check_and_record_llm_call(
             str(exc),
             exc_info=True,
         )
+
+
+class LoginRateLimitError(Exception):
+    """Raised when too many failed login attempts are detected."""
+
+    def __init__(self, message: str, retry_after_seconds: int):
+        super().__init__(message)
+        self.retry_after_seconds = retry_after_seconds
+
+
+def check_and_record_login_attempt(
+    username: str,
+    ip_address: str = "",
+    max_attempts: int = 10,
+    window_minutes: int = 15,
+) -> None:
+    """Rate-limit login attempts per username (and optionally IP).
+
+    Raises LoginRateLimitError when the limit is exceeded. Unlike OTP and
+    WebAuthn limiters, a failed login is recorded by the caller only on
+    failure; successful logins should call clear_login_attempts().
+    """
+    try:
+        col = get_users_collection().database["login_attempts"]
+        now = _utcnow()
+        window_start = now - timedelta(minutes=window_minutes)
+        key = username if not ip_address else f"{username}:{ip_address}"
+
+        recent_count = col.count_documents(
+            {"key": key, "created_at": {"$gte": window_start}}
+        )
+
+        if recent_count >= max_attempts:
+            oldest = col.find_one(
+                {"key": key, "created_at": {"$gte": window_start}},
+                sort=[("created_at", 1)],
+            )
+            if oldest:
+                retry_after = int(
+                    (oldest["created_at"] + timedelta(minutes=window_minutes) - now).total_seconds()
+                )
+                retry_after = max(1, retry_after)
+            else:
+                retry_after = window_minutes * 60
+
+            logger.warning(
+                "Login rate limit exceeded for %s: %d attempts in %d minutes",
+                username, recent_count, window_minutes,
+            )
+            raise LoginRateLimitError(
+                f"Too many login attempts. Please try again in {retry_after} seconds.",
+                retry_after,
+            )
+
+        col.insert_one({"key": key, "created_at": now})
+
+    except LoginRateLimitError:
+        raise
+    except Exception as exc:
+        logger.error(
+            "Error checking login rate limit for %s: %s", username, str(exc), exc_info=True
+        )
+        raise RuntimeError("Failed to check rate limit") from exc
+
+
+def clear_login_attempts(username: str, ip_address: str = "") -> None:
+    """Clear login attempts after a successful login."""
+    try:
+        col = get_users_collection().database["login_attempts"]
+        key = username if not ip_address else f"{username}:{ip_address}"
+        col.delete_many({"key": key})
+    except Exception as exc:
+        logger.warning("Failed to clear login attempts for %s: %s", username, str(exc))
 
 
 def clear_otp_attempts(email: str) -> None:

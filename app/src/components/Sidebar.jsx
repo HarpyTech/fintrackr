@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -11,15 +11,22 @@ import {
   LogOut,
   Settings,
   Users,
+  CreditCard,
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { isSupportPageEnabled } from '../lib/featureFlags';
+import { resolveDisplayName, resolveInitials } from '../lib/userDisplay';
 
+
+const PLAN_BADGE_LABELS = { go: 'Go', max: 'Max' };
 
 export default function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { session, profile, logout } = useAuth();
   const isAdmin = session?.role === 'admin';
+  const plan = profile?.plan || 'free';
+  const planBadge = PLAN_BADGE_LABELS[plan] || null;
 
   const menuItems = [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -27,40 +34,22 @@ export default function Sidebar() {
     { to: '/report', icon: FileText, label: 'Report' },
     { to: '/add-expense', icon: PlusCircle, label: 'Add Expense' },
     { to: '/settings', icon: Settings, label: 'Settings' },
+    ...(plan !== 'max' ? [{ to: '/billing', icon: CreditCard, label: 'Billing' }] : []),
     ...(isSupportPageEnabled ? [{ to: '/support', icon: HelpCircle, label: 'Support' }] : []),
     ...(isAdmin ? [{ to: '/admin/users', icon: Users, label: 'Admin' }] : []),
   ];
 
-  const displayName = useMemo(() => {
-    const firstName = profile?.first_name?.trim();
-    const lastName = profile?.last_name?.trim();
-    if (firstName || lastName) {
-      return [firstName, lastName].filter(Boolean).join(' ');
-    }
-    return session?.user || 'User';
-  }, [profile, session?.user]);
-
-  const initials = useMemo(() => {
-    const firstName = profile?.first_name?.trim();
-    const lastName = profile?.last_name?.trim();
-    if (firstName && lastName) {
-      return (firstName.charAt(0) + lastName.charAt(0)).toUpperCase();
-    }
-    if (firstName) {
-      const fallback = session?.user || '';
-      return (firstName.charAt(0) + fallback.charAt(0)).replace(/\s/g, '').toUpperCase().slice(0, 2) || 'U';
-    }
-    const emailCandidate = (session?.user || '').trim();
-    if (emailCandidate.includes('@')) {
-      const localPart = emailCandidate.split('@')[0] || '';
-      const localChars = localPart.replace(/[^a-zA-Z]/g, '');
-      return localChars.slice(0, 2).toUpperCase() || 'U';
-    }
-    return emailCandidate.slice(0, 2).toUpperCase() || 'U';
-  }, [profile, session?.user]);
+  const displayName = resolveDisplayName(profile, session?.user);
+  const initials = resolveInitials(profile, session?.user);
 
   async function handleLogout() {
-    await logout();
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    try {
+      await logout();
+    } finally {
+      setIsLoggingOut(false);
+    }
   }
 
   const sidebarClass = `sidebar-proto${isCollapsed ? ' collapsed' : ' expanded'}`;
@@ -89,6 +78,7 @@ export default function Sidebar() {
                 `sidebar-proto-link${isActive ? ' active' : ''}`
               }
               title={isCollapsed ? label : undefined}
+              aria-label={isCollapsed ? label : undefined}
             >
               <Icon size={20} className="sidebar-proto-link-icon" />
               <span className="sidebar-proto-link-label">{label}</span>
@@ -107,7 +97,14 @@ export default function Sidebar() {
             >
               <span className="sidebar-proto-avatar" aria-hidden="true">{initials}</span>
               <div className="sidebar-proto-profile-info">
-                <span className="sidebar-proto-profile-name">{displayName}</span>
+                <span className="sidebar-proto-profile-name">
+                  {displayName}
+                  {planBadge && (
+                    <span className="sidebar-proto-plan-badge" aria-label={`Plan: ${planBadge}`}>
+                      {planBadge}
+                    </span>
+                  )}
+                </span>
                 <span className="sidebar-proto-profile-email">{session?.user}</span>
               </div>
             </NavLink>
@@ -118,10 +115,14 @@ export default function Sidebar() {
             type="button"
             className="sidebar-proto-logout"
             onClick={handleLogout}
-            title={isCollapsed ? 'Logout' : undefined}
+            disabled={isLoggingOut}
+            title="Logout"
+            aria-label="Logout"
           >
             <LogOut size={20} className="sidebar-proto-link-icon" />
-            <span className="sidebar-proto-link-label">Logout</span>
+            <span className="sidebar-proto-link-label">
+              {isLoggingOut ? 'Logging out…' : 'Logout'}
+            </span>
           </button>
         </div>
 
@@ -142,6 +143,7 @@ export default function Sidebar() {
           <NavLink
             key={to}
             to={to}
+            aria-label={label}
             className={({ isActive }) =>
               `sidebar-proto-mobile-link${isActive ? ' active' : ''}`
             }
@@ -154,4 +156,3 @@ export default function Sidebar() {
     </>
   );
 }
-

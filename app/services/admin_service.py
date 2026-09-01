@@ -22,6 +22,8 @@ def _utcnow() -> datetime:
 
 
 def _serialize_user(user: dict, expense_count: int) -> dict:
+    created_at = user.get("created_at")
+    last_login_at = user.get("last_login_at")
     return {
         "username": user["username"],
         "role": user.get("role", "user"),
@@ -30,6 +32,9 @@ def _serialize_user(user: dict, expense_count: int) -> dict:
         "disable_rate_limit": bool(user.get("disable_rate_limit", False)),
         "email_verified": bool(user.get("email_verified", False)),
         "expense_count": expense_count,
+        "tenant_id": user.get("tenant_id") or None,
+        "created_at": created_at.isoformat() if created_at else None,
+        "last_login_at": last_login_at.isoformat() if last_login_at else None,
     }
 
 
@@ -39,32 +44,52 @@ def list_users(
     search: str | None = None,
     tenant_id: str | None = None,
 ) -> dict:
-    """Return a paginated list of users with their plan and usage."""
+    """Return a paginated list of users with their plan and usage.
+
+    Uses a single $lookup aggregation to fetch expense counts for all users
+    in one query rather than issuing one count per user (N+1 pattern).
+    """
     try:
-        users = get_users_collection()
-        expenses = get_expenses_collection()
+        users_col = get_users_collection()
 
-        query: dict = {}
+        match_stage: dict = {}
         if tenant_id:
-            query["tenant_id"] = tenant_id
+            match_stage["tenant_id"] = tenant_id
         if search:
-            query["username"] = {"$regex": search.strip(), "$options": "i"}
+            match_stage["username"] = {"$regex": search.strip(), "$options": "i"}
 
-        total = users.count_documents(query)
-        cursor = (
-            users.find(query)
-            .sort("username", 1)
-            .skip(max(skip, 0))
-            .limit(max(min(limit, 200), 1))
-        )
+        pipeline = [
+            *([ {"$match": match_stage} ] if match_stage else []),
+            {"$sort": {"username": 1}},
+            {"$facet": {
+                "metadata": [{"$count": "total"}],
+                "data": [
+                    {"$skip": max(skip, 0)},
+                    {"$limit": max(min(limit, 200), 1)},
+                    {
+                        "$lookup": {
+                            "from": "expenses",
+                            "localField": "username",
+                            "foreignField": "username",
+                            "as": "_expense_agg",
+                        }
+                    },
+                    {
+                        "$addFields": {
+                            "_expense_count": {"$size": "$_expense_agg"}
+                        }
+                    },
+                ],
+            }},
+        ]
 
-        items = []
-        for user in cursor:
-            expense_filter: dict = {"username": user["username"]}
-            if tenant_id:
-                expense_filter["tenant_id"] = tenant_id
-            count = expenses.count_documents(expense_filter)
-            items.append(_serialize_user(user, count))
+        result = list(users_col.aggregate(pipeline))
+        facet = result[0] if result else {}
+        total = (facet.get("metadata") or [{}])[0].get("total", 0)
+        items = [
+            _serialize_user(user, int(user.get("_expense_count", 0)))
+            for user in facet.get("data", [])
+        ]
 
         return {"total": total, "skip": skip, "limit": limit, "items": items}
     except PyMongoError as exc:

@@ -1,7 +1,7 @@
 """Tests for app/core/ratelimit.py — OTP, WebAuthn, and LLM rate limiting."""
 
-import pytest
 import mongomock
+import pytest
 
 from app.core import ratelimit
 from app.core.ratelimit import (
@@ -67,7 +67,7 @@ def test_otp_oldest_attempt_none_path(rl_mongo, monkeypatch):
     # Force oldest_attempt to return None to exercise the else branch (line 75)
     for _ in range(3):
         ratelimit.check_and_record_otp_request("a@b.com")
-    original_find_one = rl_mongo.database["signup_otp_attempts"].find_one
+    # original_find_one = rl_mongo.database["signup_otp_attempts"].find_one
 
     def _no_result(*args, **kwargs):
         return None

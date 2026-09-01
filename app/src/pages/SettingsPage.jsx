@@ -6,9 +6,11 @@ import ThemeToggle from '../components/ThemeToggle';
 import { apiRequest } from '../lib/api';
 import { getOrCreateDeviceId, clearDeviceBinding } from '../lib/deviceBinding';
 import { useWebAuthn } from '../hooks/useWebAuthn';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import ErrorAlert from '../components/ErrorAlert';
 import PageSpinner from '../components/PageSpinner';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { resolveDisplayName, resolveInitials } from '../lib/userDisplay';
 
 const PHONE_PATTERN = /^\+?[0-9]{8,15}$/;
 const ADDRESS_MIN_LENGTH = 10;
@@ -103,33 +105,17 @@ export default function SettingsPage() {
     [managedDevices]
   );
 
-  const displayName = useMemo(() => {
-    const firstName = profile?.first_name?.trim();
-    const lastName = profile?.last_name?.trim();
-    if (firstName || lastName) {
-      return [firstName, lastName].filter(Boolean).join(' ');
-    }
-    return session?.user || 'User';
-  }, [profile, session?.user]);
+  const displayName = useMemo(
+    () => resolveDisplayName(profile, session?.user),
+    [profile, session?.user]
+  );
 
-  const initials = useMemo(() => {
-    const firstName = profile?.first_name?.trim();
-    const lastName = profile?.last_name?.trim();
-    if (firstName && lastName) {
-      return (firstName.charAt(0) + lastName.charAt(0)).toUpperCase();
-    }
-    if (firstName) {
-      const fallback = session?.user || '';
-      return (firstName.charAt(0) + fallback.charAt(0)).replace(/\s/g, '').toUpperCase().slice(0, 2) || 'U';
-    }
-    const emailCandidate = (session?.user || '').trim();
-    if (emailCandidate.includes('@')) {
-      const localPart = emailCandidate.split('@')[0] || '';
-      const localChars = localPart.replace(/[^a-zA-Z]/g, '');
-      return localChars.slice(0, 2).toUpperCase() || 'U';
-    }
-    return emailCandidate.slice(0, 2).toUpperCase() || 'U';
-  }, [profile, session?.user]);
+  const initials = useMemo(
+    () => resolveInitials(profile, session?.user),
+    [profile, session?.user]
+  );
+
+  const deviceDialogRef = useFocusTrap(Boolean(confirmDevice), () => setConfirmDevice(null));
 
   const trimmedPhone = form.phone?.trim() || '';
   const normalizedPhone = trimmedPhone.replace(/[\s()-]/g, '');
@@ -429,7 +415,7 @@ export default function SettingsPage() {
 
       {confirmDevice ? (
         <div className="settings-modal-backdrop" role="presentation">
-          <div className="settings-modal" role="dialog" aria-modal="true" aria-labelledby="remove-device-title">
+          <div className="settings-modal" role="dialog" aria-modal="true" aria-labelledby="remove-device-title" ref={deviceDialogRef}>
             <h3 id="remove-device-title">Remove device?</h3>
             <p>
               You are about to remove <strong>{confirmDevice.displayName}</strong>.

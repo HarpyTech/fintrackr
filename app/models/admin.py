@@ -57,3 +57,6 @@ class AdminUserSummary(BaseModel):
     disable_rate_limit: bool
     email_verified: bool
     expense_count: int
+    tenant_id: str | None = None
+    created_at: str | None = None
+    last_login_at: str | None = None

@@ -7,8 +7,9 @@ from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings
 
 # Configure logging before any other code runs
+_log_level = os.getenv("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
-    level=logging.INFO,
+    level=getattr(logging, _log_level, logging.INFO),
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 
@@ -79,6 +80,13 @@ class Settings(BaseSettings):
 
     SIGNUP_OTP_EXPIRY_MINUTES: int = 2
     SIGNUP_OTP_LENGTH: int = 6
+    SIGNUP_OTP_MAX_ATTEMPTS: int = 3
+    SIGNUP_OTP_WINDOW_MINUTES: int = 10
+
+    # Observability
+    LOG_LEVEL: str = "INFO"
+    SENTRY_DSN: str = ""
+    MAX_UPLOAD_SIZE_MB: int = 10
 
     SMTP_HOST: str | None = None
     SMTP_PORT: int = 587
@@ -88,7 +96,7 @@ class Settings(BaseSettings):
     SMTP_USE_SSL: bool = False
     SMTP_TIMEOUT_SECONDS: int = 15
     SMTP_FROM_EMAIL: str = "no-reply@my-finance.local"
-    SMTP_BCC_EMAILS: list[str] = ["no-reply@harpytechco.in"]
+    SMTP_BCC_EMAILS: list[str] = []
 
     # --- Google OAuth2 ---------------------------------------------------
     GOOGLE_CLIENT_ID: str | None = None

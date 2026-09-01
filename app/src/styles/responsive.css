@@ -366,10 +366,10 @@
     box-shadow: 0 1px 3px rgba(0,0,0,0.04);
   }
 
-  .insights-proto-stat-icon-blue   { color: #2563eb; }
-  .insights-proto-stat-icon-green  { color: #16a34a; }
-  .insights-proto-stat-icon-purple { color: #9333ea; }
-  .insights-proto-stat-icon-orange { color: #ea580c; }
+  .insights-proto-stat-icon-blue   { color: var(--brand); }
+  .insights-proto-stat-icon-green  { color: var(--teal); }
+  .insights-proto-stat-icon-purple { color: var(--violet); }
+  .insights-proto-stat-icon-orange { color: var(--warm); }
 
   .insights-proto-stat-label {
     font-size: 10px;

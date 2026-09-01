@@ -28,6 +28,7 @@ const InsightsPage = lazy(() => import('./pages/InsightsPage'));
 const SupportPage = lazy(() => import('./pages/SupportPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const AdminUsersPage = lazy(() => import('./pages/AdminUsersPage'));
+const BillingPage = lazy(() => import('./pages/BillingPage'));
 
 function HomeRoute() {
   if (!isInstalledPwa()) {
@@ -147,6 +148,14 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <InsightsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/billing"
+              element={
+                <ProtectedRoute>
+                  <BillingPage />
                 </ProtectedRoute>
               }
             />
