@@ -100,7 +100,7 @@ def build_schema_context(username: str) -> dict:
         try:
             rows = collection.aggregate(
                 [
-                    {"$match": {"username": username}},
+                    {"$match": {"username": username, "is_deleted": {"$ne": True}}},
                     {"$group": {"_id": f"${field}", "n": {"$sum": 1}}},
                     {"$sort": {"n": -1}},
                     {"$limit": limit},
@@ -115,7 +115,7 @@ def build_schema_context(username: str) -> dict:
     bounds: dict[str, str] = {}
     try:
         oldest = collection.find_one(
-            {"username": username},
+            {"username": username, "is_deleted": {"$ne": True}},
             sort=[("expense_date", 1)],
             projection={"expense_date": 1},
         )
@@ -647,7 +647,7 @@ def build_overview(username: str) -> dict:
             return 0.0, 0
         return round(float(rows[0].get("total") or 0), 2), int(rows[0].get("n") or 0)
 
-    scope = {"username": username}
+    scope = {"username": username, "is_deleted": {"$ne": True}}
     all_total, all_count = _total(scope)
     this_month, this_count = _total({**scope, "expense_date": {"$gte": month_start}})
     last_month, _ = _total(

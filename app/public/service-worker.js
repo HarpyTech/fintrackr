@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = '__CACHE_VERSION__';
 const CORE_CACHE = `fintrackr-core-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `fintrackr-runtime-${CACHE_VERSION}`;
 const API_CACHE = `fintrackr-api-${CACHE_VERSION}`;

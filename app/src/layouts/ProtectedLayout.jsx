@@ -16,10 +16,11 @@ import ExpenseChatWidget from '../components/ExpenseChatWidget';
 export default function ProtectedLayout({ children }) {
   return (
     <div className="protected-layout">
+      <a href="#main-content" className="skip-link">Skip to main content</a>
       <Sidebar />
       <div className="protected-layout-main">
         <AppHeader />
-        <div className="protected-layout-content">
+        <div id="main-content" className="protected-layout-content">
           {children}
         </div>
       </div>

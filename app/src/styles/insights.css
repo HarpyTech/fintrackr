@@ -14,6 +14,26 @@
   overflow: hidden;
 }
 
+/* Upgrade nudge for Free-tier users */
+.insights-proto-upgrade-nudge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: var(--brand-soft);
+  border-bottom: 1px solid var(--brand-soft-border, var(--line));
+  font-size: 13px;
+  color: var(--brand-strong, var(--brand));
+  flex-shrink: 0;
+}
+
+.insights-proto-upgrade-link {
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--brand);
+  text-decoration: underline;
+}
+.insights-proto-upgrade-link:hover { opacity: 0.8; }
+
 /* Body — fills viewport below the nav header */
 .insights-proto-body {
   flex: 1;
@@ -84,23 +104,16 @@
 
 .insights-proto-stat-label {
   font-size: 11px;
-  color: #6b7280;
+  color: var(--muted);
   line-height: 1.2;
-}
-
-:root[data-theme='dark'] .insights-proto-stat-label {
-  color: #9ca3af;
 }
 
 .insights-proto-stat-value {
   font-size: 14px;
   font-weight: 600;
-  color: #111827;
+  color: var(--ink);
   line-height: 1.2;
-}
-
-:root[data-theme='dark'] .insights-proto-stat-value {
-  color: #f9fafb;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Loading shimmer animation */

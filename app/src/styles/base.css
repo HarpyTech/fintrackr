@@ -85,6 +85,26 @@
   --motion-base: 180ms;
   --motion-slow: 280ms;
   --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+
+  /* Typography */
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --leading-tight: 1.25;
+  --leading-base: 1.5;
+  --leading-relaxed: 1.625;
+
+  /* Chart colors — referenced by chartColors.js via getComputedStyle */
+  --chart-1: #3d6fd6;
+  --chart-2: #e0701f;
+  --chart-3: #0f9488;
+  --chart-4: #d6455f;
+  --chart-5: #8b5cf6;
+  --chart-6: #3f9e52;
+  --chart-7: #b8860b;
+  --chart-8: #64748b;
 }
 
 /* --- Design tokens (dark mode) --- */
@@ -139,10 +159,10 @@
 
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
-    Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: var(--font-sans);
   background: var(--page-bg);
   color: var(--ink);
+  line-height: var(--leading-base);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition: background var(--motion-base) ease, color var(--motion-base) ease;
@@ -380,8 +400,8 @@ td {
 .empty-state-icon {
   display: grid;
   place-items: center;
-  width: 56px;
-  height: 56px;
+  width: 64px;
+  height: 64px;
   border-radius: var(--radius-pill);
   background: var(--brand-soft);
   border: 1px solid var(--brand-soft-border);
@@ -389,8 +409,8 @@ td {
 }
 
 .empty-state-icon svg {
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
 }
 
 .empty-state-title {

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.api.deps import get_current_tenant, require_admin
 from app.core.plans import plan_catalog
-from app.models.admin import AdminUserUpdate
+from app.models.admin import AdminUserSummary, AdminUserUpdate
 from app.services.admin_service import (
     UserNotFoundError,
     get_user,
@@ -33,7 +33,7 @@ def get_users(
     return list_users(skip=skip, limit=limit, search=search, tenant_id=tenant_id)
 
 
-@router.get("/users/{username}")
+@router.get("/users/{username}", response_model=AdminUserSummary)
 def get_single_user(username: str, tenant_id: str = Depends(get_current_tenant)):
     """Fetch a single user's admin view."""
     try:
@@ -45,7 +45,7 @@ def get_single_user(username: str, tenant_id: str = Depends(get_current_tenant))
         )
 
 
-@router.patch("/users/{username}")
+@router.patch("/users/{username}", response_model=AdminUserSummary)
 def patch_user(
     username: str,
     payload: AdminUserUpdate,

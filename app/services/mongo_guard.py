@@ -620,9 +620,10 @@ def validate_and_compile(envelope: MongoQueryEnvelope, username: str) -> Compile
 
         # Scope is applied here, after validation, and cannot be overridden:
         # the model was forbidden from emitting `username` at all.
-        scoped_filter = {SCOPE_FIELD: username}
+        scoped_filter = {SCOPE_FIELD: username, "is_deleted": {"$ne": True}}
         scoped_filter.update(envelope.filter or {})
         scoped_filter[SCOPE_FIELD] = username
+        scoped_filter["is_deleted"] = {"$ne": True}
 
         return CompiledQuery(
             op="find",
@@ -646,7 +647,7 @@ def validate_and_compile(envelope: MongoQueryEnvelope, username: str) -> Compile
     # Hoist any expense_date predicate into the scope stage so the compound
     # (username, expense_date) index is used. Only `expenses` has that index,
     # and only a leading $match can contribute to it.
-    scope_match: dict[str, Any] = {SCOPE_FIELD: username}
+    scope_match: dict[str, Any] = {SCOPE_FIELD: username, "is_deleted": {"$ne": True}}
     remaining = list(stages)
 
     if (

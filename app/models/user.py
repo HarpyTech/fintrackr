@@ -38,6 +38,9 @@ class UserProfile(BaseModel):
     last_name: str | None = None
     phone: str | None = None
     address: str | None = None
+    plan: str = "free"
+    expense_limit: int = 15
+    disable_rate_limit: bool = False
 
 
 class UserProfileUpdate(BaseModel):

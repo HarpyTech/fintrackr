@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
-import { DataGrid } from '@mui/x-data-grid';
+import { DataGrid, GridToolbar } from '@mui/x-data-grid';
 import { Pencil, Trash2 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { apiRequest } from '../lib/api';
@@ -15,19 +16,28 @@ import PageSpinner from '../components/PageSpinner';
 import ConfirmDialog from '../components/ConfirmDialog';
 import ExpenseEditDialog from '../components/ExpenseEditDialog';
 
+const DATAGRID_SX = {
+  border: 'none',
+  '& .MuiDataGrid-columnHeaders': {
+    background: 'var(--surface-soft)',
+    borderRadius: 'var(--radius-sm)',
+  },
+  '& .MuiDataGrid-cell': { borderColor: 'var(--line)' },
+  '& .MuiDataGrid-footerContainer': { borderColor: 'var(--line)' },
+  '& .MuiDataGrid-toolbarContainer': { padding: '8px 4px' },
+};
+
 export default function ReportPage() {
   const { logout } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
-  const [expenses, setExpenses] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [historyView, setHistoryView] = useState('expense');
   const [historyFilters, setHistoryFilters] = useState({
     startDate: '',
     endDate: '',
     category: 'all',
   });
-  const [error, setError] = useState('');
 
   // Edit dialog state
   const [editTarget, setEditTarget] = useState(null);
@@ -37,30 +47,27 @@ export default function ReportPage() {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
 
-  const loadExpenses = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const response = await apiRequest('/expenses?limit=200');
-      setExpenses(response.items || []);
-    } catch (err) {
-      setError(err.message || 'Unable to load expenses. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const {
+    data,
+    isLoading: loading,
+    isError,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: ['expenses'],
+    queryFn: () => apiRequest('/expenses?limit=200').then((r) => r.items || []),
+  });
 
-  useEffect(() => {
-    loadExpenses();
-  }, [loadExpenses]);
+  const expenses = data || [];
+  const error = isError ? (queryError?.message || 'Unable to load expenses. Please try again.') : '';
 
   useEffect(() => {
     function handleExpenseCreated() {
-      loadExpenses();
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
     }
     window.addEventListener('expense:created', handleExpenseCreated);
     return () => window.removeEventListener('expense:created', handleExpenseCreated);
-  }, [loadExpenses]);
+  }, [queryClient]);
 
   async function handleDelete() {
     if (!deleteTarget) return;
@@ -69,7 +76,7 @@ export default function ReportPage() {
     try {
       await apiRequest(`/expenses/${deleteTarget.id}`, { method: 'DELETE' });
       setDeleteTarget(null);
-      loadExpenses();
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
     } catch (err) {
       setDeleteError(err.message || 'Unable to delete expense. Please try again.');
     } finally {
@@ -220,6 +227,51 @@ export default function ReportPage() {
     },
   ], []);
 
+  const lineItemColumns = useMemo(() => [
+    { field: 'expenseDate', headerName: 'Date', width: 110 },
+    {
+      field: 'category',
+      headerName: 'Category',
+      width: 130,
+      valueFormatter: (value) => toTitleCase(value),
+    },
+    { field: 'vendor', headerName: 'Vendor', width: 130, valueFormatter: (value) => value || '—' },
+    {
+      field: 'inputType',
+      headerName: 'Type',
+      width: 110,
+      renderCell: ({ value }) => (
+        <Chip
+          label={toTitleCase(value || 'manual')}
+          size="small"
+          color={String(value || '').toLowerCase().includes('ai') ? 'primary' : 'default'}
+          variant="outlined"
+          sx={{ fontSize: 11 }}
+        />
+      ),
+    },
+    { field: 'itemName', headerName: 'Item', flex: 1, minWidth: 140, valueFormatter: (value) => value || '—' },
+    { field: 'quantity', headerName: 'Qty', width: 70, type: 'number' },
+    {
+      field: 'unitPrice',
+      headerName: 'Unit Price',
+      width: 120,
+      type: 'number',
+      valueFormatter: (value) => formatInr(value),
+      align: 'right',
+      headerAlign: 'right',
+    },
+    {
+      field: 'total',
+      headerName: 'Total',
+      width: 120,
+      type: 'number',
+      valueFormatter: (value) => formatInr(value),
+      align: 'right',
+      headerAlign: 'right',
+    },
+  ], []);
+
   return (
     <main className="report-proto">
       <div className="report-proto-container">
@@ -284,6 +336,15 @@ export default function ReportPage() {
                 ))}
               </select>
             </label>
+            {(historyFilters.startDate || historyFilters.endDate || historyFilters.category !== 'all') && (
+              <button
+                type="button"
+                className="secondary-button report-proto-clear"
+                onClick={() => setHistoryFilters({ startDate: '', endDate: '', category: 'all' })}
+              >
+                Clear filters
+              </button>
+            )}
           </div>
 
           {/* ── Summary Bar ── */}
@@ -306,7 +367,7 @@ export default function ReportPage() {
           {loading ? (
             <PageSpinner label="Loading expenses…" minHeight={160} />
           ) : error ? (
-            <ErrorAlert message={error} onRetry={loadExpenses} />
+            <ErrorAlert message={error} onRetry={refetch} />
           ) : historyView === 'expense' ? (
             <Box sx={{ width: '100%', mt: 1 }}>
               <DataGrid
@@ -321,66 +382,30 @@ export default function ReportPage() {
                 disableRowSelectionOnClick
                 autoHeight
                 density="compact"
-                sx={{
-                  border: 'none',
-                  '& .MuiDataGrid-columnHeaders': {
-                    background: 'var(--surface-soft)',
-                    borderRadius: 'var(--radius-sm)',
-                  },
-                  '& .MuiDataGrid-cell': { borderColor: 'var(--line)' },
-                  '& .MuiDataGrid-footerContainer': { borderColor: 'var(--line)' },
-                }}
+                slots={{ toolbar: GridToolbar }}
+                slotProps={{ toolbar: { csvOptions: { fileName: 'fintrackr-expenses' } } }}
+                sx={DATAGRID_SX}
               />
             </Box>
           ) : (
-            /* ── Line Items view — plain table (unchanged) ── */
-            <div className="report-proto-table-wrap">
-              <table className="report-proto-table">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Category</th>
-                    <th>Vendor</th>
-                    <th>Input Type</th>
-                    <th>Item</th>
-                    <th>Qty</th>
-                    <th>Unit Price</th>
-                    <th>Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredLineItems.length > 0 ? (
-                    filteredLineItems.map((item) => (
-                      <tr key={item.id}>
-                        <td>{item.expenseDate}</td>
-                        <td>{toTitleCase(item.category)}</td>
-                        <td>{item.vendor || '—'}</td>
-                        <td>
-                          <span
-                            className={clsx(
-                              'report-proto-badge',
-                              (item.inputType || '').toLowerCase().includes('ai') ? 'ai' : 'manual'
-                            )}
-                          >
-                            {toTitleCase(item.inputType)}
-                          </span>
-                        </td>
-                        <td>{item.itemName || '—'}</td>
-                        <td>{item.quantity}</td>
-                        <td>{formatInr(item.unitPrice)}</td>
-                        <td className="amount">{formatInr(item.total)}</td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={8} className="report-proto-empty">
-                        No line items matched the selected filters.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+            <Box sx={{ width: '100%', mt: 1 }}>
+              <DataGrid
+                rows={filteredLineItems}
+                columns={lineItemColumns}
+                getRowId={(row) => row.id}
+                initialState={{
+                  pagination: { paginationModel: { pageSize: 25 } },
+                  sorting: { sortModel: [{ field: 'expenseDate', sort: 'desc' }] },
+                }}
+                pageSizeOptions={[10, 25, 50]}
+                disableRowSelectionOnClick
+                autoHeight
+                density="compact"
+                slots={{ toolbar: GridToolbar }}
+                slotProps={{ toolbar: { csvOptions: { fileName: 'fintrackr-line-items' } } }}
+                sx={DATAGRID_SX}
+              />
+            </Box>
           )}
 
           {deleteError ? <ErrorAlert message={deleteError} /> : null}
@@ -392,7 +417,7 @@ export default function ReportPage() {
         open={Boolean(editTarget)}
         expense={editTarget}
         onClose={() => setEditTarget(null)}
-        onSaved={loadExpenses}
+        onSaved={() => queryClient.invalidateQueries({ queryKey: ['expenses'] })}
       />
 
       {/* ── Delete Confirm Dialog ── */}

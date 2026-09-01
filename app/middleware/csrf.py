@@ -94,7 +94,7 @@ class CSRFProtectionMiddleware(BaseHTTPMiddleware):
                 key=self.CSRF_COOKIE_NAME,
                 value=token,
                 httponly=False,  # JavaScript needs to read it for forms
-                secure=False,
+                secure=settings.COOKIE_SECURE,
                 samesite="lax",  # CSRF protection
                 max_age=3600,  # 1 hour
             )

@@ -3,15 +3,36 @@
    Flex row: sidebar + scrollable main content
    =========================== */
 
+/* Skip-to-content link — visible on keyboard focus only */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 16px;
+  z-index: 9999;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm, 8px);
+  background: var(--brand);
+  color: var(--surface);
+  font-size: 14px;
+  font-weight: var(--font-weight-medium, 500);
+  text-decoration: none;
+  transition: top 0.1s;
+}
+.skip-link:focus-visible {
+  top: 16px;
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
 .protected-layout {
   display: flex;
   height: 100vh;
   overflow: hidden;
-  background: var(--color-bg, #f9fafb);
+  background: var(--surface);
 }
 
 :root[data-theme='dark'] .protected-layout {
-  background: var(--color-bg-dark, #111827);
+  background: var(--surface);
 }
 
 .protected-layout-main {

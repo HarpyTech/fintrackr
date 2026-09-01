@@ -511,7 +511,7 @@ def monthly_summary(username: str, year: int, tenant_id: str | None = None):
         pipeline = [
             {
                 "$match": {
-                    **_tenant_filter(username, tenant_id),
+                    **_active_filter(username, tenant_id),
                     "expense_date": {"$gte": start, "$lt": end},
                 }
             },
@@ -556,7 +556,7 @@ def yearly_summary(username: str, tenant_id: str | None = None):
     try:
         expenses = get_expenses_collection()
         pipeline = [
-            {"$match": _tenant_filter(username, tenant_id)},
+            {"$match": _active_filter(username, tenant_id)},
             {
                 "$group": {
                     "_id": {"year": {"$year": "$expense_date"}},
@@ -610,7 +610,7 @@ def daily_summary(
         pipeline = [
             {
                 "$match": {
-                    **_tenant_filter(username, tenant_id),
+                    **_active_filter(username, tenant_id),
                     "expense_date": {"$gte": start, "$lt": end},
                 }
             },
@@ -662,7 +662,7 @@ def categories_monthly_summary(
         pipeline = [
             {
                 "$match": {
-                    **_tenant_filter(username, tenant_id),
+                    **_active_filter(username, tenant_id),
                     "expense_date": {"$gte": start, "$lt": end},
                 }
             },
@@ -716,7 +716,7 @@ def vendors_monthly_summary(
         pipeline = [
             {
                 "$match": {
-                    **_tenant_filter(username, tenant_id),
+                    **_active_filter(username, tenant_id),
                     "expense_date": {"$gte": start, "$lt": end},
                 }
             },
@@ -769,7 +769,7 @@ def category_summary(
     logger.debug(f"Fetching category summary for period: {period}")
     try:
         expenses = get_expenses_collection()
-        match: dict = _tenant_filter(username, tenant_id)
+        match: dict = _active_filter(username, tenant_id)
         if year is not None:
             start_month = month if month is not None else 1
             start = _as_mongo_datetime(date(year, start_month, 1))

@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
 
 from app.core.config import settings
-from app.core.ratelimit import OtpRateLimitError
+from app.core.ratelimit import LoginRateLimitError, OtpRateLimitError, check_and_record_login_attempt, clear_login_attempts
 from app.core.security import create_access_token
 from app.models.user import (
     ForgotPasswordRequest,
@@ -186,6 +186,16 @@ async def api_login(request: Request, response: Response):
             detail="username and password are required",
         )
 
+    ip_address = request.headers.get("x-forwarded-for", request.client.host if request.client else "")
+    try:
+        check_and_record_login_attempt(username, ip_address=ip_address)
+    except LoginRateLimitError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=exc.args[0],
+            headers={"Retry-After": str(exc.retry_after_seconds)},
+        )
+
     try:
         user = authenticate_user(username, password)
     except RuntimeError as exc:
@@ -201,6 +211,8 @@ async def api_login(request: Request, response: Response):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
         )
+
+    clear_login_attempts(username, ip_address=ip_address)
 
     if user.get("requires_verification"):
         logger.warning("Login failed: User email not verified")

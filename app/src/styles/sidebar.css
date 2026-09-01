@@ -247,13 +247,27 @@
 .sidebar-proto.collapsed .sidebar-proto-profile-info { opacity: 0; max-width: 0; }
 
 .sidebar-proto-profile-name {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 5px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold, 600);
   color: var(--heading);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.sidebar-proto-plan-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  font-size: 10px;
+  font-weight: var(--font-weight-bold, 700);
+  background: var(--brand-soft);
+  color: var(--brand-strong);
+  border: 1px solid var(--brand-soft-border);
+  flex-shrink: 0;
 }
 
 .sidebar-proto-profile-email {
