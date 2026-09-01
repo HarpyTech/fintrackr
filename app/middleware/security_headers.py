@@ -24,7 +24,7 @@ def _build_csp() -> str:
     styles, so 'unsafe-inline' is required for style-src. Script-src stays
     strict: only same-origin bundles are allowed to execute.
     """
-    connect_src = ["'self'"]
+    connect_src = ["'self'", "https://fonts.googleapis.com"]
 
     # Allow the configured API/CORS origins so the SPA can call the backend
     # when it is served from a different host than the API.
@@ -36,11 +36,11 @@ def _build_csp() -> str:
         "default-src 'self'",
         "script-src 'self'",
         # Recharts and the theme system set inline styles at runtime.
-        "style-src 'self' 'unsafe-inline'",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
         # data: covers inline SVG icons; blob: covers local receipt previews
         # created via URL.createObjectURL before upload.
         "img-src 'self' data: blob:",
-        "font-src 'self' data:",
+        "font-src 'self' data: https://fonts.gstatic.com",
         f"connect-src {' '.join(connect_src)}",
         "manifest-src 'self'",
         "worker-src 'self'",

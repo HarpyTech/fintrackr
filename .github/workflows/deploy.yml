@@ -180,7 +180,7 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t "${IMAGE_URI}" .
+          docker build -t "${IMAGE_URI}" --build-arg INSTALL_MODE=ci .
 
       - name: Scan container image for vulnerabilities
         uses: aquasecurity/trivy-action@0.28.0

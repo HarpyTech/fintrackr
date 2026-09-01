@@ -28,7 +28,6 @@ services:
       - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
       
       # MongoDB Configuration
-      - MONGODB_URI=${MONGODB_URI:-mongodb://mongo:27017}
       - MONGODB_DB=${MONGODB_DB:-finance}
     
     # Alternative: Use Docker secrets (uncomment for production with Docker Swarm)
@@ -36,10 +35,6 @@ services:
     #   - secret_key
     #   - default_password
     
-    depends_on:
-      mongo:
-        condition: service_healthy
-
     restart: unless-stopped
 
     healthcheck:
@@ -53,20 +48,3 @@ services:
         limits:
           cpus: "1.0"
           memory: 512M
-
-  mongo:
-    image: mongo:7.0
-    container_name: fintrackr-mongo
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo_data:/data/db
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.runCommand({ping:1})"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-
-volumes:
-  mongo_data:
