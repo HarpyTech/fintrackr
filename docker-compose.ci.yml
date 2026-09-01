@@ -23,6 +23,7 @@ services:
     environment:
       SECRET_KEY: ci-test-secret-key-not-for-production-use-32chars
       MONGODB_URI: mongodb://localhost:27017
+      SKIP_AUDIT: 1
     # Live source so local edits are checked without rebuilding the image.
     volumes:
       - .:/code
