@@ -7,8 +7,9 @@ from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings
 
 # Configure logging before any other code runs
+_log_level = os.getenv("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
-    level=logging.INFO,
+    level=getattr(logging, _log_level, logging.INFO),
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 
@@ -29,7 +30,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = ""
 
     SECRET_KEY: str
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 5
     ALGORITHM: str = "HS256"
 
     CORS_ORIGINS: list[str] = [
@@ -57,8 +58,35 @@ class Settings(BaseSettings):
     GEMINI_MODEL: str = "gemini-2.5-flash"
     BUILD_VERSION: str = "dev"
 
+    # --- Analytics agent -------------------------------------------------
+    # The Cloud Run deploy workflow builds its env file from a fixed APP_*
+    # allow-list, so none of these can be supplied there. Each default must
+    # therefore be safe to run with as-is.
+    ANALYTICS_AGENT_ENABLED: bool = True
+    # Per-user Gemini call allowance for the analytics feature.
+    ANALYTICS_LLM_CALLS_PER_WINDOW: int = 20
+    ANALYTICS_LLM_WINDOW_MINUTES: int = 10
+    # Ceiling on model calls for a single question (1 author + 1 repair).
+    ANALYTICS_MAX_LLM_CALLS_PER_MESSAGE: int = 2
+    # Narration is template-driven by default; enabling this spends an extra
+    # model call per question.
+    ANALYTICS_NARRATIVE_LLM: bool = False
+    # Timeout for a single Gemini request, in seconds.
+    ANALYTICS_LLM_TIMEOUT_SECONDS: int = 12
+
+    # OpenTelemetry — OTLP export endpoint (e.g. http://otel-collector:4318)
+    # Leave empty to disable OTel entirely (default: no-op).
+    OTEL_EXPORTER_OTLP_ENDPOINT: str = ""
+
     SIGNUP_OTP_EXPIRY_MINUTES: int = 2
     SIGNUP_OTP_LENGTH: int = 6
+    SIGNUP_OTP_MAX_ATTEMPTS: int = 3
+    SIGNUP_OTP_WINDOW_MINUTES: int = 10
+
+    # Observability
+    LOG_LEVEL: str = "INFO"
+    SENTRY_DSN: str = ""
+    MAX_UPLOAD_SIZE_MB: int = 10
 
     SMTP_HOST: str | None = None
     SMTP_PORT: int = 587
@@ -68,7 +96,24 @@ class Settings(BaseSettings):
     SMTP_USE_SSL: bool = False
     SMTP_TIMEOUT_SECONDS: int = 15
     SMTP_FROM_EMAIL: str = "no-reply@my-finance.local"
-    SMTP_BCC_EMAILS: list[str] = ["no-reply@harpytechco.in"]
+    SMTP_BCC_EMAILS: list[str] = []
+
+    # --- Google OAuth2 ---------------------------------------------------
+    GOOGLE_CLIENT_ID: str | None = None
+    GOOGLE_CLIENT_SECRET: str | None = None
+    # Redirect URI must match what is registered in Google Cloud Console.
+    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/v1/auth/google/callback"
+    # Restrict sign-in to these domains (comma-separated). Empty = any account.
+    GOOGLE_ALLOWED_DOMAINS: list[str] = []
+
+    @field_validator("GOOGLE_ALLOWED_DOMAINS", mode="before")
+    @classmethod
+    def parse_google_allowed_domains(cls, value: Any) -> Any:
+        if not value:
+            return []
+        if not isinstance(value, str):
+            return value
+        return [d.strip().lower() for d in value.split(",") if d.strip()]
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
@@ -173,7 +218,8 @@ class Settings(BaseSettings):
 
 
 try:
-    settings = Settings()
+    settings_factory: Any = Settings
+    settings = settings_factory()
     logger.info("Configuration loaded successfully")
     logger.info(f"Project: {settings.PROJECT_NAME}")
     logger.info(f"MongoDB Database: {settings.MONGODB_DB}")

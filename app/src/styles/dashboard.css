@@ -2,6 +2,7 @@
    DASHBOARD — Styles for DashboardPage.
    Includes both legacy dashboard classes and the prototype
    (dashboard-proto-*) layout that matches the design spec.
+   All colours use CSS design tokens — no raw hex values.
    ============================================================ */
 
 /* --- Page shell (legacy layout helpers) --- */
@@ -50,7 +51,7 @@
   justify-self: end;
   max-width: min(360px, 100%);
   background: linear-gradient(120deg, var(--teal), var(--success-strong));
-  color: #fff;
+  color: var(--surface);
   border-radius: 12px;
   padding: 12px 16px;
   box-shadow: 0 12px 32px rgba(11, 125, 90, 0.22);
@@ -111,21 +112,21 @@
 }
 
 .stat-badge-blue {
-  background: #e4eeff;
-  border-color: #c7dbff;
-  color: #1f57be;
+  background: var(--brand-soft);
+  border-color: var(--brand-soft-border);
+  color: var(--brand);
 }
 
 .stat-badge-violet {
-  background: #f0e9ff;
-  border-color: #d9c9ff;
-  color: #6f48bf;
+  background: var(--violet-soft);
+  border-color: var(--violet-soft-border);
+  color: var(--violet);
 }
 
 .stat-badge-green {
-  background: #e7f8ec;
-  border-color: #bfe9cb;
-  color: #217d41;
+  background: var(--teal-soft);
+  border-color: var(--success-soft-border);
+  color: var(--teal);
 }
 
 .panel-grid {
@@ -284,8 +285,8 @@
   height: 30px;
   border-radius: 999px;
   padding: 0;
-  background: #d12d3f;
-  color: #fff;
+  background: var(--danger);
+  color: var(--surface);
   border: none;
   display: inline-grid;
   place-items: center;
@@ -324,7 +325,7 @@
 .dashboard-mini-bar {
   width: 100%;
   border-radius: 10px 10px 0 0;
-  background: linear-gradient(180deg, #1f66ff, #114cc0);
+  background: linear-gradient(180deg, var(--brand), var(--brand-strong));
   min-height: 8px;
 }
 
@@ -358,29 +359,19 @@
 
 /* ============================================================
    DASHBOARD — Prototype layout (dashboard-proto-*)
-   Matches design_code/src/app/pages/DashboardPage.tsx exactly.
+   All colours via CSS tokens — no raw hex values.
    ============================================================ */
 
 .dashboard-proto {
   min-height: 100vh;
   padding: 0 0 80px;
-  background: #f9fafb;
-}
-
-:root[data-theme='dark'] .dashboard-proto {
-  background: #111827;
+  background: var(--surface-soft);
 }
 
 .dashboard-proto-container {
   width: min(1280px, 100% - 48px);
   margin: 0 auto;
   padding-top: 32px;
-}
-
-.dashboard-proto-title {
-  margin: 0 0 32px;
-  font-size: 1.875rem;
-  color: var(--heading);
 }
 
 /* --- Stat cards --- */
@@ -392,15 +383,11 @@
 }
 
 .dashboard-proto-card {
-  background: #ffffff;
+  background: var(--surface);
   border: none;
   border-radius: 12px;
   padding: 24px;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
-}
-
-:root[data-theme='dark'] .dashboard-proto-card {
-  background: #1f2937;
 }
 
 .dashboard-proto-card h2 {
@@ -423,11 +410,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #4b5563;
-}
-
-:root[data-theme='dark'] .dashboard-proto-stat-head {
-  color: #9ca3af;
+  color: var(--muted-strong);
 }
 
 /* --- Stat icons --- */
@@ -442,33 +425,33 @@
 }
 
 .dashboard-proto-icon.blue {
-  background: #dbeafe;
-  color: #2563eb;
+  background: var(--brand-soft);
+  color: var(--brand);
 }
 
 .dashboard-proto-icon.violet {
-  background: #f3e8ff;
-  color: #9333ea;
+  background: var(--violet-soft);
+  color: var(--violet);
 }
 
 .dashboard-proto-icon.green {
-  background: #dcfce7;
-  color: #16a34a;
+  background: var(--teal-soft);
+  color: var(--teal);
 }
 
 :root[data-theme='dark'] .dashboard-proto-icon.blue {
   background: rgba(30, 58, 138, 0.3);
-  color: #60a5fa;
+  color: var(--brand-on-dark);
 }
 
 :root[data-theme='dark'] .dashboard-proto-icon.violet {
-  background: rgba(107, 33, 168, 0.28);
-  color: #c4b5fd;
+  background: var(--violet-soft);
+  color: var(--violet);
 }
 
 :root[data-theme='dark'] .dashboard-proto-icon.green {
   background: rgba(20, 83, 45, 0.34);
-  color: #4ade80;
+  color: var(--success-on-dark);
 }
 
 /* --- Action button --- */
@@ -477,14 +460,14 @@
   padding: 0 16px;
   border-radius: 6px;
   border: none;
-  background: #2563eb;
-  color: #fff;
+  background: var(--brand);
+  color: var(--surface);
   font-weight: 500;
   width: auto;
 }
 
 .dashboard-proto-action-btn:hover {
-  background: #1d4ed8;
+  background: var(--brand-strong);
 }
 
 .dashboard-proto-mobile-only .dashboard-proto-action-btn {
@@ -497,6 +480,7 @@
   font-size: 1.875rem;
   font-weight: 700;
   color: var(--ink);
+  font-variant-numeric: tabular-nums;
 }
 
 /* --- Mobile / Desktop visibility --- */
@@ -522,7 +506,7 @@
   padding: 10px 16px;
   border-radius: 10px;
   text-decoration: none;
-  color: #fff;
+  color: var(--surface);
   background: linear-gradient(120deg, var(--brand), var(--brand-strong));
   font-weight: 600;
 }
@@ -542,7 +526,7 @@
 }
 
 .dashboard-proto-capture-zone:hover {
-  border-color: #3b82f6;
+  border-color: var(--brand);
 }
 
 .dashboard-proto-capture-zone input {
@@ -594,8 +578,8 @@
   border-radius: 999px;
   border: none;
   padding: 0;
-  background: #cf3348;
-  color: #fff;
+  background: var(--danger);
+  color: var(--surface);
   display: inline-grid;
   place-items: center;
 }
@@ -629,7 +613,7 @@
   width: 100%;
   min-height: 10px;
   border-radius: 4px 4px 0 0;
-  background: #2563eb;
+  background: var(--brand);
 }
 
 .dashboard-proto-bar-text {
@@ -637,11 +621,11 @@
 }
 
 .dashboard-proto-bar-text.month {
-  color: #4b5563;
+  color: var(--muted-strong);
 }
 
 .dashboard-proto-bar-text.amount {
-  color: #6b7280;
+  color: var(--muted);
 }
 
 /* --- Category donut chart --- */
@@ -677,7 +661,7 @@
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: #4b5563;
+  color: var(--muted-strong);
 }
 
 .dashboard-proto-color {
@@ -729,7 +713,7 @@
   display: grid;
   place-items: center;
   text-align: center;
-  color: #97a3b5;
+  color: var(--muted);
   padding: 10px;
 }
 

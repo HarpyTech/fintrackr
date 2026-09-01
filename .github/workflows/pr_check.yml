@@ -14,65 +14,40 @@ permissions:
   contents: read
 
 jobs:
-  build-and-health-check:
+  tests:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build Docker image
-        run: |
-          docker build -t finance-pr-check:${{ github.sha }} .
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
-      - name: Start container
+      - name: Install dependencies
         run: |
-          docker run -d \
-            --name finance-pr-check \
-            -p 8000:8000 \
-            -e SECRET_KEY="ci-pr-check-secret-key-not-for-production-use" \
-            -e DEFAULT_LOGIN_PASSWORD="ci-pr-password" \
-            -e MONGODB_URI="mongodb://localhost:27017" \
-            -e BUILD_VERSION="${{ github.sha }}" \
-            finance-pr-check:${{ github.sha }}
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
 
-      - name: Wait for container to be healthy
-        run: |
-          echo "Waiting for the service to start..."
-          RETRIES=15
-          INTERVAL=4
-          for i in $(seq 1 $RETRIES); do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/health || true)
-            if [ "${STATUS}" = "200" ]; then
-              echo "Service is up (attempt ${i}/${RETRIES})"
-              exit 0
-            fi
-            echo "Attempt ${i}/${RETRIES}: HTTP ${STATUS} — retrying in ${INTERVAL}s..."
-            sleep ${INTERVAL}
-          done
-          echo "ERROR: Service did not become healthy in time."
-          docker logs finance-pr-check
-          exit 1
+      # - name: Scan dependencies for vulnerabilities
+      #   run: |
+      #     pip install pip-audit
+      #     pip-audit -r requirements.txt
 
-      - name: Verify health response
-        run: |
-          RESPONSE=$(curl -s http://localhost:8000/health)
-          echo "Health response: ${RESPONSE}"
-          STATUS=$(echo "${RESPONSE}" | python3 -c "import sys, json; print(json.load(sys.stdin).get('status', ''))")
-          if [ "${STATUS}" != "UP" ]; then
-            echo "ERROR: Expected status=UP, got: ${STATUS}"
-            exit 1
-          fi
-          echo "Health check passed."
+      - name: Lint (ruff)
+        run: ruff check app/ tests/
 
-      - name: Print container logs on failure
-        if: failure()
-        run: |
-          docker logs finance-pr-check
+      - name: Type check (mypy)
+        run: mypy app/ --ignore-missing-imports
 
-      - name: Cleanup
-        if: always()
+      - name: Run tests with coverage gate
+        env:
+          SECRET_KEY: "ci-test-secret-key-not-for-production-use-32chars"
+          MONGODB_URI: "mongodb://localhost:27017"
         run: |
-          docker stop finance-pr-check || true
-          docker rm finance-pr-check || true
-          docker rmi finance-pr-check:${{ github.sha }} || true
+          pytest \
+            --cov=app \
+            --cov-report=term-missing \
+            --cov-fail-under=80

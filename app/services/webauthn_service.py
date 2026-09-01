@@ -11,40 +11,33 @@ Handles:
 import base64
 import json
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from ipaddress import ip_address
 from urllib.parse import urlparse
 
 from fastapi import Request
-
 from webauthn import (
-    generate_registration_options,
-    verify_registration_response,
-    generate_authentication_options,
-    verify_authentication_response,
-    options_to_json,
     base64url_to_bytes,
-)
-
-
-def _bytes_to_base64url(val: bytes) -> str:
-    return base64.urlsafe_b64encode(val).rstrip(b"=").decode("utf-8")
-
-
-from webauthn.helpers.structs import (
-    AuthenticatorSelectionCriteria,
-    UserVerificationRequirement,
-    ResidentKeyRequirement,
-    PublicKeyCredentialDescriptor,
-    RegistrationCredential,
-    AuthenticationCredential,
-    AuthenticatorAttestationResponse,
-    AuthenticatorAssertionResponse,
-    PublicKeyCredentialType,
+    generate_authentication_options,
+    generate_registration_options,
+    options_to_json,
+    verify_authentication_response,
+    verify_registration_response,
 )
 from webauthn.helpers.exceptions import (
-    InvalidCBORData,
     InvalidAuthenticatorDataStructure,
+    InvalidCBORData,
+)
+from webauthn.helpers.structs import (
+    AuthenticationCredential,
+    AuthenticatorAssertionResponse,
+    AuthenticatorAttestationResponse,
+    AuthenticatorSelectionCriteria,
+    PublicKeyCredentialDescriptor,
+    PublicKeyCredentialType,
+    RegistrationCredential,
+    ResidentKeyRequirement,
+    UserVerificationRequirement,
 )
 
 from app.core.config import settings
@@ -55,19 +48,24 @@ from app.core.security import (
     hash_token,
 )
 from app.db.mongo import (
-    get_users_collection,
-    get_webauthn_credentials_collection,
-    get_webauthn_challenges_collection,
     get_refresh_tokens_collection,
+    get_users_collection,
+    get_webauthn_challenges_collection,
+    get_webauthn_credentials_collection,
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _bytes_to_base64url(val: bytes) -> str:
+    return base64.urlsafe_b64encode(val).rstrip(b"=").decode("utf-8")
+
 
 _CHALLENGE_TTL_MINUTES = 5
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _is_ip_address(value: str) -> bool:
@@ -159,7 +157,7 @@ def _pop_challenge(username: str, challenge_type: str) -> dict | None:
         return None
     expires_at = doc["expires_at"]
     if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=timezone.utc)
+        expires_at = expires_at.replace(tzinfo=UTC)
     if _utcnow() > expires_at:
         return None
     return doc
@@ -414,13 +412,14 @@ def verify_authentication(
         {"$set": {"sign_count": verified.new_sign_count, "last_used_at": _utcnow()}},
     )
 
-    # Fetch user role
+    # Fetch user role and tenant
     users = get_users_collection()
-    user_doc = users.find_one({"username": username}, {"role": 1})
+    user_doc = users.find_one({"username": username}, {"role": 1, "tenant_id": 1})
     role = user_doc.get("role", "user") if user_doc else "user"
+    tenant_id = (user_doc or {}).get("tenant_id", username)
 
     # Issue access token
-    token_data = {"username": username, "role": role}
+    token_data = {"username": username, "role": role, "tenant_id": tenant_id}
     access_token = create_access_token(token_data)
 
     # Set access token cookie (same as password login)
@@ -492,17 +491,18 @@ def exchange_refresh_token(token: str, response_obj) -> dict:
 
     expires_at = doc["expires_at"]
     if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=timezone.utc)
+        expires_at = expires_at.replace(tzinfo=UTC)
     if _utcnow() > expires_at:
         col.delete_one({"token_hash": token_hash})
         raise ValueError("Refresh token expired.")
 
-    # Fetch role
+    # Fetch role and tenant
     users = get_users_collection()
-    user_doc = users.find_one({"username": username}, {"role": 1})
+    user_doc = users.find_one({"username": username}, {"role": 1, "tenant_id": 1})
     role = user_doc.get("role", "user") if user_doc else "user"
+    tenant_id = (user_doc or {}).get("tenant_id", username)
 
-    token_data = {"username": username, "role": role}
+    token_data = {"username": username, "role": role, "tenant_id": tenant_id}
     access_token = create_access_token(token_data)
 
     # Sliding expiry: issue a new refresh token and revoke the old one

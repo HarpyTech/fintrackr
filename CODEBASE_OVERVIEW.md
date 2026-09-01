@@ -39,7 +39,7 @@ Frontend (React + Vite)         Backend (FastAPI)          Database (MongoDB)
 | Server | Uvicorn | 0.27.1 |
 | Database | MongoDB | 4.10.1 |
 | Authentication | Python-José (JWT) + Passlib | - |
-| Security | Bcrypt | 4.1.2 |
+| Security | Bcrypt | 4.0.1 (Passlib 1.7.4 compatibility) |
 | Validation | Pydantic | 2.6.4 |
 | AI Extraction | Google Generative AI | 0.8.5 |
 | Logging | Loguru | 0.7.2 |

@@ -1,5 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { readFileSync, writeFileSync } from "fs";
+import { join } from "path";
 
 function pwaHeaders() {
   const applyHeaders = (req, res, next) => {
@@ -20,9 +22,25 @@ function pwaHeaders() {
   };
 }
 
+function serviceWorkerVersion() {
+  return {
+    name: "fintrackr-sw-version",
+    closeBundle() {
+      const version = process.env.VITE_BUILD_VERSION || `build-${Date.now()}`;
+      const swPath = join(process.cwd(), "app", "static", "service-worker.js");
+      try {
+        const content = readFileSync(swPath, "utf-8");
+        writeFileSync(swPath, content.replace(/__CACHE_VERSION__/g, version));
+      } catch {
+        // service-worker.js not in build output — skip
+      }
+    },
+  };
+}
+
 export default defineConfig({
   root: "app",
-  plugins: [react(), pwaHeaders()],
+  plugins: [react(), pwaHeaders(), serviceWorkerVersion()],
   resolve: {
     // Keep extensionless imports working for JS/JSX modules.
     extensions: [".mjs", ".js", ".mts", ".ts", ".jsx", ".tsx", ".json"]
@@ -44,7 +62,10 @@ export default defineConfig({
         // they stay cached across app deploys.
         manualChunks: {
           "vendor-react": ["react", "react-dom", "react-router-dom"],
-          "vendor-charts": ["recharts"]
+          "vendor-charts": ["recharts"],
+          "vendor-query": ["@tanstack/react-query"],
+          "vendor-mui": ["@mui/material", "@emotion/react", "@emotion/styled"],
+          "vendor-mui-datagrid": ["@mui/x-data-grid"]
         }
       }
     }

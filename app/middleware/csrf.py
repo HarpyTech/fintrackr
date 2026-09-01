@@ -1,9 +1,11 @@
+import logging
+
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
-from app.core.security import create_csrf_token
+
 from app.core.config import settings
-import logging
+from app.core.security import create_csrf_token
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +94,7 @@ class CSRFProtectionMiddleware(BaseHTTPMiddleware):
                 key=self.CSRF_COOKIE_NAME,
                 value=token,
                 httponly=False,  # JavaScript needs to read it for forms
-                secure=False,
+                secure=settings.COOKIE_SECURE,
                 samesite="lax",  # CSRF protection
                 max_age=3600,  # 1 hour
             )

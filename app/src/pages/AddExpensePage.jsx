@@ -1,28 +1,12 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { AlertCircle, Camera, Upload } from 'lucide-react';
+import CircularProgress from '@mui/material/CircularProgress';
 import { useAuth } from '../auth/AuthContext';
-import TopNavigation from '../components/TopNavigation';
 import { apiRequest } from '../lib/api';
+import ErrorAlert from '../components/ErrorAlert';
 
 const CATEGORIES = ['Food', 'Travel', 'Utilities', 'Shopping', 'Health', 'Other'];
-const SUPPORT_EMAIL = 'support@harpytechco.in';
-const SUPPORT_SUBJECT = 'Request to increase expense limit';
-const SUPPORT_BODY_TEMPLATE = [
-  'Hi Customer Support Team,',
-  '',
-  'I have reached the 10 expense limit on my account and request a limit increase.',
-  '',
-  'Account email: ',
-  'Requested new limit: ',
-  'Reason: ',
-  '',
-  'Thank you,',
-].join('\n');
-const SUPPORT_MAILTO_LINK =
-  `mailto:${SUPPORT_EMAIL}` +
-  `?subject=${encodeURIComponent(SUPPORT_SUBJECT)}` +
-  `&body=${encodeURIComponent(SUPPORT_BODY_TEMPLATE)}`;
 
 export default function AddExpensePage() {
   const { logout } = useAuth();
@@ -38,6 +22,7 @@ export default function AddExpensePage() {
   const [aiImageFile, setAiImageFile] = useState(null);
   const [cameraImageFile, setCameraImageFile] = useState(null);
   const [extracting, setExtracting] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [lastExtracted, setLastExtracted] = useState(null);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -95,6 +80,7 @@ export default function AddExpensePage() {
     event.preventDefault();
     setError('');
     setMessage('');
+    setSubmitting(true);
 
     try {
       const response = await apiRequest('/expenses', {
@@ -126,8 +112,10 @@ export default function AddExpensePage() {
       if (err.status === 429) {
         setSessionLimitReached(true);
       } else {
-        setError(err.message);
+        setError(err.message || 'Unable to save expense. Please try again.');
       }
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -175,7 +163,7 @@ export default function AddExpensePage() {
       if (err.status === 429) {
         setSessionLimitReached(true);
       } else {
-        setError(err.message);
+        setError(err.message || 'Unable to extract expense. Please try again.');
       }
     } finally {
       setExtracting(false);
@@ -202,11 +190,6 @@ export default function AddExpensePage() {
   return (
     <main className="add-expense-proto">
       <div className="add-expense-proto-container">
-        {/* ── Header ── */}
-        <TopNavigation title="Add Expense" />
-
-        <h1 className="add-expense-proto-title">Add Expense</h1>
-
         {/* ── Limit Banner ── */}
         {sessionLimitReached && (
           <div className="add-expense-proto-limit" role="alert">
@@ -217,7 +200,7 @@ export default function AddExpensePage() {
               <p className="add-expense-proto-limit-title">Expense Limit Reached</p>
               <p className="add-expense-proto-limit-text">
                 You have reached the maximum of {expenseLimit} expenses on your plan.{' '}
-                <a href={SUPPORT_MAILTO_LINK}>Contact our support team</a> to upgrade.
+                <Link to="/billing">Upgrade your plan</Link> to continue tracking expenses.
               </p>
             </div>
           </div>
@@ -313,14 +296,16 @@ export default function AddExpensePage() {
                 className="add-expense-proto-submit"
                 disabled={extracting || sessionLimitReached}
               >
-                {extracting ? 'Extracting…' : 'Extract + Save Expense'}
+                {extracting ? (
+                  <><CircularProgress size={16} color="inherit" style={{ marginRight: 8, verticalAlign: 'middle' }} /> Extracting…</>
+                ) : 'Extract + Save Expense'}
               </button>
 
               {message ? <p className="add-expense-proto-success">{message}</p> : null}
-              {error ? <p className="add-expense-proto-error">{error}</p> : null}
+              {error ? <ErrorAlert message={error} /> : null}
             </form>
 
-            {lastExtracted ? (
+            {import.meta.env.DEV && lastExtracted ? (
               <div className="add-expense-proto-extracted">
                 <h3>Last Extracted</h3>
                 <pre>{JSON.stringify(lastExtracted, null, 2)}</pre>
@@ -333,12 +318,13 @@ export default function AddExpensePage() {
             <h2 className="add-expense-proto-card-title">Manual Entry</h2>
             <form onSubmit={addExpense} className="add-expense-proto-fields">
               <label className="add-expense-proto-label">
-                Amount
+                Amount <span aria-hidden="true">*</span>
                 <input
                   type="number"
                   min="0.01"
                   step="0.01"
                   required
+                  aria-required="true"
                   placeholder="0.00"
                   value={expenseForm.amount}
                   disabled={sessionLimitReached}
@@ -364,10 +350,11 @@ export default function AddExpensePage() {
               </label>
 
               <label className="add-expense-proto-label">
-                Date
+                Date <span aria-hidden="true">*</span>
                 <input
                   type="date"
                   required
+                  aria-required="true"
                   value={expenseForm.expense_date}
                   disabled={sessionLimitReached}
                   onChange={(e) =>
@@ -392,13 +379,15 @@ export default function AddExpensePage() {
               <button
                 type="submit"
                 className="add-expense-proto-submit"
-                disabled={sessionLimitReached}
+                disabled={sessionLimitReached || submitting}
               >
-                Save Expense
+                {submitting ? (
+                  <><CircularProgress size={16} color="inherit" style={{ marginRight: 8, verticalAlign: 'middle' }} /> Saving…</>
+                ) : 'Save Expense'}
               </button>
 
               {message ? <p className="add-expense-proto-success">{message}</p> : null}
-              {error ? <p className="add-expense-proto-error">{error}</p> : null}
+              {error ? <ErrorAlert message={error} /> : null}
             </form>
           </div>
 

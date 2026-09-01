@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, MessageCircle, FileText, Phone, Clock, MapPin, Send } from 'lucide-react';
 
+const SUPPORT_EMAIL = import.meta.env.VITE_SUPPORT_EMAIL || 'support@fintrackr.app';
+
 const SUPPORT_CHANNELS = [
-  { Icon: Mail, title: 'Email Support', description: 'Get help via email', detail: 'support@fintrackr.com', color: 'blue', action: 'Send Email' },
-  { Icon: MessageCircle, title: 'Live Chat', description: '24/7 chat support', detail: 'Average response: 2 minutes', color: 'green', action: 'Start Chat' },
-  { Icon: Phone, title: 'Phone Support', description: 'Talk to our team', detail: '+1 (555) 123-4567', color: 'purple', action: 'Call Now' },
-  { Icon: FileText, title: 'Help Center', description: 'Browse guides & FAQs', detail: '100+ articles available', color: 'orange', action: 'View Docs' },
+  { Icon: Mail, title: 'Email Support', description: 'Get help via email', detail: SUPPORT_EMAIL, color: 'blue', action: 'Send Email', href: `mailto:${SUPPORT_EMAIL}` },
+  { Icon: MessageCircle, title: 'Live Chat', description: 'Chat with our team', detail: 'Typically replies within a few hours', color: 'green', action: 'Send Email', href: `mailto:${SUPPORT_EMAIL}` },
+  { Icon: Phone, title: 'Scheduled Call', description: 'Book a call with us', detail: 'Available Mon–Fri, 9am–6pm', color: 'purple', action: 'Request Call', href: `mailto:${SUPPORT_EMAIL}?subject=Call%20Request` },
+  { Icon: FileText, title: 'Help Center', description: 'Browse guides & FAQs', detail: 'Common questions answered below', color: 'orange', action: 'View FAQs', href: '#faqs' },
 ];
 
 const FAQS = [
@@ -16,7 +18,7 @@ const FAQS = [
   },
   {
     question: 'Can I export my expense data?',
-    answer: 'Yes! Go to the Report page and use the "Export" button to download your data in CSV or PDF format.',
+    answer: 'Yes! Go to the Report page and use the toolbar Export button to download your expenses as a CSV file.',
   },
   {
     question: 'How does AI receipt scanning work?',
@@ -27,12 +29,12 @@ const FAQS = [
     answer: 'Absolutely. We use bank-level encryption (AES-256) to protect your data. Your information is never shared with third parties.',
   },
   {
-    question: 'What payment methods do you accept?',
-    answer: 'We accept all major credit cards (Visa, Mastercard, Amex), PayPal, and bank transfers.',
+    question: 'How do I upgrade my plan?',
+    answer: 'Go to the Billing page from the sidebar. You can view available plans and upgrade directly from there.',
   },
   {
-    question: 'Can I cancel my subscription anytime?',
-    answer: 'Yes, you can cancel anytime from your account settings. No cancellation fees apply.',
+    question: 'Can I change my plan anytime?',
+    answer: 'Yes, you can upgrade or downgrade your plan at any time from the Billing page. Changes take effect immediately.',
   },
 ];
 
@@ -42,11 +44,13 @@ export default function SupportPage() {
 
   function handleSubmit(e) {
     e.preventDefault();
+    const subject = encodeURIComponent(`[Support] ${formData.subject || 'General Inquiry'} — ${formData.name}`);
+    const body = encodeURIComponent(
+      `Name: ${formData.name}\nEmail: ${formData.email}\nSubject: ${formData.subject}\n\n${formData.message}`
+    );
+    window.location.href = `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
     setSubmitted(true);
-    setTimeout(() => {
-      setSubmitted(false);
-      setFormData({ name: '', email: '', subject: '', message: '' });
-    }, 3000);
+    setTimeout(() => setSubmitted(false), 4000);
   }
 
   return (
@@ -78,7 +82,7 @@ export default function SupportPage() {
               <h3 className="support-proto-channel-title">{ch.title}</h3>
               <p className="support-proto-channel-desc">{ch.description}</p>
               <p className="support-proto-channel-detail">{ch.detail}</p>
-              <button type="button" className="support-proto-channel-action">{ch.action}</button>
+              <a href={ch.href} className="support-proto-channel-action">{ch.action}</a>
             </div>
           ))}
         </div>
@@ -166,11 +170,9 @@ export default function SupportPage() {
                 <div className="support-proto-info-item">
                   <MapPin size={20} className="support-proto-info-icon" />
                   <div>
-                    <p className="support-proto-info-item-title">Head Office</p>
+                    <p className="support-proto-info-item-title">Contact</p>
                     <p className="support-proto-info-item-detail">
-                      123 Finance Street<br />
-                      San Francisco, CA 94102<br />
-                      United States
+                      <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
                     </p>
                   </div>
                 </div>
@@ -181,16 +183,16 @@ export default function SupportPage() {
               <p className="support-proto-urgent-text">
                 For urgent issues, our live chat is available 24/7 with an average response time of just 2 minutes.
               </p>
-              <button type="button" className="support-proto-urgent-btn">
+              <a href={`mailto:${SUPPORT_EMAIL}`} className="support-proto-urgent-btn">
                 <MessageCircle size={16} />
-                Start Live Chat
-              </button>
+                Email Us Now
+              </a>
             </div>
           </div>
         </div>
 
         {/* FAQs */}
-        <div className="support-proto-faq">
+        <div id="faqs" className="support-proto-faq">
           <h2 className="support-proto-faq-title">Frequently Asked Questions</h2>
           <div className="support-proto-faq-list">
             {FAQS.map((faq, idx) => (

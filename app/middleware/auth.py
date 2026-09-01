@@ -1,9 +1,11 @@
+import logging
+
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
+from jose import JWTError, jwt
 from starlette.middleware.base import BaseHTTPMiddleware
-from jose import jwt, JWTError
+
 from app.core.config import settings
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -18,9 +20,10 @@ PUBLIC_PATHS = {
     "/api/v1/auth/forgot-password",
     "/api/v1/auth/reset-password",
     "/api/v1/auth/refresh",
+    "/api/v1/auth/google",
+    "/api/v1/auth/google/callback",
     "/api/v1/health",
     "/api/v1/health/build",
-    "/api/v1/auth/test-email",
     # WebAuthn challenge + verify endpoints are public (user not yet authenticated)
     "/api/v1/webauthn/register",
     "/api/v1/webauthn/register/verify",
@@ -78,6 +81,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                 )
                 username = payload.get("username")
                 role = payload.get("role")
+                tenant_id = payload.get("tenant_id", username)
 
                 if not username:
                     raise JWTError("Username not found in token")
@@ -85,6 +89,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                 # Attach user info to request state for use in endpoints
                 request.state.user = username
                 request.state.role = role
+                request.state.tenant_id = tenant_id
                 logger.debug("User authenticated successfully")
 
             except JWTError as e:

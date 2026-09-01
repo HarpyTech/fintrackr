@@ -3,15 +3,36 @@
    Flex row: sidebar + scrollable main content
    =========================== */
 
+/* Skip-to-content link — visible on keyboard focus only */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 16px;
+  z-index: 9999;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm, 8px);
+  background: var(--brand);
+  color: var(--surface);
+  font-size: 14px;
+  font-weight: var(--font-weight-medium, 500);
+  text-decoration: none;
+  transition: top 0.1s;
+}
+.skip-link:focus-visible {
+  top: 16px;
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
 .protected-layout {
   display: flex;
   height: 100vh;
   overflow: hidden;
-  background: var(--color-bg, #f9fafb);
+  background: var(--surface);
 }
 
 :root[data-theme='dark'] .protected-layout {
-  background: var(--color-bg-dark, #111827);
+  background: var(--surface);
 }
 
 .protected-layout-main {
@@ -32,62 +53,207 @@
   margin-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
 }
 
-.mobile-header-proto {
-  display: flex;
-  align-items: center;
-  background: #ffffff;
-  border-bottom: 1px solid #e5e7eb;
-  padding: calc(8px + env(safe-area-inset-top, 0px)) 12px 8px;
+/* ===========================
+   APP HEADER
+   One header for every authenticated route, mounted by ProtectedLayout.
+   Owns the page <h1>; pages no longer render their own title.
+   Replaces the old .dashboard-header (per-page, desktop) and
+   .mobile-header-proto (layout, mobile) pair.
+   =========================== */
+
+.app-header {
+  flex-shrink: 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  padding: calc(var(--space-3) + env(safe-area-inset-top, 0px))
+           var(--space-5) var(--space-3);
   position: sticky;
   top: 0;
   z-index: 40;
 }
 
-:root[data-theme='dark'] .mobile-header-proto {
-  background: #1f2937;
-  border-color: #374151;
-}
-
-.mobile-header-proto-inner {
+.app-header-inner {
   width: 100%;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-4);
 }
 
-.mobile-header-proto-brand {
+.app-header-brand {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   text-decoration: none;
-}
-
-.mobile-header-proto-icon {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
   flex-shrink: 0;
 }
 
-.mobile-header-proto-wordmark {
+.app-header-brand-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.app-header-wordmark {
   height: 20px;
   width: auto;
 }
 
-.mobile-header-proto-title {
-  color: #111827;
-  font-size: 14px;
-  font-weight: 600;
+/* Vertical rule separating brand from page title. */
+.app-header-titles {
+  flex: 1;
+  min-width: 0;
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--line);
 }
 
-:root[data-theme='dark'] .mobile-header-proto-title {
-  color: #f9fafb;
+.app-header-title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--heading);
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-header-subtitle {
+  margin: 2px 0 0;
+  font-size: var(--text-sm);
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-header-menu {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.app-header-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--brand-soft-border);
+  background: var(--brand-soft);
+  color: var(--link);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+.app-header-avatar:hover {
+  border-color: var(--link);
+}
+
+.app-header-dropdown {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  min-width: 232px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--panel-shadow);
+  padding: var(--space-2);
+  z-index: 60;
+  display: grid;
+  gap: var(--space-1);
+}
+
+.app-header-dropdown-user {
+  display: grid;
+  gap: 2px;
+  padding: var(--space-2);
+}
+
+.app-header-dropdown-name {
+  font-weight: 600;
+  color: var(--heading);
+  font-size: var(--text-base);
+}
+
+.app-header-dropdown-email {
+  color: var(--muted);
+  font-size: var(--text-xs);
+  overflow-wrap: anywhere;
+}
+
+.app-header-dropdown-divider {
+  height: 1px;
+  background: var(--line);
+  margin: var(--space-1) 0;
+}
+
+.app-header-dropdown-theme {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2);
+}
+
+.app-header-dropdown-label {
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
+.app-header-dropdown-action {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
+  color: var(--ink);
+  font-size: var(--text-base);
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.app-header-dropdown-action:hover {
+  background: var(--surface-soft);
 }
 
 @media (max-width: 767px) {
-  .protected-layout .dashboard-header {
+  .app-header {
+    padding: calc(var(--space-2) + env(safe-area-inset-top, 0px))
+             var(--space-3) var(--space-2);
+  }
+
+  .app-header-inner {
+    gap: var(--space-3);
+  }
+
+  /* The wordmark is the first thing to go; the icon keeps the brand present
+     while the title gets the width. */
+  .app-header-wordmark {
     display: none;
+  }
+
+  .app-header-titles {
+    padding-left: var(--space-3);
+  }
+
+  .app-header-title {
+    font-size: var(--text-md);
+  }
+
+  /* Subtitles are the least valuable line on a phone. */
+  .app-header-subtitle {
+    display: none;
+  }
+
+  .app-header-avatar {
+    width: 34px;
+    height: 34px;
   }
 }
 
@@ -96,7 +262,15 @@
     margin-bottom: 0;
   }
 
-  .mobile-header-proto {
+  /* The sidebar already shows the FinTrackr brand on desktop — hide the
+     duplicate that lives in the top header. The vertical rule between brand
+     and page-title is also removed since there is no brand to divide from. */
+  .app-header-brand {
     display: none;
+  }
+
+  .app-header-titles {
+    border-left: none;
+    padding-left: 0;
   }
 }

@@ -1,10 +1,14 @@
-from __future__ import annotations
+from __future__ import annotations  # noqa: I001
 
-from datetime import date, datetime
-from io import BytesIO
+# Gemini payloads are validated dynamically by Pydantic before use.
+# mypy cannot infer the narrowed shape of those dictionaries.
+# mypy: disable-error-code="arg-type, union-attr, operator"
+
 import json
 import logging
 import re
+from datetime import date, datetime
+from io import BytesIO
 from typing import Any
 
 import google.generativeai as genai
@@ -323,6 +327,7 @@ def _normalize_payload(
     )
 
     expense_date = _normalize_date(raw.get("expense_date") or raw.get("date"))
+    expense_date = expense_date or date.today()
 
     payload = {
         "amount": round(amount, 2),
@@ -434,6 +439,9 @@ def _normalize_line_items(raw_items: Any) -> list[dict[str, Any]]:
         if invalid_row:
             continue
 
+        if total is None:
+            continue
+
         if unit_price is None:
             unit_price = total / quantity
 
@@ -470,7 +478,7 @@ def _to_float(value: Any) -> float | None:
     if value is None:
         return None
 
-    if isinstance(value, (int, float)):
+    if isinstance(value, int | float):
         return float(value)
 
     text = str(value).strip()

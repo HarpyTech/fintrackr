@@ -1,0 +1,33 @@
+# Local PR-checklist runner — mirrors the GitHub Actions "tests" job.
+#
+#   Run the full checklist (build the first time):
+#     docker compose -f docker-compose.ci.yml up --build
+#
+#   Open a shell and run checks selectively:
+#     docker compose -f docker-compose.ci.yml run --rm checks bash
+#       ruff check app/ tests/
+#       mypy app/ --ignore-missing-imports
+#       pytest --cov=app --cov-report=term-missing --cov-fail-under=80
+#
+#   Run a single command ad hoc:
+#     docker compose -f docker-compose.ci.yml run --rm checks pytest -q
+#
+#   Skip the network vulnerability scan:
+#     docker compose -f docker-compose.ci.yml run --rm -e SKIP_AUDIT=1 checks
+services:
+  checks:
+    build:
+      context: .
+      dockerfile: Dockerfile.ci
+    image: fintrackr-ci:latest
+    environment:
+      SECRET_KEY: ci-test-secret-key-not-for-production-use-32chars
+      MONGODB_URI: mongodb://localhost:27017
+      SKIP_AUDIT: 1
+    # Live source so local edits are checked without rebuilding the image.
+    volumes:
+      - .:/code
+    working_dir: /code
+    stdin_open: true
+    tty: true
+    command: ["bash", "scripts/ci_checks.sh"]

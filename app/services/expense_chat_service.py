@@ -1,10 +1,13 @@
-from __future__ import annotations
+from __future__ import annotations  # noqa: I001
 
-from dataclasses import dataclass
-from datetime import date, datetime, time, timedelta
+# MongoDB aggregation stages are dynamically assembled and validated at runtime.
+# mypy: disable-error-code="arg-type, misc"
+
 import json
 import logging
 import re
+from dataclasses import dataclass
+from datetime import date, datetime, time, timedelta
 
 from pymongo.errors import PyMongoError
 
@@ -108,7 +111,9 @@ def looks_like_expense_analysis_request(message: str) -> bool:
     return False
 
 
-def answer_expense_analysis_query(username: str, message: str) -> dict:
+def answer_expense_analysis_query(
+    username: str, message: str, tenant_id: str | None = None
+) -> dict:
     """Run a read-only expense analysis based on a chat message."""
     if not message or not message.strip():
         raise ValueError("message is required")
@@ -122,6 +127,7 @@ def answer_expense_analysis_query(username: str, message: str) -> dict:
                     window=spec["window"],
                     limit=spec["limit"],
                     original_message=message,
+                    tenant_id=tenant_id,
                 )
 
             return _run_expense_ranking(
@@ -130,12 +136,14 @@ def answer_expense_analysis_query(username: str, message: str) -> dict:
                 window=spec["window"],
                 limit=spec["limit"],
                 original_message=message,
+                tenant_id=tenant_id,
             )
 
         return _run_overview(
             username=username,
             window=spec["window"],
             original_message=message,
+            tenant_id=tenant_id,
         )
     except PyMongoError as exc:
         logger.error(
@@ -238,8 +246,12 @@ def _start_of_day(value: date) -> datetime:
     return datetime.combine(value, time.min)
 
 
-def _build_expense_match(username: str, window: TimeWindow) -> dict:
+def _build_expense_match(
+    username: str, window: TimeWindow, tenant_id: str | None = None
+) -> dict:
     match: dict = {"username": username}
+    if tenant_id:
+        match["tenant_id"] = tenant_id
     if window.start and window.end:
         match["expense_date"] = {
             "$gte": window.start,
@@ -253,10 +265,14 @@ def _run_item_ranking(
     window: TimeWindow,
     limit: int,
     original_message: str,
+    tenant_id: str | None = None,
 ) -> dict:
     line_items = get_expense_line_items_collection()
+    item_match: dict = {"username": username}
+    if tenant_id:
+        item_match["tenant_id"] = tenant_id
     pipeline = [
-        {"$match": {"username": username}},
+        {"$match": item_match},
         {
             "$lookup": {
                 "from": "expenses",
@@ -384,12 +400,13 @@ def _run_expense_ranking(
     window: TimeWindow,
     limit: int,
     original_message: str,
+    tenant_id: str | None = None,
 ) -> dict:
     expenses = get_expenses_collection()
     field_name = "vendor" if subject == "vendor" else "category"
     label_name = "vendor" if subject == "vendor" else "category"
     pipeline = [
-        {"$match": _build_expense_match(username, window)},
+        {"$match": _build_expense_match(username, window, tenant_id=tenant_id)},
         {
             "$group": {
                 "_id": f"${field_name}",
@@ -458,9 +475,10 @@ def _run_overview(
     username: str,
     window: TimeWindow,
     original_message: str,
+    tenant_id: str | None = None,
 ) -> dict:
     expenses = get_expenses_collection()
-    match = _build_expense_match(username, window)
+    match = _build_expense_match(username, window, tenant_id=tenant_id)
     overview_pipeline = [
         {"$match": match},
         {

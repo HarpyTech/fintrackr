@@ -203,6 +203,7 @@ cython_debug/
 node_modules/
 .cursorignore
 .cursorindexingignore
+package-lock.json
 
 # Marimo
 marimo/_static/

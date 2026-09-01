@@ -1,8 +1,9 @@
 /* ===========================
-   INSIGHTS PAGE — insights-proto-*
-   Full-screen chat layout beneath the app nav header.
-   insights-proto wraps [dashboard-header + insights-proto-body].
-   insights-proto-body is a flex column that fills remaining height.
+   INSIGHTS PAGE
+   Query-bar dashboard: pinned query bar + KPI strip, then a scrolling
+   results column of agent answers (newest first).
+   The page title lives in AppHeader (see lib/pageMeta.js), so this file
+   starts at insights-proto-body.
    =========================== */
 
 .insights-proto {
@@ -12,6 +13,26 @@
   min-height: 100%;
   overflow: hidden;
 }
+
+/* Upgrade nudge for Free-tier users */
+.insights-proto-upgrade-nudge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: var(--brand-soft);
+  border-bottom: 1px solid var(--brand-soft-border, var(--line));
+  font-size: 13px;
+  color: var(--brand-strong, var(--brand));
+  flex-shrink: 0;
+}
+
+.insights-proto-upgrade-link {
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--brand);
+  text-decoration: underline;
+}
+.insights-proto-upgrade-link:hover { opacity: 0.8; }
 
 /* Body — fills viewport below the nav header */
 .insights-proto-body {
@@ -25,65 +46,6 @@
 
 :root[data-theme='dark'] .insights-proto-body {
   background: linear-gradient(135deg, #111827 0%, #1e1b4b 100%);
-}
-
-/* Page header bar */
-.insights-proto-header {
-  background: #ffffff;
-  border-bottom: 1px solid #e5e7eb;
-  padding: 16px 0;
-  flex-shrink: 0;
-}
-
-:root[data-theme='dark'] .insights-proto-header {
-  background: #1f2937;
-  border-color: #374151;
-}
-
-.insights-proto-header-inner {
-  width: min(1280px, 100% - 48px);
-  margin: 0 auto;
-}
-
-.insights-proto-header-brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 6px;
-}
-
-.insights-proto-brand-icon {
-  width: 40px;
-  height: 40px;
-  background: linear-gradient(135deg, #2563eb, #4338ca);
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  flex-shrink: 0;
-}
-
-.insights-proto-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #111827;
-  margin: 0;
-}
-
-:root[data-theme='dark'] .insights-proto-title {
-  color: #f9fafb;
-}
-
-.insights-proto-subtitle {
-  color: #6b7280;
-  font-size: 14px;
-  margin: 0;
-  line-height: 1.4;
-}
-
-:root[data-theme='dark'] .insights-proto-subtitle {
-  color: #9ca3af;
 }
 
 /* Stats bar */
@@ -142,23 +104,16 @@
 
 .insights-proto-stat-label {
   font-size: 11px;
-  color: #6b7280;
+  color: var(--muted);
   line-height: 1.2;
-}
-
-:root[data-theme='dark'] .insights-proto-stat-label {
-  color: #9ca3af;
 }
 
 .insights-proto-stat-value {
   font-size: 14px;
   font-weight: 600;
-  color: #111827;
+  color: var(--ink);
   line-height: 1.2;
-}
-
-:root[data-theme='dark'] .insights-proto-stat-value {
-  color: #f9fafb;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Loading shimmer animation */
@@ -201,135 +156,6 @@
   color: #fca5a5;
 }
 
-/* Chat area */
-.insights-proto-chat-area {
-  flex: 1;
-  overflow-y: auto;
-  padding: 24px;
-}
-
-.insights-proto-messages {
-  width: min(960px, 100%);
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.insights-proto-msg { display: flex; }
-.insights-proto-msg-user { justify-content: flex-end; }
-.insights-proto-msg-bot  { justify-content: flex-start; }
-
-.insights-proto-bubble {
-  max-width: 85%;
-  padding: 16px 20px;
-  border-radius: 16px;
-  line-height: 1.5;
-}
-
-.insights-proto-bubble-user {
-  background: #2563eb;
-  color: #fff;
-}
-
-.insights-proto-bubble-insight {
-  background: #f0fdf4;
-  color: #111827;
-  border: 1px solid #bbf7d0;
-  border-left: 3px solid #16a34a;
-  border-radius: 4px 16px 16px 4px;
-}
-
-:root[data-theme='dark'] .insights-proto-bubble-insight {
-  background: rgba(22, 163, 74, 0.15);
-  border-color: rgba(22, 163, 74, 0.3);
-  border-left-color: #16a34a;
-  color: #f0fdf4;
-}
-
-.insights-proto-bubble-summary {
-  background: #eff6ff;
-  color: #111827;
-  border: 1px solid #bfdbfe;
-  border-left: 3px solid #2563eb;
-  border-radius: 4px 16px 16px 4px;
-}
-
-:root[data-theme='dark'] .insights-proto-bubble-summary {
-  background: rgba(37, 99, 235, 0.15);
-  border-color: rgba(37, 99, 235, 0.3);
-  border-left-color: #2563eb;
-  color: #eff6ff;
-}
-
-.insights-proto-bubble-bot {
-  background: #ffffff;
-  color: #111827;
-  border: 1px solid #e5e7eb;
-  border-left: 3px solid #d1d5db;
-  border-radius: 4px 16px 16px 4px;
-}
-
-:root[data-theme='dark'] .insights-proto-bubble-bot {
-  background: #1f2937;
-  border-color: #374151;
-  border-left-color: #6b7280;
-  color: #f9fafb;
-}
-
-.insights-proto-bubble-text {
-  white-space: pre-line;
-  font-size: 14px;
-}
-
-/* Typing indicator */
-.insights-proto-typing {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  padding: 4px 0;
-}
-
-@keyframes insights-dot-bounce {
-  0%, 80%, 100% { transform: translateY(0); }
-  40%           { transform: translateY(-6px); }
-}
-
-.insights-proto-dot {
-  width: 8px;
-  height: 8px;
-  background: #9ca3af;
-  border-radius: 50%;
-  display: inline-block;
-  animation: insights-dot-bounce 1.4s infinite ease-in-out both;
-}
-
-/* Quick insights bar */
-.insights-proto-quick-bar {
-  background: #ffffff;
-  border-top: 1px solid #e5e7eb;
-  padding: 12px;
-  flex-shrink: 0;
-}
-
-:root[data-theme='dark'] .insights-proto-quick-bar {
-  background: #1f2937;
-  border-color: #374151;
-}
-
-.insights-proto-quick-inner {
-  width: min(960px, 100%);
-  margin: 0 auto;
-}
-
-.insights-proto-quick-label {
-  font-size: 11px;
-  color: #9ca3af;
-  margin: 0 0 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
 .insights-proto-quick-pills {
   display: flex;
   flex-wrap: wrap;
@@ -362,27 +188,6 @@
   color: #93c5fd;
 }
 
-/* Input area */
-.insights-proto-input-area {
-  background: #ffffff;
-  border-top: 1px solid #e5e7eb;
-  padding: 14px;
-  flex-shrink: 0;
-}
-
-:root[data-theme='dark'] .insights-proto-input-area {
-  background: #1f2937;
-  border-color: #374151;
-}
-
-.insights-proto-input-inner {
-  width: min(960px, 100%);
-  margin: 0 auto;
-  display: flex;
-  gap: 12px;
-  align-items: flex-end;
-}
-
 .insights-proto-textarea {
   flex: 1;
   padding: 12px 16px;
@@ -412,62 +217,7 @@
   color: #f9fafb;
 }
 
-.insights-proto-send {
-  padding: 12px 20px;
-  background: #2563eb;
-  color: #fff;
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.15s;
-  flex-shrink: 0;
-}
-
-.insights-proto-send:hover:not(:disabled) {
-  background: #1d4ed8;
-}
-
-.insights-proto-send:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-@media (max-width: 767px) {
-  .insights-proto-input-area {
-    padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
-  }
-}
-
-/* ─── Insight summary cards strip ──────────────────────────────────────── */
-
-.insights-proto-cards-strip {
-  flex-shrink: 0;
-  padding: 12px 0;
-  background: #ffffff;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-:root[data-theme='dark'] .insights-proto-cards-strip {
-  background: #1f2937;
-  border-color: #374151;
-}
-
-.insights-proto-cards-inner {
-  width: min(1280px, 100% - 48px);
-  margin: 0 auto;
-  display: flex;
-  gap: 12px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.insights-proto-cards-inner::-webkit-scrollbar {
-  display: none;
-}
+/* ─── Highlight cards (reused by KpiGrid) ─────────────────────────────── */
 
 .insights-proto-card {
   flex-shrink: 0;
@@ -543,70 +293,4 @@
 :root[data-theme='dark'] .insights-proto-card-badge--down {
   background: rgba(22, 163, 74, 0.2);
   color: #86efac;
-}
-
-/* ─── Rich message formatting ───────────────────────────────────────────── */
-
-.insights-proto-bubble-rich {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.insights-rich-head {
-  font-weight: 700;
-  font-size: 13px;
-  color: inherit;
-  margin: 8px 0 2px;
-  line-height: 1.4;
-}
-
-.insights-rich-head:first-child { margin-top: 0; }
-
-.insights-rich-bullet {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding-left: 2px;
-  line-height: 1.5;
-}
-
-.insights-rich-bullet-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: currentColor;
-  opacity: 0.45;
-  flex-shrink: 0;
-  margin-top: 7px;
-}
-
-.insights-rich-kv {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  align-items: baseline;
-  line-height: 1.5;
-}
-
-.insights-rich-kv-label {
-  font-size: 12px;
-  opacity: 0.6;
-  flex-shrink: 0;
-}
-
-.insights-rich-kv-value {
-  font-weight: 600;
-  font-size: 13px;
-}
-
-.insights-rich-spacer { height: 6px; }
-
-.insights-rich-line {
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.5;
-  color: inherit;
 }
