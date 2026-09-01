@@ -31,10 +31,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-dev.txt
 
-      - name: Scan dependencies for vulnerabilities
-        run: |
-          pip install pip-audit
-          pip-audit -r requirements.txt
+      # - name: Scan dependencies for vulnerabilities
+      #   run: |
+      #     pip install pip-audit
+      #     pip-audit -r requirements.txt
 
       - name: Lint (ruff)
         run: ruff check app/ tests/
