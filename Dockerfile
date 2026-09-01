@@ -5,8 +5,18 @@ COPY package.json package-lock.json vite.config.js ./
 COPY app/index.html ./app/index.html
 COPY app/public ./app/public
 COPY app/src ./app/src
-RUN npm ci --omit=dev
+# Local builds default to npm install. GitHub Actions / CI can pass --build-arg INSTALL_MODE=ci
+ARG INSTALL_MODE=local
+RUN if [ "$INSTALL_MODE" = "ci" ]; then \
+  npm ci; \
+  else \
+  npm install; \
+  fi
 RUN npm run build
+
+RUN if [ "$INSTALL_MODE" = "ci" ]; then \
+  npm prune --omit=dev; \
+  fi
 
 FROM python:3.12-slim
 
