@@ -19,7 +19,7 @@ COPY app ./app
 COPY --from=frontend-builder /frontend/app/static ./app/static
 
 RUN addgroup --system app && adduser --system --ingroup app app \
-    && chown -R app:app /code
+  && chown -R app:app /code
 USER app
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \

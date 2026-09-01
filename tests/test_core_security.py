@@ -33,6 +33,7 @@ def test_create_access_token_returns_string():
 
 def test_create_access_token_can_be_decoded():
     from jose import jwt
+
     from app.core.config import settings
 
     token = security.create_access_token({"username": "u@b.com"})

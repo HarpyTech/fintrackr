@@ -1,6 +1,5 @@
-from pydantic import BaseModel
-
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 
 from app.api.deps import get_current_user
 from app.core.plans import is_valid_plan, plan_user_fields

@@ -5,7 +5,12 @@ from fastapi import APIRouter, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
 
 from app.core.config import settings
-from app.core.ratelimit import LoginRateLimitError, OtpRateLimitError, check_and_record_login_attempt, clear_login_attempts
+from app.core.ratelimit import (
+    LoginRateLimitError,
+    OtpRateLimitError,
+    check_and_record_login_attempt,
+    clear_login_attempts,
+)
 from app.core.security import create_access_token
 from app.models.user import (
     ForgotPasswordRequest,
