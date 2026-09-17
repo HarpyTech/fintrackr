@@ -12,6 +12,7 @@ from __future__ import annotations
 import logging
 import secrets
 from datetime import UTC, datetime
+from urllib.parse import urlencode
 
 import httpx
 from pymongo.errors import PyMongoError
@@ -43,7 +44,7 @@ def build_google_auth_url(state: str) -> str:
         "access_type": "online",
         "prompt": "select_account",
     }
-    query = "&".join(f"{k}={v}" for k, v in params.items())
+    query = urlencode(params)
     return f"{_GOOGLE_AUTH_URL}?{query}"
 
 

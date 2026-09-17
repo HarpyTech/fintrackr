@@ -409,7 +409,7 @@ def google_auth_callback(
     """Handle the OAuth2 callback: exchange code, issue JWT, set cookie."""
     if error:
         logger.warning("Google OAuth error: %s", error)
-        return RedirectResponse(url="/?error=oauth_denied", status_code=302)
+        return RedirectResponse(url="/login?error=oauth_denied", status_code=302)
 
     if not code:
         raise HTTPException(
@@ -430,12 +430,12 @@ def google_auth_callback(
     except PermissionError as exc:
         logger.warning("Google OAuth domain not allowed: %s", str(exc))
         return RedirectResponse(
-            url="/?error=domain_not_allowed",
+            url="/login?error=domain_not_allowed",
             status_code=302,
         )
     except Exception as exc:
         logger.error("Google OAuth callback failed: %s", str(exc), exc_info=True)
-        return RedirectResponse(url="/?error=oauth_failed", status_code=302)
+        return RedirectResponse(url="/login?error=oauth_failed", status_code=302)
 
     token = create_access_token(
         {
@@ -446,14 +446,7 @@ def google_auth_callback(
     )
 
     resp = RedirectResponse(url="/dashboard", status_code=302)
-    resp.set_cookie(
-        COOKIE_NAME,
-        token,
-        httponly=True,
-        secure=settings.COOKIE_SECURE,
-        samesite="lax",
-        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-    )
+    _set_session_cookie(resp, token)
     resp.delete_cookie("oauth_state")
     logger.info("Google OAuth login successful for %s", user["username"])
     return resp

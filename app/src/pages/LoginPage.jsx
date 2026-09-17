@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import AppLoader from '../components/AppLoader';
@@ -7,13 +7,27 @@ import PasswordInput from '../components/PasswordInput';
 import { useWebAuthn } from '../hooks/useWebAuthn';
 import { getBoundUsername, getStoredCredentialId, isInstalledPwa } from '../lib/deviceBinding';
 
+const OAUTH_ERROR_MESSAGES = {
+  oauth_denied: 'Google sign-in was cancelled or denied.',
+  domain_not_allowed: 'Your email domain is not authorized to sign in.',
+  oauth_failed: 'Google sign-in failed. Please try again.',
+};
+
 export default function LoginPage() {
   const { session, login, loginWithBiometric, sessionExpired } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [form, setForm] = useState({ username: '', password: '' });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [checkingBackgroundAuth, setCheckingBackgroundAuth] = useState(true);
+
+  useEffect(() => {
+    const oauthError = searchParams.get('error');
+    if (oauthError) {
+      setError(OAUTH_ERROR_MESSAGES[oauthError] || 'Google sign-in failed.');
+    }
+  }, [searchParams]);
 
   const { isSupported } = useWebAuthn();
 
