@@ -4,13 +4,14 @@ import { AlertCircle, Camera, Upload } from 'lucide-react';
 import CircularProgress from '@mui/material/CircularProgress';
 import { useAuth } from '../auth/AuthContext';
 import { apiRequest } from '../lib/api';
-import ErrorAlert from '../components/ErrorAlert';
+import { useToast } from '../components/ToastProvider';
 
 const CATEGORIES = ['Food', 'Travel', 'Utilities', 'Shopping', 'Health', 'Other'];
 
 export default function AddExpensePage() {
   const { logout } = useAuth();
   const navigate = useNavigate();
+  const toast = useToast();
 
   const [expenseForm, setExpenseForm] = useState({
     amount: '',
@@ -24,8 +25,6 @@ export default function AddExpensePage() {
   const [extracting, setExtracting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [lastExtracted, setLastExtracted] = useState(null);
-  const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
   const [sessionLimitReached, setSessionLimitReached] = useState(false);
   const [expenseLimit, setExpenseLimit] = useState(10);
   const [aiPreviewUrl, setAiPreviewUrl] = useState('');
@@ -78,8 +77,6 @@ export default function AddExpensePage() {
 
   async function addExpense(event) {
     event.preventDefault();
-    setError('');
-    setMessage('');
     setSubmitting(true);
 
     try {
@@ -101,18 +98,18 @@ export default function AddExpensePage() {
         description: '',
       }));
       if (response?.queued) {
-        setMessage(response.message);
+        toast.success(response.message);
         return;
       }
 
-      setMessage('Expense saved successfully.');
+      toast.success('Expense saved successfully.');
       window.dispatchEvent(new CustomEvent('expense:created'));
       await syncExpenseLimitState();
     } catch (err) {
       if (err.status === 429) {
         setSessionLimitReached(true);
       } else {
-        setError(err.message || 'Unable to save expense. Please try again.');
+        toast.error(err.message || 'Unable to save expense. Please try again.');
       }
     } finally {
       setSubmitting(false);
@@ -121,12 +118,10 @@ export default function AddExpensePage() {
 
   async function addExpenseFromAi(event) {
     event.preventDefault();
-    setError('');
-    setMessage('');
 
     const selectedImageFile = cameraImageFile || aiImageFile;
     if (!aiInputText.trim() && !selectedImageFile) {
-      setError('Provide text input or upload an image for extraction.');
+      toast.error('Provide text input or upload an image for extraction.');
       return;
     }
 
@@ -156,14 +151,14 @@ export default function AddExpensePage() {
       setAiInputText('');
       setAiImageFile(null);
       setCameraImageFile(null);
-      setMessage('Expense extracted and saved successfully.');
+      toast.success('Expense extracted and saved successfully.');
       window.dispatchEvent(new CustomEvent('expense:created'));
       await syncExpenseLimitState();
     } catch (err) {
       if (err.status === 429) {
         setSessionLimitReached(true);
       } else {
-        setError(err.message || 'Unable to extract expense. Please try again.');
+        toast.error(err.message || 'Unable to extract expense. Please try again.');
       }
     } finally {
       setExtracting(false);
@@ -300,9 +295,6 @@ export default function AddExpensePage() {
                   <><CircularProgress size={16} color="inherit" style={{ marginRight: 8, verticalAlign: 'middle' }} /> Extracting…</>
                 ) : 'Extract + Save Expense'}
               </button>
-
-              {message ? <p className="add-expense-proto-success">{message}</p> : null}
-              {error ? <ErrorAlert message={error} /> : null}
             </form>
 
             {import.meta.env.DEV && lastExtracted ? (
@@ -385,9 +377,6 @@ export default function AddExpensePage() {
                   <><CircularProgress size={16} color="inherit" style={{ marginRight: 8, verticalAlign: 'middle' }} /> Saving…</>
                 ) : 'Save Expense'}
               </button>
-
-              {message ? <p className="add-expense-proto-success">{message}</p> : null}
-              {error ? <ErrorAlert message={error} /> : null}
             </form>
           </div>
 

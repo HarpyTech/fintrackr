@@ -253,6 +253,15 @@
     flex: 1;
   }
 
+  .dashboard-proto-stat-body {
+    text-align: right;
+  }
+
+  .dashboard-proto-stat-sub {
+    margin-top: 2px;
+    text-align: right;
+  }
+
   .dashboard-proto-stat-value {
     font-size: 1.25rem;
     margin-top: 0;

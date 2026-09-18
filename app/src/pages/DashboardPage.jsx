@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Calendar, Camera, DollarSign, FileText, X } from 'lucide-react';
+import { CalendarDays, Camera, DollarSign, FileText, X } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import ErrorBoundary from '../components/ErrorBoundary';
 import MonthYearFilter from '../components/MonthYearFilter';
@@ -38,7 +38,6 @@ export default function DashboardPage() {
   const toast = useToast();
   const queryClient = useQueryClient();
 
-  const [error, setError] = useState('');
   const [cameraImageFile, setCameraImageFile] = useState(null);
   const [cameraPreviewUrl, setCameraPreviewUrl] = useState('');
   const [extracting, setExtracting] = useState(false);
@@ -184,10 +183,9 @@ export default function DashboardPage() {
 
   async function addExpenseFromCamera(event) {
     event.preventDefault();
-    setError('');
 
     if (!cameraImageFile) {
-      setError('Capture a receipt image to add an expense from the dashboard.');
+      toast.error('Capture a receipt image to add an expense from the dashboard.');
       return;
     }
 
@@ -213,7 +211,6 @@ export default function DashboardPage() {
       queryClient.invalidateQueries({ queryKey: queryKeys.expenses.all });
     } catch (err) {
       if (!err.sessionExpired) {
-        setError(err.message);
         toast.error(err.message);
       }
     } finally {
@@ -221,10 +218,23 @@ export default function DashboardPage() {
     }
   }
 
-  const totalSpend = useMemo(
-    () => expenses.reduce((sum, item) => sum + Number(item.amount || 0), 0),
-    [expenses]
+  const currentMonth = new Date().getMonth() + 1;
+  const currentMonthRow = useMemo(
+    () => monthly.find((m) => m.month === currentMonth),
+    [monthly, currentMonth]
   );
+  const currentMonthTotal = currentMonthRow?.total || 0;
+  const currentMonthCount = currentMonthRow?.count || 0;
+
+  const yearTotal = useMemo(
+    () => monthly.reduce((sum, m) => sum + Number(m.total || 0), 0),
+    [monthly]
+  );
+  const yearEntries = useMemo(
+    () => monthly.reduce((sum, m) => sum + Number(m.count || 0), 0),
+    [monthly]
+  );
+  const avgPerEntry = yearEntries > 0 ? yearTotal / yearEntries : 0;
 
   const completedOnboardingSteps = useMemo(() => {
     const steps = [];
@@ -244,6 +254,26 @@ export default function DashboardPage() {
         <section className="dashboard-proto-stats">
           <article className="dashboard-proto-card">
             <div className="dashboard-proto-stat-head">
+              <span className="dashboard-proto-icon green">
+                <CalendarDays />
+              </span>
+              <span>Current Month</span>
+            </div>
+            {summaryLoading ? (
+              <div className="skeleton skeleton-stat-value" aria-hidden="true" />
+            ) : (
+              <div className="dashboard-proto-stat-body">
+                <p className="dashboard-proto-stat-value">{formatInr(currentMonthTotal)}</p>
+                <p className="dashboard-proto-stat-sub">
+                  <span className="dashboard-proto-stat-sub-label">Expenses logged</span>{' '}
+                  {currentMonthCount}
+                </p>
+              </div>
+            )}
+          </article>
+
+          <article className="dashboard-proto-card">
+            <div className="dashboard-proto-stat-head">
               <span className="dashboard-proto-icon blue">
                 <DollarSign />
               </span>
@@ -252,7 +282,13 @@ export default function DashboardPage() {
             {summaryLoading ? (
               <div className="skeleton skeleton-stat-value" aria-hidden="true" />
             ) : (
-              <p className="dashboard-proto-stat-value">{formatInr(totalSpend)}</p>
+              <div className="dashboard-proto-stat-body">
+                <p className="dashboard-proto-stat-value">{formatInr(yearTotal)}</p>
+                <p className="dashboard-proto-stat-sub">
+                  <span className="dashboard-proto-stat-sub-label">Tracking Year</span>{' '}
+                  {currentYear}
+                </p>
+              </div>
             )}
           </article>
 
@@ -266,18 +302,14 @@ export default function DashboardPage() {
             {summaryLoading ? (
               <div className="skeleton skeleton-stat-value" aria-hidden="true" />
             ) : (
-              <p className="dashboard-proto-stat-value">{expenses.length}</p>
+              <div className="dashboard-proto-stat-body">
+                <p className="dashboard-proto-stat-value">{expenses.length}</p>
+                <p className="dashboard-proto-stat-sub">
+                  <span className="dashboard-proto-stat-sub-label">Avg / entry</span>{' '}
+                  {formatInr(avgPerEntry)}
+                </p>
+              </div>
             )}
-          </article>
-
-          <article className="dashboard-proto-card">
-            <div className="dashboard-proto-stat-head">
-              <span className="dashboard-proto-icon green">
-                <Calendar />
-              </span>
-              <span>Tracking Year</span>
-            </div>
-            <p className="dashboard-proto-stat-value">{currentYear}</p>
           </article>
         </section>
 
@@ -330,8 +362,8 @@ export default function DashboardPage() {
               <pre>{JSON.stringify(lastExtracted, null, 2)}</pre>
             </div>
           ) : null}
-          {error || summaryError ? (
-            <p className="error-text">{error || summaryError}</p>
+          {summaryError ? (
+            <p className="error-text">{summaryError}</p>
           ) : null}
         </div>
 
@@ -349,8 +381,8 @@ export default function DashboardPage() {
           >
             Go to Add Expense
           </button>
-          {error || summaryError ? (
-            <p className="error-text">{error || summaryError}</p>
+          {summaryError ? (
+            <p className="error-text">{summaryError}</p>
           ) : null}
         </div>
 

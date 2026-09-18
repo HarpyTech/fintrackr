@@ -519,13 +519,18 @@ def monthly_summary(username: str, year: int, tenant_id: str | None = None):
                 "$group": {
                     "_id": {"month": {"$month": "$expense_date"}},
                     "total": {"$sum": "$amount"},
+                    "count": {"$sum": 1},
                 }
             },
         ]
         result = list(expenses.aggregate(pipeline))
         totals = {row["_id"]["month"]: round(float(row["total"]), 2) for row in result}
+        counts = {row["_id"]["month"]: int(row["count"]) for row in result}
 
-        summary = [{"month": m, "total": totals.get(m, 0.0)} for m in range(1, 13)]
+        summary = [
+            {"month": m, "total": totals.get(m, 0.0), "count": counts.get(m, 0)}
+            for m in range(1, 13)
+        ]
         total_year = sum(totals.values())
         logger.info(
             f"Monthly summary for year {year}: "
