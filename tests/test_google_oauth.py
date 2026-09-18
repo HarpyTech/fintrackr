@@ -1,6 +1,7 @@
 """Tests for Google OAuth authorization, domain checking, URL formatting, and API endpoints."""
 
 from urllib.parse import parse_qs, urlparse
+
 import pytest
 from fastapi.testclient import TestClient
 from mongomock import MongoClient
@@ -47,12 +48,12 @@ def test_oauth_login_or_create_new_user(mock_users_repo):
     """Verify new user document creation via Google userinfo."""
     userinfo = {
         "sub": "google-sub-12345",
-        "email": "jane.doe@example.com",
+        "email": "jane.doe@gmail.com",
         "given_name": "Jane",
     }
     user = oauth_login_or_create(userinfo)
 
-    assert user["username"] == "jane.doe@example.com"
+    assert user["username"] == "jane.doe@gmail.com"
     assert user["email_verified"] is True
     assert user["oauth_provider"] == "google"
     assert user["google_sub"] == "google-sub-12345"
@@ -98,6 +99,8 @@ def test_google_auth_endpoint_redirect(monkeypatch):
 def test_google_auth_callback_error_query():
     """Verify OAuth error response redirects to /login?error=oauth_denied."""
     client = TestClient(app)
-    response = client.get("/api/v1/auth/google/callback?error=access_denied", follow_redirects=False)
+    response = client.get(
+        "/api/v1/auth/google/callback?error=access_denied", follow_redirects=False
+    )
     assert response.status_code == 302
     assert response.headers["location"] == "/login?error=oauth_denied"
