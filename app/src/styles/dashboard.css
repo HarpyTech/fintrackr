@@ -483,6 +483,19 @@
   font-variant-numeric: tabular-nums;
 }
 
+.dashboard-proto-stat-sub {
+  margin-top: 6px;
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--muted-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboard-proto-stat-sub-label {
+  font-weight: 700;
+}
+
+
 /* --- Mobile / Desktop visibility --- */
 .dashboard-proto-mobile-only {
   display: none;
