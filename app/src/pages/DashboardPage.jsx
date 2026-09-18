@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Calendar, Camera, DollarSign, FileText, X } from 'lucide-react';
+import { CalendarDays, Camera, DollarSign, FileText, X } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import ErrorBoundary from '../components/ErrorBoundary';
 import MonthYearFilter from '../components/MonthYearFilter';
@@ -38,7 +38,6 @@ export default function DashboardPage() {
   const toast = useToast();
   const queryClient = useQueryClient();
 
-  const [error, setError] = useState('');
   const [cameraImageFile, setCameraImageFile] = useState(null);
   const [cameraPreviewUrl, setCameraPreviewUrl] = useState('');
   const [extracting, setExtracting] = useState(false);
@@ -184,10 +183,9 @@ export default function DashboardPage() {
 
   async function addExpenseFromCamera(event) {
     event.preventDefault();
-    setError('');
 
     if (!cameraImageFile) {
-      setError('Capture a receipt image to add an expense from the dashboard.');
+      toast.error('Capture a receipt image to add an expense from the dashboard.');
       return;
     }
 
@@ -213,7 +211,6 @@ export default function DashboardPage() {
       queryClient.invalidateQueries({ queryKey: queryKeys.expenses.all });
     } catch (err) {
       if (!err.sessionExpired) {
-        setError(err.message);
         toast.error(err.message);
       }
     } finally {
@@ -255,7 +252,7 @@ export default function DashboardPage() {
 
         {/* ── Stats ── */}
         <section className="dashboard-proto-stats">
-<article className="dashboard-proto-card">
+          <article className="dashboard-proto-card">
             <div className="dashboard-proto-stat-head">
               <span className="dashboard-proto-icon green">
                 <CalendarDays />
@@ -285,9 +282,9 @@ export default function DashboardPage() {
             {summaryLoading ? (
               <div className="skeleton skeleton-stat-value" aria-hidden="true" />
             ) : (
-<div className="dashboard-proto-stat-body">
-              <p className="dashboard-proto-stat-value">{formatInr(yearTotal)}</p>
-<p className="dashboard-proto-stat-sub">
+              <div className="dashboard-proto-stat-body">
+                <p className="dashboard-proto-stat-value">{formatInr(yearTotal)}</p>
+                <p className="dashboard-proto-stat-sub">
                   <span className="dashboard-proto-stat-sub-label">Tracking Year</span>{' '}
                   {currentYear}
                 </p>
@@ -305,9 +302,9 @@ export default function DashboardPage() {
             {summaryLoading ? (
               <div className="skeleton skeleton-stat-value" aria-hidden="true" />
             ) : (
-<div className="dashboard-proto-stat-body">
-              <p className="dashboard-proto-stat-value">{expenses.length}</p>
-<p className="dashboard-proto-stat-sub">
+              <div className="dashboard-proto-stat-body">
+                <p className="dashboard-proto-stat-value">{expenses.length}</p>
+                <p className="dashboard-proto-stat-sub">
                   <span className="dashboard-proto-stat-sub-label">Avg / entry</span>{' '}
                   {formatInr(avgPerEntry)}
                 </p>
@@ -365,8 +362,8 @@ export default function DashboardPage() {
               <pre>{JSON.stringify(lastExtracted, null, 2)}</pre>
             </div>
           ) : null}
-          {error || summaryError ? (
-            <p className="error-text">{error || summaryError}</p>
+          {summaryError ? (
+            <p className="error-text">{summaryError}</p>
           ) : null}
         </div>
 
@@ -384,8 +381,8 @@ export default function DashboardPage() {
           >
             Go to Add Expense
           </button>
-          {error || summaryError ? (
-            <p className="error-text">{error || summaryError}</p>
+          {summaryError ? (
+            <p className="error-text">{summaryError}</p>
           ) : null}
         </div>
 
