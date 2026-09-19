@@ -1,6 +1,8 @@
+import { useLocation } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import AppHeader from '../components/AppHeader';
 import ExpenseChatWidget from '../components/ExpenseChatWidget';
+import PageTransition from '../components/PageTransition';
 
 /**
  * ProtectedLayout wraps all authenticated pages with:
@@ -14,6 +16,8 @@ import ExpenseChatWidget from '../components/ExpenseChatWidget';
  * declared in exactly one place — see lib/pageMeta.js.
  */
 export default function ProtectedLayout({ children }) {
+  const location = useLocation();
+
   return (
     <div className="protected-layout">
       <a href="#main-content" className="skip-link">Skip to main content</a>
@@ -21,7 +25,7 @@ export default function ProtectedLayout({ children }) {
       <div className="protected-layout-main">
         <AppHeader />
         <div id="main-content" className="protected-layout-content">
-          {children}
+          <PageTransition key={location.pathname}>{children}</PageTransition>
         </div>
       </div>
       <ExpenseChatWidget />
