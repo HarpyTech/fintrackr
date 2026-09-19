@@ -23,6 +23,20 @@ export default class ErrorBoundary extends Component {
     return { hasError: true };
   }
 
+  componentDidUpdate(prevProps) {
+    // Lets a caller reset the boundary without remounting its subtree via
+    // `key` — App.jsx needs this so route changes clear a stale crash
+    // without also tearing down the AnimatePresence tree used for page
+    // transitions.
+    if (
+      this.state.hasError &&
+      this.props.resetKey !== undefined &&
+      this.props.resetKey !== prevProps.resetKey
+    ) {
+      this.setState({ hasError: false });
+    }
+  }
+
   componentDidCatch(error, info) {
     // eslint-disable-next-line no-console
     console.error(

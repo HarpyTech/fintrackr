@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
 import { useAuth } from './auth/AuthContext';
 import ProtectedLayout from './layouts/ProtectedLayout';
 import ThemeToggle from './components/ThemeToggle';
@@ -81,10 +82,12 @@ export default function App() {
   return (
     <>
       {showFloatingThemeToggle ? <ThemeToggle floating /> : null}
-      {/* Keyed on pathname so a crash on one route does not leave the
-          boundary latched open when the user navigates elsewhere. */}
+      {/* Resets on pathname change (without remounting — that would also
+          tear down the AnimatePresence/Routes tree below and skip the exit
+          transition) so a crash on one route does not leave the boundary
+          latched open when the user navigates elsewhere. */}
       <ErrorBoundary
-        key={location.pathname}
+        resetKey={location.pathname}
         label={`route ${location.pathname}`}
         fallback={
           <div className="error-boundary-page">
@@ -102,73 +105,75 @@ export default function App() {
         }
       >
         <Suspense fallback={<AppLoader full />}>
-          <Routes>
-            <Route path="/" element={<HomeRoute />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/verify-email" element={<VerifyEmailPage />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-            <Route path="/reset-password" element={<ResetPasswordPage />} />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <DashboardPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/report"
-              element={
-                <ProtectedRoute>
-                  <ReportPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/add-expense"
-              element={
-                <ProtectedRoute>
-                  <AddExpensePage />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="/features" element={<FeaturesPage />} />
-            {isSupportPageEnabled ? <Route path="/support" element={<SupportPage />} /> : null}
-            <Route
-              path="/settings"
-              element={
-                <ProtectedRoute>
-                  <SettingsPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/insights"
-              element={
-                <ProtectedRoute>
-                  <InsightsPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/billing"
-              element={
-                <ProtectedRoute>
-                  <BillingPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/users"
-              element={
-                <AdminRoute>
-                  <AdminUsersPage />
-                </AdminRoute>
-              }
-            />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          <AnimatePresence mode="wait" initial={false}>
+            <Routes location={location} key={location.pathname}>
+              <Route path="/" element={<HomeRoute />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/verify-email" element={<VerifyEmailPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <DashboardPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/report"
+                element={
+                  <ProtectedRoute>
+                    <ReportPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/add-expense"
+                element={
+                  <ProtectedRoute>
+                    <AddExpensePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/features" element={<FeaturesPage />} />
+              {isSupportPageEnabled ? <Route path="/support" element={<SupportPage />} /> : null}
+              <Route
+                path="/settings"
+                element={
+                  <ProtectedRoute>
+                    <SettingsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/insights"
+                element={
+                  <ProtectedRoute>
+                    <InsightsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/billing"
+                element={
+                  <ProtectedRoute>
+                    <BillingPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/users"
+                element={
+                  <AdminRoute>
+                    <AdminUsersPage />
+                  </AdminRoute>
+                }
+              />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </AnimatePresence>
         </Suspense>
       </ErrorBoundary>
     </>
