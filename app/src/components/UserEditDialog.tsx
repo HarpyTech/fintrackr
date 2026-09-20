@@ -30,7 +30,7 @@ interface UserEditDialogProps {
 }
 
 const ROLES = ['user', 'admin'];
-const PLANS = ['free', 'pro', 'enterprise'];
+const PLANS = ['free', 'go', 'max'];
 
 export default function UserEditDialog({ open, user, onClose, onSaved }: UserEditDialogProps) {
   const [role, setRole] = useState('user');
@@ -40,7 +40,7 @@ export default function UserEditDialog({ open, user, onClose, onSaved }: UserEdi
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  const isEnterprise = plan === 'enterprise';
+  const isMax = plan === 'max';
 
   useEffect(() => {
     if (user) {
@@ -52,9 +52,8 @@ export default function UserEditDialog({ open, user, onClose, onSaved }: UserEdi
     }
   }, [user]);
 
-  // When plan changes to enterprise, auto-enable unlimited
   useEffect(() => {
-    if (plan === 'enterprise') {
+    if (plan === 'max') {
       setDisableRateLimit(true);
     }
   }, [plan]);
@@ -67,7 +66,7 @@ export default function UserEditDialog({ open, user, onClose, onSaved }: UserEdi
     setError('');
 
     const payload: Record<string, unknown> = { role, plan };
-    if (!isEnterprise) {
+    if (!isMax) {
       payload.expense_limit = Number(expenseLimit);
       payload.disable_rate_limit = disableRateLimit;
     } else {
@@ -141,16 +140,16 @@ export default function UserEditDialog({ open, user, onClose, onSaved }: UserEdi
             <TextField
               label="Expense Limit"
               type="number"
-              value={isEnterprise ? '' : expenseLimit}
+              value={isMax ? '' : expenseLimit}
               onChange={(e) => setExpenseLimit(e.target.value)}
-              disabled={saving || isEnterprise}
-              placeholder={isEnterprise ? 'Unlimited' : ''}
+              disabled={saving || isMax}
+              placeholder={isMax ? 'Unlimited' : ''}
               inputProps={{ min: 1, step: 1 }}
               size="small"
-              helperText={isEnterprise ? 'Unlimited for Enterprise plan' : undefined}
+              helperText={isMax ? 'Unlimited for Max plan' : undefined}
             />
 
-            {!isEnterprise && (
+            {!isMax && (
               <FormControlLabel
                 control={
                   <Switch
