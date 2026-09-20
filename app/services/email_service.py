@@ -446,9 +446,8 @@ def deliver_upgrade_request(
 
     if not settings.SMTP_HOST:
         logger.warning(
-            "SMTP is not configured. Billing request for %s to %s was not sent.",
+            "SMTP is not configured. Billing request for %s was not sent.",
             requester_email,
-            settings.BILLING_CONTACT_EMAIL,
         )
         return
 
