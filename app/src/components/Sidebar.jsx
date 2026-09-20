@@ -59,14 +59,19 @@ export default function Sidebar() {
       {/* Desktop sidebar */}
       <aside className={sidebarClass} aria-label="Main navigation">
         {/* Logo */}
-        <div className="sidebar-proto-logo">
+        <button
+          type="button"
+          className="sidebar-proto-logo"
+          onClick={() => setIsCollapsed(false)}
+          aria-label="Show full navigation"
+        >
           <img src="/assets/app_logo.png" alt="App Logo" className="sidebar-proto-logo-icon" style={{ padding: '0', background: 'transparent' }} />
           <img
             src="/assets/name_logo.svg"
             alt="FinTrackr"
             className="sidebar-proto-logo-img"
           />
-        </div>
+        </button>
 
         {/* Navigation links */}
         <nav className="sidebar-proto-nav">

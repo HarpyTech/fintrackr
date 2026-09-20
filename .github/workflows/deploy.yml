@@ -61,6 +61,7 @@ jobs:
           APP_SMTP_TIMEOUT_SECONDS: ${{ secrets.APP_SMTP_TIMEOUT_SECONDS }}
           APP_SMTP_FROM_EMAIL: ${{ secrets.APP_SMTP_FROM_EMAIL }}
           APP_SMTP_BCC_EMAILS: ${{ secrets.APP_SMTP_BCC_EMAILS }}
+          APP_BILLING_CONTACT_EMAIL: ${{ secrets.APP_BILLING_CONTACT_EMAIL }}
           GITHUB_SHA: ${{ github.sha }}
         run: |
           python - << 'PY'
@@ -120,6 +121,7 @@ jobs:
           add_env("SMTP_TIMEOUT_SECONDS", "APP_SMTP_TIMEOUT_SECONDS")
           add_env("SMTP_FROM_EMAIL", "APP_SMTP_FROM_EMAIL")
           add_env("SMTP_BCC_EMAILS", "APP_SMTP_BCC_EMAILS")
+          add_env("BILLING_CONTACT_EMAIL", "APP_BILLING_CONTACT_EMAIL")
 
           with open(".cloudrun.env.yaml", "w", encoding="utf-8") as f:
               yaml.safe_dump(data, f)

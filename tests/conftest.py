@@ -20,6 +20,7 @@ def mongo(monkeypatch):
     users = db["users"]
     expenses = db["expenses"]
     line_items = db["expense_line_items"]
+    upgrade_requests = db["upgrade_requests"]
 
     import app.db.mongo as db_module
     import app.services.admin_service as admin_service
@@ -39,7 +40,18 @@ def mongo(monkeypatch):
             raising=False,
         )
         monkeypatch.setattr(
+            module,
+            "get_upgrade_requests_collection",
+            lambda: upgrade_requests,
+            raising=False,
+        )
+        monkeypatch.setattr(
             module, "get_mongo_client", lambda: client, raising=False
         )
 
-    return {"users": users, "expenses": expenses, "line_items": line_items}
+    return {
+        "users": users,
+        "expenses": expenses,
+        "line_items": line_items,
+        "upgrade_requests": upgrade_requests,
+    }

@@ -79,7 +79,11 @@ export default function BillingPage() {
       });
       await refreshProfile();
       const label = PLANS.find((p) => p.key === planKey)?.name || planKey;
-      setUpgradeSuccess(`You are now on the ${label} plan.`);
+      setUpgradeSuccess(
+        planKey === 'go'
+          ? 'Your request has been submitted to admin.'
+          : `You are now on the ${label} plan.`,
+      );
     } catch (err) {
       setUpgradeError(err.message || 'Unable to change plan. Please try again.');
     } finally {
@@ -111,6 +115,7 @@ export default function BillingPage() {
             let ctaLabel;
             if (isCurrent) ctaLabel = 'Current plan';
             else if (isDowngrade) ctaLabel = `Switch to ${name}`;
+            else if (key === 'go') ctaLabel = 'Request Go upgrade';
             else ctaLabel = `Upgrade to ${name}`;
 
             return (
@@ -171,7 +176,7 @@ export default function BillingPage() {
 
         <p className="billing-note">
           Plan changes take effect immediately. All prices are in INR and exclude GST.
-          Contact <a href="mailto:support@fintrackr.app">support@fintrackr.app</a> for invoices or enterprise pricing.
+          Contact <a href="mailto:contact@harpytechco.in">contact@harpytechco.in</a> for invoices or enterprise pricing.
         </p>
       </div>
     </main>
