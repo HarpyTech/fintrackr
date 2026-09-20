@@ -29,7 +29,15 @@
   gap: 12px;
   min-height: 72px;
   flex-shrink: 0;
+  width: 100%;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
 }
+.sidebar-proto-logo:hover { background: var(--surface-soft); }
 
 .sidebar-proto-logo-icon {
   width: 40px;
