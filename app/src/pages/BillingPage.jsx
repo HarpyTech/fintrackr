@@ -176,7 +176,7 @@ export default function BillingPage() {
 
         <p className="billing-note">
           Plan changes take effect immediately. All prices are in INR and exclude GST.
-          Contact <a href="mailto:support@fintrackr.app">support@fintrackr.app</a> for invoices or enterprise pricing.
+          Contact <a href="mailto:contact@harpytechco.in">contact@harpytechco.in</a> for invoices or enterprise pricing.
         </p>
       </div>
     </main>

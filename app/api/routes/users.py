@@ -5,8 +5,8 @@ from app.api.deps import get_current_tenant, get_current_user
 from app.core.plans import is_valid_plan, plan_user_fields
 from app.db.mongo import get_users_collection
 from app.models.user import UserProfile, UserProfileUpdate
-from app.services.auth_service import get_user_profile, update_user_profile
 from app.services.admin_service import create_upgrade_request
+from app.services.auth_service import get_user_profile, update_user_profile
 from app.services.email_service import deliver_upgrade_request
 
 router = APIRouter()
