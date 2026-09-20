@@ -121,6 +121,20 @@ def get_users_collection() -> Collection:
     except PyMongoError:
         logger.error("Failed to access users collection", exc_info=True)
         raise
+
+
+def get_upgrade_requests_collection() -> Collection:
+    """Get the subscription upgrade requests collection."""
+    try:
+        collection = get_database()["upgrade_requests"]
+        logger.debug("Upgrade requests collection accessed")
+        return collection
+    except PyMongoError:
+        logger.error("Failed to access upgrade requests collection", exc_info=True)
+        raise
+    except Exception:
+        logger.error("Unexpected error accessing upgrade requests collection", exc_info=True)
+        raise
     except Exception:
         logger.error("Unexpected error accessing users collection", exc_info=True)
         raise

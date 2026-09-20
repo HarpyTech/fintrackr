@@ -422,3 +422,46 @@ def deliver_reset_otp(email: str, otp: str) -> None:
             exc_info=True,
         )
         raise RuntimeError("Failed to send password reset email")
+
+
+def deliver_upgrade_request(
+    *,
+    requester_email: str,
+    requested_plan: str,
+    current_plan: str,
+    first_name: str | None = None,
+    last_name: str | None = None,
+) -> None:
+    """Notify the billing contact that a user requested a paid plan."""
+    subject = f"FinTrackr {requested_plan.title()} plan request from {requester_email}"
+    display_name = " ".join(part for part in (first_name, last_name) if part) or "Not provided"
+    body = (
+        "A user requested a paid FinTrackr plan.\n\n"
+        f"Email: {requester_email}\n"
+        f"Name: {display_name}\n"
+        f"Current plan: {current_plan}\n"
+        f"Requested plan: {requested_plan}\n\n"
+        "Review the account in the admin section and update the plan after payment confirmation."
+    )
+
+    if not settings.SMTP_HOST:
+        logger.warning(
+            "SMTP is not configured. Billing request for %s to %s was not sent.",
+            requester_email,
+            settings.BILLING_CONTACT_EMAIL,
+        )
+        return
+
+    message = EmailMessage()
+    message["Subject"] = subject
+    message["From"] = settings.SMTP_FROM_EMAIL
+    message["To"] = settings.BILLING_CONTACT_EMAIL
+    message["Reply-To"] = requester_email
+    message.set_content(body)
+
+    try:
+        _smtp_send(message)
+        logger.info("Billing request email sent for %s", requester_email)
+    except RuntimeError:
+        logger.error("Failed to send billing request for %s", requester_email, exc_info=True)
+        raise RuntimeError("Failed to send billing request email")

@@ -155,3 +155,46 @@ def test_update_user_tenant_isolation(mongo):
     _seed_user(mongo, "u@x.com", tenant_id="t1")
     with pytest.raises(UserNotFoundError):
         admin_service.update_user("u@x.com", role="admin", tenant_id="t2")
+
+
+# ── upgrade requests ──────────────────────────────────────────────────────
+
+def test_create_upgrade_request_is_persisted_and_deduplicated(mongo):
+    _seed_user(mongo, "u@x.com")
+    first = admin_service.create_upgrade_request(
+        "u@x.com",
+        current_plan="free",
+        first_name="Test",
+        tenant_id="u@x.com",
+    )
+    second = admin_service.create_upgrade_request(
+        "u@x.com",
+        current_plan="free",
+        tenant_id="u@x.com",
+    )
+
+    assert first["request_id"] == second["request_id"]
+    assert len(mongo["upgrade_requests"].find()) == 1
+    assert admin_service.list_upgrade_requests(tenant_id="u@x.com")[0]["status"] == "pending"
+
+
+def test_approve_upgrade_request_updates_user_and_request(mongo):
+    _seed_user(mongo, "u@x.com")
+    request = admin_service.create_upgrade_request(
+        "u@x.com",
+        current_plan="free",
+        tenant_id="u@x.com",
+    )
+
+    approved = admin_service.approve_upgrade_request(
+        request["request_id"],
+        approved_by="admin@x.com",
+        tenant_id="u@x.com",
+    )
+
+    user = mongo["users"].find_one({"username": "u@x.com"})
+    assert approved["status"] == "approved"
+    assert approved["approved_by"] == "admin@x.com"
+    assert user["plan"] == "go"
+    assert user["expense_limit"] == 100
+    assert admin_service.list_upgrade_requests(tenant_id="u@x.com")[0]["status"] == "approved"

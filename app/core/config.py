@@ -97,6 +97,7 @@ class Settings(BaseSettings):
     SMTP_TIMEOUT_SECONDS: int = 15
     SMTP_FROM_EMAIL: str = "no-reply@my-finance.local"
     SMTP_BCC_EMAILS: list[str] = []
+    BILLING_CONTACT_EMAIL: str = "support@fintrackr.app"
 
     # --- Google OAuth2 ---------------------------------------------------
     GOOGLE_CLIENT_ID: str | None = None

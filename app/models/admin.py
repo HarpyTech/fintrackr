@@ -51,6 +51,10 @@ class AdminUserUpdate(BaseModel):
 
 class AdminUserSummary(BaseModel):
     username: EmailStr
+    first_name: str | None = None
+    last_name: str | None = None
+    phone: str | None = None
+    address: str | None = None
     role: str
     plan: str
     expense_limit: int
@@ -60,3 +64,17 @@ class AdminUserSummary(BaseModel):
     tenant_id: str | None = None
     created_at: str | None = None
     last_login_at: str | None = None
+
+
+class UpgradeRequestSummary(BaseModel):
+    request_id: str
+    username: EmailStr
+    first_name: str | None = None
+    last_name: str | None = None
+    current_plan: str
+    requested_plan: str
+    status: str
+    tenant_id: str | None = None
+    created_at: str
+    approved_at: str | None = None
+    approved_by: EmailStr | None = None
