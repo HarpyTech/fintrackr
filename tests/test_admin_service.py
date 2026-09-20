@@ -174,7 +174,7 @@ def test_create_upgrade_request_is_persisted_and_deduplicated(mongo):
     )
 
     assert first["request_id"] == second["request_id"]
-    assert len(mongo["upgrade_requests"].find()) == 1
+    assert mongo["upgrade_requests"].count_documents({}) == 1
     assert admin_service.list_upgrade_requests(tenant_id="u@x.com")[0]["status"] == "pending"
 
 
@@ -197,4 +197,7 @@ def test_approve_upgrade_request_updates_user_and_request(mongo):
     assert approved["approved_by"] == "admin@x.com"
     assert user["plan"] == "go"
     assert user["expense_limit"] == 100
-    assert admin_service.list_upgrade_requests(tenant_id="u@x.com")[0]["status"] == "approved"
+    assert admin_service.list_upgrade_requests(
+        status_filter="approved",
+        tenant_id="u@x.com",
+    )[0]["status"] == "approved"
