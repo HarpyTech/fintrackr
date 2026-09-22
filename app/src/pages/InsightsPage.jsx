@@ -17,7 +17,7 @@ import ErrorBoundary from '../components/ErrorBoundary';
 import { useAgentQuery } from '../hooks/useAgentQuery';
 import { formatInr } from '../lib/chartColors';
 import { queryKeys } from '../lib/queryClient';
-import { usePlan } from '../lib/featureFlags';
+import { isBillingAdminEnabled, usePlan } from '../lib/featureFlags';
 import { Link } from 'react-router-dom';
 
 const SUGGESTIONS = [
@@ -103,7 +103,9 @@ export default function InsightsPage() {
           <Sparkles size={16} aria-hidden="true" />
           <span>
             AI Insights works best with the <strong>Go</strong> plan — unlimited history, deeper analysis.{' '}
-            <Link to="/billing" className="insights-proto-upgrade-link">Upgrade now</Link>
+            {isBillingAdminEnabled ? (
+              <Link to="/billing" className="insights-proto-upgrade-link">Upgrade now</Link>
+            ) : null}
           </span>
         </div>
       ) : null}
@@ -164,8 +166,7 @@ export default function InsightsPage() {
             <EmptyState
               icon={Sparkles}
               title="Ask your first question"
-              body="Every answer is generated from a real query against your own
-                    expenses, and you can inspect exactly what was run."
+              body="Ask about your spending, categories, vendors, and trends."
             />
           ) : null}
 
