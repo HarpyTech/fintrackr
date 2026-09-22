@@ -8,5 +8,10 @@ function parseBooleanFlag(value: string | undefined, defaultValue = false): bool
 
 export const isSupportPageEnabled: boolean = parseBooleanFlag(
   import.meta.env.VITE_FEATURE_SUPPORT_PAGE_ENABLED,
+  true,
+);
+
+export const isBillingAdminEnabled: boolean = parseBooleanFlag(
+  import.meta.env.VITE_FEATURE_BILLING_ADMIN_ENABLED,
   false,
 );
