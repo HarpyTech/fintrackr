@@ -155,6 +155,8 @@ Copy `.env.example` to `.env`. Key variables:
 | `SMTP_HOST` / `SMTP_*` | Email delivery for OTPs (empty = console log) |
 | `VITE_API_BASE_URL` | Frontend API base (default: `/api/v1`) |
 | `VITE_FEATURE_SUPPORT_PAGE_ENABLED` | Feature flag: show support page |
+| `VITE_FEATURE_BILLING_ADMIN_ENABLED` | Feature flag: show Billing and Admin UI/routes |
+| `VITE_SUPPORT_EMAIL` | Support page contact email (default: `contact@harpytechco.in`) |
 | `ENVIRONMENT` | `development` or `production` |
 | `COOKIE_SECURE` | Set `true` in production (HTTPS only) |
 
