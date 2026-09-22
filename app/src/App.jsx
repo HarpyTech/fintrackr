@@ -7,7 +7,7 @@ import ThemeToggle from './components/ThemeToggle';
 import AppLoader from './components/AppLoader';
 import ErrorBoundary from './components/ErrorBoundary';
 import LoginPage from './pages/LoginPage';
-import { isSupportPageEnabled } from './lib/featureFlags';
+import { isBillingAdminEnabled, isSupportPageEnabled } from './lib/featureFlags';
 import { isInstalledPwa } from './lib/deviceBinding';
 
 /**
@@ -155,22 +155,26 @@ export default function App() {
                   </ProtectedRoute>
                 }
               />
-              <Route
-                path="/billing"
-                element={
-                  <ProtectedRoute>
-                    <BillingPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/users"
-                element={
-                  <AdminRoute>
-                    <AdminUsersPage />
-                  </AdminRoute>
-                }
-              />
+              {isBillingAdminEnabled ? (
+                <Route
+                  path="/billing"
+                  element={
+                    <ProtectedRoute>
+                      <BillingPage />
+                    </ProtectedRoute>
+                  }
+                />
+              ) : null}
+              {isBillingAdminEnabled ? (
+                <Route
+                  path="/admin/users"
+                  element={
+                    <AdminRoute>
+                      <AdminUsersPage />
+                    </AdminRoute>
+                  }
+                />
+              ) : null}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </AnimatePresence>

@@ -19,13 +19,31 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 
+def _email_greeting(
+    first_name: str | None = None,
+    last_name: str | None = None,
+) -> str:
+    display_name = " ".join(
+        part.strip()
+        for part in (first_name, last_name)
+        if isinstance(part, str) and part.strip()
+    )
+    return f"Dear {display_name or 'User'}"
+
+
 # ---------------------------------------------------------------------------
 # HTML builders
 # ---------------------------------------------------------------------------
 
 
-def _build_signup_otp_email_html(recipient: str, otp: str) -> str:
+def _build_signup_otp_email_html(
+    recipient: str,
+    otp: str,
+    first_name: str | None = None,
+    last_name: str | None = None,
+) -> str:
     expiry_minutes = settings.SIGNUP_OTP_EXPIRY_MINUTES
+    greeting = _email_greeting(first_name, last_name)
     return f"""<!doctype html>
 <html>
 <head>
@@ -136,7 +154,7 @@ def _build_signup_otp_email_html(recipient: str, otp: str) -> str:
                             style=\"padding:26px 24px 24px 24px;font:16px/1.55 Arial,Helvetica,sans-serif;color:#1f2b3a;\"
                         >
                             <p style=\"margin:0 0 14px 0;color:#13213a;\">
-                                Hello {recipient},
+                                {greeting},
                             </p>
                             <p style=\"margin:0 0 14px 0;color:#2f3f53;\">
                                 You received this email because a verification request was made for your
@@ -187,8 +205,14 @@ def _build_signup_otp_email_html(recipient: str, otp: str) -> str:
 """
 
 
-def _build_reset_otp_email_html(recipient: str, otp: str) -> str:
+def _build_reset_otp_email_html(
+    recipient: str,
+    otp: str,
+    first_name: str | None = None,
+    last_name: str | None = None,
+) -> str:
     expiry_minutes = settings.SIGNUP_OTP_EXPIRY_MINUTES
+    greeting = _email_greeting(first_name, last_name)
     return f"""<!doctype html>
 <html>
 <head>
@@ -242,7 +266,7 @@ def _build_reset_otp_email_html(recipient: str, otp: str) -> str:
                     <tr>
                         <td class=\"email-body\"
                             style=\"padding:26px 24px 24px 24px;font:16px/1.55 Arial,Helvetica,sans-serif;color:#1f2b3a;\">
-                            <p style=\"margin:0 0 14px 0;color:#13213a;\">Hello {recipient},</p>
+                            <p style=\"margin:0 0 14px 0;color:#13213a;\">{greeting},</p>
                             <p style=\"margin:0 0 14px 0;color:#2f3f53;\">
                                 We received a request to reset the password for your FinTrackr account.
                                 Use the OTP below to set a new password.
@@ -336,7 +360,12 @@ def _smtp_send(message: EmailMessage) -> None:
 # ---------------------------------------------------------------------------
 
 
-def deliver_signup_otp(email: str, otp: str) -> None:
+def deliver_signup_otp(
+    email: str,
+    otp: str,
+    first_name: str | None = None,
+    last_name: str | None = None,
+) -> None:
     """Send the signup verification OTP to *email*.
 
     Falls back to a console warning when SMTP is not configured.
@@ -365,7 +394,7 @@ def deliver_signup_otp(email: str, otp: str) -> None:
         message["Bcc"] = ", ".join(settings.SMTP_BCC_EMAILS)
     message.set_content(body)
     message.add_alternative(
-        _build_signup_otp_email_html(email, otp),
+        _build_signup_otp_email_html(email, otp, first_name, last_name),
         subtype="html",
     )
 
@@ -381,7 +410,12 @@ def deliver_signup_otp(email: str, otp: str) -> None:
         raise RuntimeError("Failed to send verification email")
 
 
-def deliver_reset_otp(email: str, otp: str) -> None:
+def deliver_reset_otp(
+    email: str,
+    otp: str,
+    first_name: str | None = None,
+    last_name: str | None = None,
+) -> None:
     """Send the password-reset OTP to *email*.
 
     Falls back to a console warning when SMTP is not configured.
@@ -410,7 +444,10 @@ def deliver_reset_otp(email: str, otp: str) -> None:
     if settings.SMTP_BCC_EMAILS:
         message["Bcc"] = ", ".join(settings.SMTP_BCC_EMAILS)
     message.set_content(body)
-    message.add_alternative(_build_reset_otp_email_html(email, otp), subtype="html")
+    message.add_alternative(
+        _build_reset_otp_email_html(email, otp, first_name, last_name),
+        subtype="html",
+    )
 
     try:
         _smtp_send(message)
@@ -434,7 +471,9 @@ def deliver_upgrade_request(
 ) -> None:
     """Notify the billing contact that a user requested a paid plan."""
     subject = f"FinTrackr {requested_plan.title()} plan request from {requester_email}"
-    display_name = " ".join(part for part in (first_name, last_name) if part) or "Not provided"
+    display_name = (
+        " ".join(part for part in (first_name, last_name) if part) or "Not provided"
+    )
     body = (
         "A user requested a paid FinTrackr plan.\n\n"
         f"Email: {requester_email}\n"
@@ -462,5 +501,7 @@ def deliver_upgrade_request(
         _smtp_send(message)
         logger.info("Billing request email sent for %s", requester_email)
     except RuntimeError:
-        logger.error("Failed to send billing request for %s", requester_email, exc_info=True)
+        logger.error(
+            "Failed to send billing request for %s", requester_email, exc_info=True
+        )
         raise RuntimeError("Failed to send billing request email")

@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { isBillingAdminEnabled } from '../lib/featureFlags';
 import { Mail, MessageCircle, FileText, Phone, Clock, MapPin, Send } from 'lucide-react';
 
-const SUPPORT_EMAIL = import.meta.env.VITE_SUPPORT_EMAIL || 'support@fintrackr.app';
+const SUPPORT_EMAIL = import.meta.env.VITE_SUPPORT_EMAIL || 'contact@harpytechco.in';
 
 const SUPPORT_CHANNELS = [
   { Icon: Mail, title: 'Email Support', description: 'Get help via email', detail: SUPPORT_EMAIL, color: 'blue', action: 'Send Email', href: `mailto:${SUPPORT_EMAIL}` },
@@ -31,10 +32,12 @@ const FAQS = [
   {
     question: 'How do I upgrade my plan?',
     answer: 'Go to the Billing page from the sidebar. You can view available plans and upgrade directly from there.',
+    billingOnly: true,
   },
   {
     question: 'Can I change my plan anytime?',
     answer: 'Yes, you can upgrade or downgrade your plan at any time from the Billing page. Changes take effect immediately.',
+    billingOnly: true,
   },
 ];
 
@@ -195,7 +198,7 @@ export default function SupportPage() {
         <div id="faqs" className="support-proto-faq">
           <h2 className="support-proto-faq-title">Frequently Asked Questions</h2>
           <div className="support-proto-faq-list">
-            {FAQS.map((faq, idx) => (
+            {FAQS.filter((faq) => !faq.billingOnly || isBillingAdminEnabled).map((faq, idx) => (
               <div key={idx} className="support-proto-faq-item">
                 <h3 className="support-proto-faq-question">{faq.question}</h3>
                 <p className="support-proto-faq-answer">{faq.answer}</p>

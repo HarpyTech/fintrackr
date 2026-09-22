@@ -14,7 +14,7 @@ import {
   CreditCard,
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
-import { isSupportPageEnabled } from '../lib/featureFlags';
+import { isBillingAdminEnabled, isSupportPageEnabled } from '../lib/featureFlags';
 import { resolveDisplayName, resolveInitials } from '../lib/userDisplay';
 
 
@@ -34,9 +34,9 @@ export default function Sidebar() {
     { to: '/report', icon: FileText, label: 'Report' },
     { to: '/add-expense', icon: PlusCircle, label: 'Add Expense' },
     { to: '/settings', icon: Settings, label: 'Settings' },
-    ...(plan !== 'max' ? [{ to: '/billing', icon: CreditCard, label: 'Billing' }] : []),
+    ...(isBillingAdminEnabled && plan !== 'max' ? [{ to: '/billing', icon: CreditCard, label: 'Billing' }] : []),
     ...(isSupportPageEnabled ? [{ to: '/support', icon: HelpCircle, label: 'Support' }] : []),
-    ...(isAdmin ? [{ to: '/admin/users', icon: Users, label: 'Admin' }] : []),
+    ...(isBillingAdminEnabled && isAdmin ? [{ to: '/admin/users', icon: Users, label: 'Admin' }] : []),
   ];
 
   const displayName = resolveDisplayName(profile, session?.user);

@@ -5,6 +5,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { useAuth } from '../auth/AuthContext';
 import { apiRequest } from '../lib/api';
 import { useToast } from '../components/ToastProvider';
+import { isBillingAdminEnabled } from '../lib/featureFlags';
 
 const CATEGORIES = ['Food', 'Travel', 'Utilities', 'Shopping', 'Health', 'Other'];
 
@@ -195,7 +196,11 @@ export default function AddExpensePage() {
               <p className="add-expense-proto-limit-title">Expense Limit Reached</p>
               <p className="add-expense-proto-limit-text">
                 You have reached the maximum of {expenseLimit} expenses on your plan.{' '}
-                <Link to="/billing">Upgrade your plan</Link> to continue tracking expenses.
+                {isBillingAdminEnabled ? (
+                  <><Link to="/billing">Upgrade your plan</Link> to continue tracking expenses.</>
+                ) : (
+                  'Contact support to continue tracking expenses.'
+                )}
               </p>
             </div>
           </div>
