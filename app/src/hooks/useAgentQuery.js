@@ -99,7 +99,7 @@ export function useAgentQuery() {
       // A 401 is already handled globally: apiRequest/streamAsk raise the
       // session-expiry event and the user is redirected.
       if (mountedRef.current && !err?.sessionExpired) {
-        setError(err?.message || 'Could not answer that question.');
+        setError('Failure occured at the server');
       }
     } finally {
       if (mountedRef.current) {

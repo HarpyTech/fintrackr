@@ -10,7 +10,7 @@ import CategoryTrendChart from '../components/charts/CategoryTrendChart';
 import TrendBarChart from '../components/charts/TrendBarChart';
 import { apiRequest } from '../lib/api';
 import { queryKeys } from '../lib/queryClient';
-import { CHART_ACCENT, CHART_ACCENT_ALT, formatInr } from '../lib/chartColors';
+import { CHART_ACCENT, formatInr } from '../lib/chartColors';
 import { useToast } from '../components/ToastProvider';
 import OnboardingBanner from '../components/OnboardingBanner';
 
@@ -90,12 +90,6 @@ export default function DashboardPage() {
     enabled: queryEnabled,
   });
 
-  const yearlyQuery = useQuery({
-    queryKey: queryKeys.expenses.summary.yearly(),
-    select: items,
-    enabled: queryEnabled,
-  });
-
   // Shared by Category Split and, when the filter year matches, by the
   // Avg-by-Category chart below — one cache entry, one request.
   const categoriesYearQuery = useQuery({
@@ -130,7 +124,6 @@ export default function DashboardPage() {
 
   const expenses = expensesQuery.data || [];
   const monthly = monthlyQuery.data || [];
-  const yearly = yearlyQuery.data || [];
   const categoryData = categoriesYearQuery.data || [];
   const dailyItems = dailyQuery.data || [];
   const categoryMonthlyItems = categoryMonthlyQuery.data || [];
@@ -148,13 +141,11 @@ export default function DashboardPage() {
   const summaryLoading =
     expensesQuery.isPending ||
     monthlyQuery.isPending ||
-    yearlyQuery.isPending ||
     categoriesYearQuery.isPending;
 
   const summaryError =
     messageOf(expensesQuery, 'Failed to load expenses.') ||
     messageOf(monthlyQuery, 'Failed to load monthly data.') ||
-    messageOf(yearlyQuery, 'Failed to load yearly data.') ||
     messageOf(categoriesYearQuery, 'Failed to load category data.');
 
   const dailyError = messageOf(dailyQuery, 'Failed to load daily data.');
@@ -397,18 +388,6 @@ export default function DashboardPage() {
               color={CHART_ACCENT}
               emptyTitle="No monthly data yet"
               emptyBody={`Expenses recorded during ${currentYear} will trend here.`}
-            />
-          </ChartCard>
-
-          {/* Yearly Trend */}
-          <ChartCard title="Yearly Trend">
-            <TrendBarChart
-              items={yearly}
-              xKey="year"
-              loading={summaryLoading}
-              color={CHART_ACCENT_ALT}
-              emptyTitle="No yearly data yet"
-              emptyBody="Year-over-year totals appear once you have expenses on record."
             />
           </ChartCard>
 
