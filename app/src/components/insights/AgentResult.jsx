@@ -1,12 +1,15 @@
 import { AlertCircle, HelpCircle } from 'lucide-react';
 import KpiGrid from './KpiGrid';
+import QueryTransparency from './QueryTransparency';
 import VisualRenderer from './VisualRenderer';
 
 /**
  * Renders one complete agent answer.
  *
  * Order is deliberate: the headline and figures first (what you asked), then
- * the charts and prose.
+ * the charts, then the prose, then how it was calculated. A reader who trusts
+ * the answer never has to open the transparency panel; a reader who does not
+ * has it right there.
  *
  * Every branch is driven by the envelope's stable keys, so a question type the
  * UI has never seen still renders.
@@ -43,7 +46,10 @@ export default function AgentResult({ answer, onFollowup }) {
     narrative,
     datasets = [],
     visuals = [],
+    query,
+    confidence,
     followups = [],
+    degraded,
   } = answer;
 
   const datasetById = datasets.reduce((map, dataset) => {
@@ -77,13 +83,7 @@ export default function AgentResult({ answer, onFollowup }) {
         />
       ))}
 
-      <Markdownish
-        text={
-          status === 'partial'
-            ? 'Not able to process due to insufficient data'
-            : narrative?.body_md
-        }
-      />
+      <Markdownish text={narrative?.body_md} />
 
       {answer.error?.reason && !refused ? (
         <p className="insights-result-warning">
@@ -91,6 +91,8 @@ export default function AgentResult({ answer, onFollowup }) {
           {answer.error.reason}
         </p>
       ) : null}
+
+      <QueryTransparency query={query} confidence={confidence} degraded={degraded} />
 
       {followups.length ? (
         <footer className="insights-result-followups">
