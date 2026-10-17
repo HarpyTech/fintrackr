@@ -3,12 +3,12 @@ import { Link } from 'react-router-dom';
 import { isBillingAdminEnabled } from '../lib/featureFlags';
 import { Mail, MessageCircle, FileText, Phone, Clock, MapPin, Send } from 'lucide-react';
 
-const SUPPORT_EMAIL = import.meta.env.VITE_SUPPORT_EMAIL || 'contact@harpytechco.in';
+import { SUPPORT_EMAIL } from '../lib/supportEmail';
 
 const SUPPORT_CHANNELS = [
   { Icon: Mail, title: 'Email Support', description: 'Get help via email', detail: SUPPORT_EMAIL, color: 'blue', action: 'Send Email', href: `mailto:${SUPPORT_EMAIL}` },
-  { Icon: MessageCircle, title: 'Live Chat', description: 'Chat with our team', detail: 'Typically replies within a few hours', color: 'green', action: 'Send Email', href: `mailto:${SUPPORT_EMAIL}` },
-  { Icon: Phone, title: 'Scheduled Call', description: 'Book a call with us', detail: 'Available Mon–Fri, 9am–6pm', color: 'purple', action: 'Request Call', href: `mailto:${SUPPORT_EMAIL}?subject=Call%20Request` },
+  { Icon: MessageCircle, title: 'Email Us', description: 'Message our team', detail: 'Typically replies within a few hours', color: 'green', action: 'Send Email', href: `mailto:${SUPPORT_EMAIL}` },
+  { Icon: Phone, title: 'Request a Call', description: 'Ask us to arrange a call by email', detail: 'We will reply by email to arrange a time', color: 'purple', action: 'Request Call', href: `mailto:${SUPPORT_EMAIL}?subject=Call%20Request` },
   { Icon: FileText, title: 'Help Center', description: 'Browse guides & FAQs', detail: 'Common questions answered below', color: 'orange', action: 'View FAQs', href: '#faqs' },
 ];
 
@@ -27,17 +27,15 @@ const FAQS = [
   },
   {
     question: 'Is my financial data secure?',
-    answer: 'Absolutely. We use bank-level encryption (AES-256) to protect your data. Your information is never shared with third parties.',
+    answer: 'Absolutely. We use encryption in transit (HTTPS) and at rest to protect your data. Your information is never shared with third parties.',
   },
   {
     question: 'How do I upgrade my plan?',
     answer: 'Go to the Billing page from the sidebar. You can view available plans and upgrade directly from there.',
-    billingOnly: true,
   },
   {
     question: 'Can I change my plan anytime?',
     answer: 'Yes, you can upgrade or downgrade your plan at any time from the Billing page. Changes take effect immediately.',
-    billingOnly: true,
   },
 ];
 
@@ -97,7 +95,7 @@ export default function SupportPage() {
             <h2 className="support-proto-card-title">Send Us a Message</h2>
             {submitted ? (
               <div className="support-proto-form-success">
-                ✅ Your message has been sent! We'll get back to you within 24 hours.
+                ✉️ Your email app should open with your message — send it from there to reach us.
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="support-proto-form">
@@ -184,7 +182,7 @@ export default function SupportPage() {
             <div className="support-proto-urgent">
               <h3 className="support-proto-urgent-title">Need Immediate Help?</h3>
               <p className="support-proto-urgent-text">
-                For urgent issues, our live chat is available 24/7 with an average response time of just 2 minutes.
+                For urgent issues, email us and mark the subject “Urgent” so we can prioritise it.
               </p>
               <a href={`mailto:${SUPPORT_EMAIL}`} className="support-proto-urgent-btn">
                 <MessageCircle size={16} />
@@ -207,6 +205,7 @@ export default function SupportPage() {
           </div>
         </div>
       </div>
+      <SiteFooter />
     </div>
   );
 }
