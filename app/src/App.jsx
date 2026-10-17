@@ -6,6 +6,7 @@ import ProtectedLayout from './layouts/ProtectedLayout';
 import ThemeToggle from './components/ThemeToggle';
 import AppLoader from './components/AppLoader';
 import ErrorBoundary from './components/ErrorBoundary';
+import RouteMeta from './components/RouteMeta';
 import LoginPage from './pages/LoginPage';
 import { isBillingAdminEnabled, isSupportPageEnabled } from './lib/featureFlags';
 import { isInstalledPwa } from './lib/deviceBinding';
@@ -30,6 +31,7 @@ const SupportPage = lazy(() => import('./pages/SupportPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const AdminUsersPage = lazy(() => import('./pages/AdminUsersPage'));
 const BillingPage = lazy(() => import('./pages/BillingPage'));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
 function HomeRoute() {
   if (!isInstalledPwa()) {
@@ -81,6 +83,7 @@ export default function App() {
 
   return (
     <>
+      <RouteMeta />
       {showFloatingThemeToggle ? <ThemeToggle floating /> : null}
       {/* Resets on pathname change (without remounting — that would also
           tear down the AnimatePresence/Routes tree below and skip the exit
@@ -155,27 +158,27 @@ export default function App() {
                   </ProtectedRoute>
                 }
               />
+{isBillingAdminEnabled ? (
+              <Route
+                path="/billing"
+                element={
+                  <ProtectedRoute>
+                    <BillingPage />
+                  </ProtectedRoute>
+                }
+              />
+) : null}
               {isBillingAdminEnabled ? (
-                <Route
-                  path="/billing"
-                  element={
-                    <ProtectedRoute>
-                      <BillingPage />
-                    </ProtectedRoute>
-                  }
-                />
+              <Route
+                path="/admin/users"
+                element={
+                  <AdminRoute>
+                    <AdminUsersPage />
+                  </AdminRoute>
+                }
+              />
               ) : null}
-              {isBillingAdminEnabled ? (
-                <Route
-                  path="/admin/users"
-                  element={
-                    <AdminRoute>
-                      <AdminUsersPage />
-                    </AdminRoute>
-                  }
-                />
-              ) : null}
-              <Route path="*" element={<Navigate to="/" replace />} />
+              <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </AnimatePresence>
         </Suspense>
