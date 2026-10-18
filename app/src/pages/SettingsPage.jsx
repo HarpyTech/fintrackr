@@ -238,7 +238,7 @@ export default function SettingsPage() {
 
   return (
     <div className="settings-page">
-      <h1 className="settings-page-title">Settings</h1>
+      <h2 className="settings-page-title">Settings</h2>
 
       <div className="settings-grid">
         {/* ── Profile ── */}

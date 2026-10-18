@@ -73,36 +73,6 @@
     width: 100%;
   }
 
-  .top-menu {
-    align-items: stretch;
-    width: 100%;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .top-menu-links {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-    width: 100%;
-  }
-
-  .top-menu-link {
-    justify-content: center;
-    padding: 10px 8px;
-  }
-
-  .top-menu-label {
-    font-size: 12px;
-  }
-
-  .profile-menu {
-    margin-left: 0;
-    align-self: flex-end;
-    width: 100%;
-    justify-content: space-between;
-  }
-
   .theme-toggle {
     justify-content: center;
     width: fit-content;
@@ -507,21 +477,62 @@
   }
 }
 
-/* --- ≤ 767px: TopNavigation compact --- */
-@media (max-width: 767px) {
-}
-
-/* --- ≤ 767px: mobile bottom nav — icons only, no labels --- */
+/* --- ≤ 767px: mobile bottom nav --- */
 @media (max-width: 767px) {
   .sidebar-proto-mobile-link,
-  .sidebar-proto-mobile-logout {
-    padding: 10px 8px;
+  .sidebar-proto-mobile-more {
+    padding: 8px 4px;
     min-width: 0;
     flex: 1;
   }
+}
 
-  .sidebar-proto-mobile-link span,
-  .sidebar-proto-mobile-logout span {
-    display: none;
+/* --- ≤ 767px: per-page mobile polish (auth, landing, features, settings, dashboard) --- */
+@media (max-width: 767px) {
+  .auth-card {
+    width: 100%;
+    padding: 20px 16px;
   }
+
+  .landing-layout {
+    width: calc(100% - 32px);
+  }
+
+  .landing-cta-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .landing-cta-row > a,
+  .features-proto-cta-row > a {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  .features-proto-cta-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .settings-page {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .dashboard-proto-container {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  button,
+  .auth-link-button {
+    min-height: 44px;
+  }
+}
+
+/* --- Wordmark stays legible on dark surfaces (SVG has a fixed dark fill) --- */
+:root[data-theme='dark'] img[src$='name_logo.svg'] {
+  filter: brightness(0) invert(0.92);
 }

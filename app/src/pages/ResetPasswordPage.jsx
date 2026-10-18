@@ -71,21 +71,21 @@ export default function ResetPasswordPage() {
     return (
       <main className="auth-layout auth-layout-login">
         <div className="auth-login-shell">
-          <div className="auth-login-brand" aria-label="FinTrackr brand">
+          <Link to="/" className="auth-login-brand" aria-label="FinTrackr home">
             <div className="auth-login-brand-badge">
               <img src="/assets/app_logo.png" alt="FinTrackr icon" className="auth-login-brand-icon" />
             </div>
             <img src="/assets/name_logo.svg" alt="FinTrackr" className="auth-login-brand-wordmark" />
-          </div>
+          </Link>
           <p className="auth-login-kicker">Your smart expense tracking companion</p>
           <section className="auth-card auth-card-login">
-            <h1 className="auth-login-title">Password reset</h1>
+            <h2 className="auth-login-title">Password reset</h2>
             <p className="auth-register-copy" style={{ textAlign: 'center' }}>
               Your password has been updated successfully.
             </p>
             <div className="auth-login-links" style={{ marginTop: '20px' }}>
-              <Link to="/login">
-                <button type="button" style={{ width: '100%' }}>Back to sign in</button>
+              <Link to="/login" className="auth-link-button" style={{ width: '100%', textAlign: 'center' }}>
+                Back to sign in
               </Link>
             </div>
           </section>
@@ -98,12 +98,12 @@ export default function ResetPasswordPage() {
     <main className="auth-layout auth-layout-register">
       <div className="auth-login-shell">
         <div className="auth-register-brand" aria-label="FinTrackr brand">
-          <div className="auth-register-brand-row">
+          <Link to="/" className="auth-register-brand-row auth-brand-link" aria-label="FinTrackr home">
             <div className="auth-login-brand-badge">
               <img src="/assets/app_logo.png" alt="FinTrackr icon" className="auth-login-brand-icon" />
             </div>
-            <h1 className="auth-register-brand-title">FinTrackr</h1>
-          </div>
+            <span className="auth-register-brand-title">FinTrackr</span>
+          </Link>
           <p className="auth-login-kicker">Set your new password</p>
         </div>
 

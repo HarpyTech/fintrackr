@@ -10,6 +10,7 @@ import { DataGrid, GridToolbar } from '@mui/x-data-grid';
 import { Pencil, Trash2 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { apiRequest } from '../lib/api';
+import { notifyError, notifySuccess } from '../lib/notify';
 import { formatInr } from '../lib/chartColors';
 import ErrorAlert from '../components/ErrorAlert';
 import PageSpinner from '../components/PageSpinner';
@@ -77,8 +78,11 @@ export default function ReportPage() {
       await apiRequest(`/expenses/${deleteTarget.id}`, { method: 'DELETE' });
       setDeleteTarget(null);
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      notifySuccess('Expense deleted.');
     } catch (err) {
-      setDeleteError(err.message || 'Unable to delete expense. Please try again.');
+      const message = err.message || 'Unable to delete expense. Please try again.';
+      setDeleteError(message);
+      notifyError(message);
     } finally {
       setDeleting(false);
     }

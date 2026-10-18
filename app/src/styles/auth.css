@@ -306,3 +306,10 @@
   outline: 2px solid var(--focus-outline);
   outline-offset: 2px;
 }
+
+/* Brand logos link home — keep link chrome out of the lockup */
+a.auth-login-brand,
+a.auth-brand-link {
+  color: inherit;
+  text-decoration: none;
+}
