@@ -135,12 +135,7 @@ def register_user(username: str, password: str, role: str = "user"):
                 }
             )
 
-        deliver_signup_otp(
-            username,
-            otp,
-            (existing_user or {}).get("first_name"),
-            (existing_user or {}).get("last_name"),
-        )
+        deliver_signup_otp(username, otp)
 
         logger.info(f"OTP generated for user registration with role: {role}")
         return {
@@ -193,12 +188,7 @@ def resend_signup_otp(username: str):
             },
         )
 
-        deliver_signup_otp(
-            username,
-            otp,
-            user.get("first_name"),
-            user.get("last_name"),
-        )
+        deliver_signup_otp(username, otp)
         logger.info("OTP resend successful")
         return {
             "username": username,
@@ -313,12 +303,7 @@ def request_password_reset(username: str):
             },
         )
 
-        deliver_reset_otp(
-            username,
-            otp,
-            user.get("first_name"),
-            user.get("last_name"),
-        )
+        deliver_reset_otp(username, otp)
         logger.info("Password reset OTP sent to %s", username)
         return {"sent": True}
 
