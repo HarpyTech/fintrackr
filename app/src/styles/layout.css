@@ -27,6 +27,7 @@
 .protected-layout {
   display: flex;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   background: var(--surface);
 }
@@ -272,5 +273,20 @@
   .app-header-titles {
     border-left: none;
     padding-left: 0;
+  }
+}
+
+/* Admin users page */
+.admin-users-page {
+  padding: 16px 16px 96px;
+}
+.admin-users-container {
+  width: min(1280px, 100%);
+  margin: 0 auto;
+  overflow-x: auto;
+}
+@media (min-width: 768px) {
+  .admin-users-page {
+    padding: 24px 24px 24px;
   }
 }

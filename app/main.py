@@ -269,6 +269,7 @@ def offline_page() -> FileResponse:
 def serve_spa(full_path: str):
     """Serve the React SPA for all non-API routes"""
     if full_path.startswith("api/") or full_path in {
+        "api",
         "docs",
         "redoc",
         "openapi.json",

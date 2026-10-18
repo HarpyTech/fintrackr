@@ -26,6 +26,11 @@ export default function BiometricPrompt({ username, onDismiss }) {
     setErrorMsg('');
     try {
       await registerBiometric(username);
+      try {
+        localStorage.setItem('fintrackr_onboarding_biometric', '1');
+      } catch {
+        // storage unavailable
+      }
       setStatus('success');
       setTimeout(onDismiss, 1500);
     } catch (err) {
@@ -64,6 +69,7 @@ export default function BiometricPrompt({ username, onDismiss }) {
         {status !== 'success' && (
           <div className="biometric-prompt-actions">
             <button
+              type="button"
               className="biometric-prompt-enable"
               onClick={handleEnable}
               disabled={loading}
@@ -71,6 +77,7 @@ export default function BiometricPrompt({ username, onDismiss }) {
               {loading ? 'Setting up…' : 'Enable biometric login'}
             </button>
             <button
+              type="button"
               className="biometric-prompt-skip"
               onClick={onDismiss}
               disabled={loading}

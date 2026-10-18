@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import SiteFooter from '../components/SiteFooter';
 import {
   Camera,
   TrendingUp,
@@ -18,7 +19,7 @@ const WORKFLOWS = [
     description: 'Simply snap a photo of your receipt using your phone camera or upload an image',
     color: 'blue',
     Icon: Camera,
-    imageSrc: '/assets/Capture_Recipt.png',
+    imageSrc: '/assets/Capture_Recipt.jpg',
     imageAlt: 'Receipt capture workflow preview',
     details: ['Works with any receipt format', 'Mobile-friendly camera capture', 'Drag & drop file upload'],
   },
@@ -28,7 +29,7 @@ const WORKFLOWS = [
     description: 'Our AI automatically reads and extracts all expense details in seconds',
     color: 'purple',
     Icon: Zap,
-    imageSrc: '/assets/Extract_Recipt_Info.png',
+    imageSrc: '/assets/Extract_Recipt_Info.jpg',
     imageAlt: 'AI extraction workflow preview',
     details: ['Vendor name detection', 'Line-item extraction', 'Date and amount parsing'],
   },
@@ -38,7 +39,7 @@ const WORKFLOWS = [
     description: 'Quickly review the extracted data and save to your expense tracker',
     color: 'green',
     Icon: CheckCircle,
-    imageSrc: '/assets/Save_Recipt.png',
+    imageSrc: '/assets/Save_Recipt.jpg',
     imageAlt: 'Save receipt workflow preview',
     details: ['Auto-categorization', 'Edit if needed', 'One-click save'],
   },
@@ -48,7 +49,7 @@ const WORKFLOWS = [
     description: 'View real-time analytics, trends, and personalized spending insights',
     color: 'indigo',
     Icon: BarChart3,
-    imageSrc: '/assets/View_Insights.png',
+    imageSrc: '/assets/View_Insights.jpg',
     imageAlt: 'Insights dashboard workflow preview',
     details: ['Visual dashboards', 'Category breakdowns', 'Monthly trends'],
   },
@@ -64,8 +65,8 @@ const FEATURES = [
 ];
 
 const STORY_ITEMS = [
-  { emoji: '☕', time: 'Morning: Coffee Run', detail: 'Snap receipt, AI logs $4.50 to "Food" category. Done in 3 seconds.' },
-  { emoji: '🚗', time: 'Lunch: Uber to Restaurant', detail: 'Open app, type "Uber $12", automatically categorized as Transport.' },
+  { emoji: '☕', time: 'Morning: Coffee Run', detail: 'Snap receipt, AI logs ₹450 to "Food" category. Done in 3 seconds.' },
+  { emoji: '🚗', time: 'Lunch: Uber to Restaurant', detail: 'Open app, type "Uber ₹250", automatically categorized as Transport.' },
   { emoji: '💬', time: 'Evening: Check Spending', detail: 'Ask chat: "How much did I spend on food this week?" Get instant answer.' },
   { emoji: '📊', time: 'Night: Review Dashboard', detail: 'View monthly trends, spot patterns, adjust budget for next month.' },
 ];
@@ -123,7 +124,7 @@ export default function FeaturesPage() {
               <div className="features-proto-step-visual">
                 <div className="features-proto-step-card">
                   <div className="features-proto-step-image-wrap">
-                    <img src={wf.imageSrc} alt={wf.imageAlt} className="features-proto-step-image" loading="lazy" />
+                    <img src={wf.imageSrc} alt={wf.imageAlt} className="features-proto-step-image" width="1000" height="667" loading="lazy" decoding="async" />
                   </div>
                 </div>
               </div>
@@ -176,21 +177,19 @@ export default function FeaturesPage() {
         <div className="features-proto-container features-proto-cta">
           <h2 className="features-proto-cta-title">Ready to Take Control of Your Finances?</h2>
           <p className="features-proto-cta-sub">
-            Join thousands of users who have simplified their expense tracking
+            Simplify your expense tracking with AI-powered receipt scanning
           </p>
           <div className="features-proto-cta-row">
             <Link to="/register" className="features-proto-cta-primary">
-              Start Free Trial <ArrowRight size={18} className="features-proto-cta-arrow" />
+              Get Started Free <ArrowRight size={18} className="features-proto-cta-arrow" />
             </Link>
-            <Link to="/" className="features-proto-cta-secondary">Learn More</Link>
+            <Link to="/login" className="features-proto-cta-secondary">Sign In</Link>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="features-proto-footer">
-        <p>© 2026 FinTrackr. All rights reserved.</p>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

@@ -107,7 +107,7 @@ export default function LoginPage() {
   return (
     <main className="auth-layout auth-layout-login">
       <div className="auth-login-shell">
-        <div className="auth-login-brand" aria-label="FinTrackr brand">
+        <Link to="/" className="auth-login-brand" aria-label="FinTrackr home">
           <div className="auth-login-brand-badge">
             <img src="/assets/app_logo.png" alt="FinTrackr icon" className="auth-login-brand-icon" />
           </div>
@@ -116,7 +116,7 @@ export default function LoginPage() {
             alt="FinTrackr"
             className="auth-login-brand-wordmark"
           />
-        </div>
+        </Link>
         <p className="auth-login-kicker">Your smart expense tracking companion</p>
         <section className="auth-card auth-card-login">
           <h1 className="auth-login-title">Sign in</h1>

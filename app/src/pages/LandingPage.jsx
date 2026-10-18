@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import SiteFooter from '../components/SiteFooter';
 import InstallAppButton from '../components/InstallAppButton';
 
 const highlights = [
@@ -28,13 +29,14 @@ const outcomes = [
 
 export default function LandingPage() {
   return (
+    <>
     <main className="landing-layout">
       <section className="landing-hero">
         <div className="landing-badge">
           <span className="landing-badge-icon" aria-hidden="true">✦</span>
           Financial Clarity Made Simple
         </div>
-        <div className="landing-brand-row">
+        <Link to="/" className="landing-brand-row" aria-label="FinTrackr home">
           <img
             src="/assets/app_logo.png"
             alt="FinTrackr icon"
@@ -45,7 +47,7 @@ export default function LandingPage() {
             alt="FinTrackr"
             className="landing-brand-name"
           />
-        </div>
+        </Link>
         <h1>Take Control of Your Expenses</h1>
         <p>
           Smart expense tracking with AI-powered receipt scanning, real-time analytics,
@@ -94,5 +96,7 @@ export default function LandingPage() {
         <Link to="/register" className="landing-primary-cta">Create Free Account</Link>
       </section>
     </main>
+    <SiteFooter />
+    </>
   );
 }

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   MessageSquare,
@@ -12,6 +12,7 @@ import {
   Settings,
   Users,
   CreditCard,
+  Menu,
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { isBillingAdminEnabled, isSupportPageEnabled } from '../lib/featureFlags';
@@ -23,6 +24,9 @@ const PLAN_BADGE_LABELS = { go: 'Go', max: 'Max' };
 export default function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const drawerRef = useRef(null);
+  const location = useLocation();
   const { session, profile, logout } = useAuth();
   const isAdmin = session?.role === 'admin';
   const plan = profile?.plan || 'free';
@@ -38,6 +42,30 @@ export default function Sidebar() {
     ...(isSupportPageEnabled ? [{ to: '/support', icon: HelpCircle, label: 'Support' }] : []),
     ...(isBillingAdminEnabled && isAdmin ? [{ to: '/admin/users', icon: Users, label: 'Admin' }] : []),
   ];
+
+  const PRIMARY_PATHS = ['/dashboard', '/insights', '/add-expense', '/report'];
+  const primaryItems = menuItems.filter((m) => PRIMARY_PATHS.includes(m.to));
+  const moreItems = menuItems.filter((m) => !PRIMARY_PATHS.includes(m.to));
+  const moreActive = moreItems.some((m) => location.pathname.startsWith(m.to));
+
+  useEffect(() => {
+    setMoreOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!moreOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    drawerRef.current?.querySelector('a, button')?.focus();
+    const onKey = (e) => {
+      if (e.key === 'Escape') setMoreOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [moreOpen]);
 
   const displayName = resolveDisplayName(profile, session?.user);
   const initials = resolveInitials(profile, session?.user);
@@ -59,19 +87,14 @@ export default function Sidebar() {
       {/* Desktop sidebar */}
       <aside className={sidebarClass} aria-label="Main navigation">
         {/* Logo */}
-        <button
-          type="button"
-          className="sidebar-proto-logo"
-          onClick={() => setIsCollapsed(false)}
-          aria-label="Show full navigation"
-        >
-          <img src="/assets/app_logo.png" alt="App Logo" className="sidebar-proto-logo-icon" style={{ padding: '0', background: 'transparent' }} />
+        <Link to="/dashboard" className="sidebar-proto-logo" aria-label="FinTrackr home">
+          <img src="/assets/app_logo.png" alt="" className="sidebar-proto-logo-icon" style={{ padding: '0', background: 'transparent' }} />
           <img
             src="/assets/name_logo.svg"
             alt="FinTrackr"
             className="sidebar-proto-logo-img"
           />
-        </button>
+        </Link>
 
         {/* Navigation links */}
         <nav className="sidebar-proto-nav">
@@ -144,7 +167,7 @@ export default function Sidebar() {
 
       {/* Mobile bottom navigation */}
       <nav className="sidebar-proto-mobile-nav" aria-label="Mobile navigation">
-        {menuItems.map(({ to, icon: Icon, label }) => (
+        {primaryItems.map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}
             to={to}
@@ -157,7 +180,45 @@ export default function Sidebar() {
             <span>{label}</span>
           </NavLink>
         ))}
+        <button
+          type="button"
+          className={`sidebar-proto-mobile-more${moreActive || moreOpen ? ' active' : ''}`}
+          onClick={() => setMoreOpen((open) => !open)}
+          aria-label="More"
+          aria-haspopup="dialog"
+          aria-expanded={moreOpen}
+        >
+          <Menu size={20} />
+          <span>More</span>
+        </button>
       </nav>
+
+      {moreOpen && (
+        <>
+          <div className="sidebar-proto-drawer-backdrop" onClick={() => setMoreOpen(false)} aria-hidden="true" />
+          <div ref={drawerRef} className="sidebar-proto-drawer" role="dialog" aria-modal="true" aria-label="More navigation">
+            {moreItems.map(({ to, icon: Icon, label }) => (
+              <NavLink
+                key={to}
+                to={to}
+                className={({ isActive }) => `sidebar-proto-drawer-link${isActive ? ' active' : ''}`}
+              >
+                <Icon size={20} />
+                <span>{label}</span>
+              </NavLink>
+            ))}
+            <button
+              type="button"
+              className="sidebar-proto-drawer-logout"
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+            >
+              <LogOut size={20} />
+              <span>{isLoggingOut ? 'Logging out…' : 'Logout'}</span>
+            </button>
+          </div>
+        </>
+      )}
     </>
   );
 }

@@ -3,6 +3,7 @@ import { CheckCircle, Zap, Crown, Sparkles } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { usePlan } from '../lib/featureFlags';
 import { apiRequest } from '../lib/api';
+import { SUPPORT_EMAIL } from '../lib/supportEmail';
 import ErrorAlert from '../components/ErrorAlert';
 
 const PLANS = [
@@ -79,11 +80,7 @@ export default function BillingPage() {
       });
       await refreshProfile();
       const label = PLANS.find((p) => p.key === planKey)?.name || planKey;
-      setUpgradeSuccess(
-        planKey === 'go'
-          ? 'Your request has been submitted to admin.'
-          : `You are now on the ${label} plan.`,
-      );
+      setUpgradeSuccess(`You are now on the ${label} plan.`);
     } catch (err) {
       setUpgradeError(err.message || 'Unable to change plan. Please try again.');
     } finally {
@@ -95,7 +92,7 @@ export default function BillingPage() {
     <main className="billing-page">
       <div className="billing-container">
         <header className="billing-header">
-          <h1 className="billing-title">Plans &amp; Billing</h1>
+          <h2 className="billing-title">Plans &amp; Billing</h2>
           <p className="billing-subtitle">
             Choose the plan that matches how you track spending.
           </p>
@@ -115,7 +112,6 @@ export default function BillingPage() {
             let ctaLabel;
             if (isCurrent) ctaLabel = 'Current plan';
             else if (isDowngrade) ctaLabel = `Switch to ${name}`;
-            else if (key === 'go') ctaLabel = 'Request Go upgrade';
             else ctaLabel = `Upgrade to ${name}`;
 
             return (
@@ -176,7 +172,7 @@ export default function BillingPage() {
 
         <p className="billing-note">
           Plan changes take effect immediately. All prices are in INR and exclude GST.
-          Contact <a href="mailto:contact@harpytechco.in">contact@harpytechco.in</a> for invoices or enterprise pricing.
+          Contact <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a> for invoices or enterprise pricing.
         </p>
       </div>
     </main>

@@ -13,6 +13,7 @@ import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { apiRequest } from '../lib/api';
+import { notifyError, notifySuccess } from '../lib/notify';
 
 interface AdminUser {
   username: string;
@@ -30,7 +31,7 @@ interface UserEditDialogProps {
 }
 
 const ROLES = ['user', 'admin'];
-const PLANS = ['free', 'go', 'max'];
+const PLANS = ['free', 'pro', 'enterprise'];
 
 export default function UserEditDialog({ open, user, onClose, onSaved }: UserEditDialogProps) {
   const [role, setRole] = useState('user');
@@ -40,7 +41,7 @@ export default function UserEditDialog({ open, user, onClose, onSaved }: UserEdi
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  const isMax = plan === 'max';
+  const isEnterprise = plan === 'enterprise';
 
   useEffect(() => {
     if (user) {
@@ -52,8 +53,9 @@ export default function UserEditDialog({ open, user, onClose, onSaved }: UserEdi
     }
   }, [user]);
 
+  // When plan changes to enterprise, auto-enable unlimited
   useEffect(() => {
-    if (plan === 'max') {
+    if (plan === 'enterprise') {
       setDisableRateLimit(true);
     }
   }, [plan]);
@@ -66,7 +68,7 @@ export default function UserEditDialog({ open, user, onClose, onSaved }: UserEdi
     setError('');
 
     const payload: Record<string, unknown> = { role, plan };
-    if (!isMax) {
+    if (!isEnterprise) {
       payload.expense_limit = Number(expenseLimit);
       payload.disable_rate_limit = disableRateLimit;
     } else {
@@ -78,10 +80,12 @@ export default function UserEditDialog({ open, user, onClose, onSaved }: UserEdi
         method: 'PATCH',
         body: JSON.stringify(payload),
       });
+      notifySuccess('User updated.');
       onSaved();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unable to save changes. Please try again.';
       setError(msg);
+      notifyError(msg);
     } finally {
       setSaving(false);
     }
@@ -140,16 +144,16 @@ export default function UserEditDialog({ open, user, onClose, onSaved }: UserEdi
             <TextField
               label="Expense Limit"
               type="number"
-              value={isMax ? '' : expenseLimit}
+              value={isEnterprise ? '' : expenseLimit}
               onChange={(e) => setExpenseLimit(e.target.value)}
-              disabled={saving || isMax}
-              placeholder={isMax ? 'Unlimited' : ''}
+              disabled={saving || isEnterprise}
+              placeholder={isEnterprise ? 'Unlimited' : ''}
               inputProps={{ min: 1, step: 1 }}
               size="small"
-              helperText={isMax ? 'Unlimited for Max plan' : undefined}
+              helperText={isEnterprise ? 'Unlimited for Enterprise plan' : undefined}
             />
 
-            {!isMax && (
+            {!isEnterprise && (
               <FormControlLabel
                 control={
                   <Switch

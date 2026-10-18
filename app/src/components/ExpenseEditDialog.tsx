@@ -10,6 +10,7 @@ import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import { apiRequest } from '../lib/api';
+import { notifySuccess } from '../lib/notify';
 
 const CATEGORIES = ['Food', 'Travel', 'Utilities', 'Shopping', 'Health', 'Other'];
 
@@ -86,6 +87,7 @@ export default function ExpenseEditDialog({
         method: 'PATCH',
         body: JSON.stringify(payload),
       });
+      notifySuccess('Expense updated.');
       onSaved();
       onClose();
     } catch (err: unknown) {

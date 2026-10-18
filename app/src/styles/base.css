@@ -157,6 +157,25 @@
   box-sizing: border-box;
 }
 
+html,
+body {
+  overflow-x: clip;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+td,
+th,
+.sidebar-proto-profile-email {
+  overflow-wrap: anywhere;
+}
+
 body {
   margin: 0;
   font-family: var(--font-sans);

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { notifySuccess } from '../lib/notify';
 import PasswordInput from '../components/PasswordInput';
 
 export default function RegisterPage() {
@@ -43,6 +44,7 @@ export default function RegisterPage() {
 
     try {
       await verifySignupOtp(form.username, otp);
+      notifySuccess('Email verified — please sign in.');
       navigate('/login');
     } catch (err) {
       setError(err.message);
@@ -55,12 +57,12 @@ export default function RegisterPage() {
     <main className="auth-layout auth-layout-register">
       <div className="auth-login-shell">
         <div className="auth-register-brand" aria-label="FinTrackr brand">
-          <div className="auth-register-brand-row">
+          <Link to="/" className="auth-register-brand-row auth-brand-link" aria-label="FinTrackr home">
             <div className="auth-login-brand-badge">
               <img src="/assets/app_logo.png" alt="FinTrackr icon" className="auth-login-brand-icon" />
             </div>
-            <h1 className="auth-register-brand-title">FinTrackr</h1>
-          </div>
+            <span className="auth-register-brand-title">FinTrackr</span>
+          </Link>
           <p className="auth-login-kicker">Create your account</p>
         </div>
 

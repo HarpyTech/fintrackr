@@ -73,6 +73,14 @@ export default function InsightsPage() {
   });
   const overview = overviewQuery.data;
 
+  useEffect(() => {
+    try {
+      localStorage.setItem('fintrackr_onboarding_insights', '1');
+    } catch {
+      // storage unavailable
+    }
+  }, []);
+
   // Scroll chat to bottom whenever a new answer lands or streaming starts.
   useEffect(() => {
     chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: 'smooth' });
@@ -166,7 +174,8 @@ export default function InsightsPage() {
             <EmptyState
               icon={Sparkles}
               title="Ask your first question"
-              body="Ask about your spending, categories, vendors, and trends."
+              body="Every answer is generated from a real query against your own
+                    expenses, and you can inspect exactly what was run."
             />
           ) : null}
 
