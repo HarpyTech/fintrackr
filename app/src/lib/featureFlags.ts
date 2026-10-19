@@ -1,3 +1,5 @@
+import { useAuth } from '../auth/AuthContext';
+
 function parseBooleanFlag(value: string | undefined, defaultValue = false): boolean {
   if (value == null || value === '') {
     return defaultValue;
@@ -15,3 +17,24 @@ export const isBillingAdminEnabled: boolean = parseBooleanFlag(
   import.meta.env.VITE_FEATURE_BILLING_ADMIN_ENABLED,
   false,
 );
+
+export interface PlanInfo {
+  plan: string;
+  expenseLimit: number;
+  isFree: boolean;
+  isGo: boolean;
+  isMax: boolean;
+}
+
+export function usePlan(): PlanInfo {
+  const { profile } = useAuth();
+  const plan = profile?.plan || 'free';
+  const expenseLimit = profile?.expense_limit ?? 15;
+  return {
+    plan,
+    expenseLimit,
+    isFree: plan === 'free',
+    isGo: plan === 'go',
+    isMax: plan === 'max',
+  };
+}

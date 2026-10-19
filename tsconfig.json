@@ -14,10 +14,10 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
-    /* Incremental migration — allow plain JS files */
+    /* Migration complete — allow the 3 content-excluded .jsx files (see PROGRESS.md) to still compile */
     "allowJs": true,
     "checkJs": false,
-    "strict": false,
+    "strict": true,
 
     /* Path roots */
     "baseUrl": "."

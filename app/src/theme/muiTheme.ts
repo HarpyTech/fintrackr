@@ -12,11 +12,16 @@ const sharedOptions: ThemeOptions = {
     MuiButton: {
       styleOverrides: {
         root: { borderRadius: 10, fontWeight: 600 },
-        containedPrimary: {
-          background: 'linear-gradient(120deg, #23408e, #162d71)',
-          '&:hover': { background: 'linear-gradient(120deg, #162d71, #0f2260)' },
-        },
       },
+      variants: [
+        {
+          props: { variant: 'contained', color: 'primary' },
+          style: {
+            background: 'linear-gradient(120deg, #23408e, #162d71)',
+            '&:hover': { background: 'linear-gradient(120deg, #162d71, #0f2260)' },
+          },
+        },
+      ],
     },
     MuiChip: {
       styleOverrides: { root: { borderRadius: 6, fontWeight: 500 } },

@@ -1,20 +1,51 @@
 import { useEffect, useState } from 'react';
 
-export const CHART_COLORS: string[] = [
-  '#3d6fd6', // blue    — anchors the palette to the --brand family
-  '#e0701f', // orange
-  '#0f9488', // teal
-  '#d6455f', // rose
-  '#8b5cf6', // purple
-  '#3f9e52', // green
-  '#b8860b', // gold    — replaces the inaccessible #ffeb3b
-  '#64748b', // slate
-];
-
-export function chartColor(index: number): string {
-  return CHART_COLORS[index % CHART_COLORS.length];
+/**
+ * Shared categorical palette for all charts.
+ *
+ * Previously each chart file declared its own copy of this array, and that
+ * palette included #ffeb3b (bright yellow) which fell below the 3:1 contrast
+ * floor for graphical objects (WCAG 2.1 SC 1.4.11) against the white surface.
+ *
+ * Every colour below sits in the mid-lightness band so it clears 3:1 against
+ * BOTH the light surface (#ffffff) and the dark surface (#121a2b). The order
+ * is deliberate: adjacent entries are far apart in hue so neighbouring donut
+ * segments and stacked bars stay distinguishable.
+ *
+ * Colours are read from CSS custom properties (falling back to the hardcoded
+ * hex values) so a theme change picks them up without a reload.
+ */
+function readCssVar(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || null;
 }
 
+function buildPalette(): string[] {
+  return [
+    readCssVar('--chart-1') || '#3d6fd6',
+    readCssVar('--chart-2') || '#e0701f',
+    readCssVar('--chart-3') || '#0f9488',
+    readCssVar('--chart-4') || '#d6455f',
+    readCssVar('--chart-5') || '#8b5cf6',
+    readCssVar('--chart-6') || '#3f9e52',
+    readCssVar('--chart-7') || '#b8860b',
+    readCssVar('--chart-8') || '#64748b',
+  ];
+}
+
+export function getChartColors(): string[] {
+  return buildPalette();
+}
+
+// Static export for non-reactive usage (SSR / initial render before DOM is ready)
+export const CHART_COLORS: string[] = buildPalette();
+
+/** Pick a palette colour by index, wrapping around. */
+export function chartColor(index: number): string {
+  return buildPalette()[index % 8];
+}
+
+/** Single-series accent, used where only one colour is needed. */
 export const CHART_ACCENT: string = CHART_COLORS[0];
 export const CHART_ACCENT_ALT: string = CHART_COLORS[5];
 

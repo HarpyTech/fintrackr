@@ -11,18 +11,9 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import { apiRequest } from '../lib/api';
 import { notifySuccess } from '../lib/notify';
+import type { Expense } from '../types';
 
 const CATEGORIES = ['Food', 'Travel', 'Utilities', 'Shopping', 'Health', 'Other'];
-
-interface Expense {
-  id: string;
-  amount: number;
-  category: string;
-  vendor?: string;
-  description?: string;
-  expense_date: string;
-  invoice_number?: string;
-}
 
 interface ExpenseEditDialogProps {
   open: boolean;
@@ -114,7 +105,7 @@ export default function ExpenseEditDialog({
               label="Amount (₹)"
               type="number"
               required
-              inputProps={{ min: 0.01, step: 0.01 }}
+              slotProps={{ htmlInput: { min: 0.01, step: 0.01 } }}
               value={form.amount}
               onChange={(e) => handleChange('amount', e.target.value)}
               disabled={saving}
@@ -139,7 +130,7 @@ export default function ExpenseEditDialog({
               label="Date"
               type="date"
               required
-              InputLabelProps={{ shrink: true }}
+              slotProps={{ inputLabel: { shrink: true } }}
               value={form.expense_date}
               onChange={(e) => handleChange('expense_date', e.target.value)}
               disabled={saving}

@@ -42,8 +42,10 @@ export default defineConfig({
   root: "app",
   plugins: [react(), pwaHeaders(), serviceWorkerVersion()],
   resolve: {
-    // Keep extensionless imports working for JS/JSX modules.
-    extensions: [".mjs", ".js", ".mts", ".ts", ".jsx", ".tsx", ".json"]
+    // TS/TSX must win over same-named JS/JSX during the incremental migration,
+    // otherwise a stale .js/.jsx left behind after a rename silently shadows
+    // its typed replacement instead of erroring.
+    extensions: [".mjs", ".mts", ".ts", ".tsx", ".js", ".jsx", ".json"]
   },
   esbuild: {
     // Strip debug output from production bundles. Vite only applies this to

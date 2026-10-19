@@ -9,10 +9,7 @@ interface PageSpinnerProps {
 export default function PageSpinner({ label = 'Loading…', minHeight = 200 }: PageSpinnerProps) {
   return (
     <Box
-      display="flex"
-      justifyContent="center"
-      alignItems="center"
-      minHeight={minHeight}
+      sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight }}
       aria-label={label}
       role="status"
     >

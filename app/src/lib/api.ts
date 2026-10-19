@@ -47,7 +47,7 @@ function buildUrl(path: string): string {
   return `${API_BASE_URL}/${path.replace(/^\/+/, '')}`;
 }
 
-export async function apiRequest(path: string, options: ApiRequestOptions = {}): Promise<unknown> {
+export async function apiRequest<T = unknown>(path: string, options: ApiRequestOptions = {}): Promise<T> {
   const method = (options.method || 'GET').toUpperCase();
   const headers = new Headers((options.headers as Record<string, string>) || {});
   const shouldQueueOffline = Boolean(options.offlineQueue);
@@ -85,7 +85,7 @@ export async function apiRequest(path: string, options: ApiRequestOptions = {}):
     const message =
       'Expense saved locally and will sync automatically when you are back online.';
     notifyInfo(message);
-    return { queued: true, offline: true, message };
+    return { queued: true, offline: true, message } as T;
   }
 
   let response: Response;
@@ -110,7 +110,7 @@ export async function apiRequest(path: string, options: ApiRequestOptions = {}):
       const message =
         'Network unavailable. FinTrackr queued this expense and will retry in the background.';
       notifyInfo(message);
-      return { queued: true, offline: true, message };
+      return { queued: true, offline: true, message } as T;
     }
     throw error;
   }
@@ -154,5 +154,5 @@ export async function apiRequest(path: string, options: ApiRequestOptions = {}):
     throw err;
   }
 
-  return payload;
+  return payload as T;
 }
