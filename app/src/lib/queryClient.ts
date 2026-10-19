@@ -1,4 +1,4 @@
-import { QueryClient } from '@tanstack/react-query';
+import { QueryClient, QueryFunctionContext } from '@tanstack/react-query';
 import { apiRequest } from './api';
 
 /**
@@ -11,34 +11,36 @@ import { apiRequest } from './api';
  */
 export const queryKeys = {
   expenses: {
-    all: ['expenses'],
+    all: ['expenses'] as const,
     // The list endpoint is GET /expenses with no suffix, so this key is just
     // ['expenses'] — defaultQueryFn joins string segments into the path, and
     // an extra 'list' segment would request /expenses/list and 404.
-    list: () => ['expenses'],
-    limitStatus: () => ['expenses', 'limit-status'],
+    list: () => ['expenses'] as const,
+    limitStatus: () => ['expenses', 'limit-status'] as const,
     summary: {
-      all: ['expenses', 'summary'],
-      monthly: (year) => ['expenses', 'summary', 'monthly', { year }],
-      yearly: () => ['expenses', 'summary', 'yearly'],
-      categories: (year) => ['expenses', 'summary', 'categories', { year }],
-      daily: (year, month) => ['expenses', 'summary', 'daily', { year, month }],
-      categoriesMonthly: (year, month) => [
+      all: ['expenses', 'summary'] as const,
+      monthly: (year: number) => ['expenses', 'summary', 'monthly', { year }] as const,
+      yearly: () => ['expenses', 'summary', 'yearly'] as const,
+      categories: (year: number) => ['expenses', 'summary', 'categories', { year }] as const,
+      daily: (year: number, month: number) => ['expenses', 'summary', 'daily', { year, month }] as const,
+      categoriesMonthly: (year: number, month: number) => [
         'expenses', 'summary', 'categories-monthly', { year, month },
-      ],
-      vendorsMonthly: (year, month) => [
+      ] as const,
+      vendorsMonthly: (year: number, month: number) => [
         'expenses', 'summary', 'vendors-monthly', { year, month },
-      ],
+      ] as const,
     },
   },
   insights: {
-    all: ['insights'],
-    overview: () => ['insights', 'overview'],
+    all: ['insights'] as const,
+    overview: () => ['insights', 'overview'] as const,
   },
   user: {
-    profile: () => ['user', 'profile'],
+    profile: () => ['user', 'profile'] as const,
   },
 };
+
+type QueryKeyPart = string | Record<string, string | number | undefined | null>;
 
 /**
  * Default query function.
@@ -52,11 +54,11 @@ export const queryKeys = {
  * Everything still goes through apiRequest, so CSRF injection, the 401
  * session-expiry event and the 429 toast all behave exactly as before.
  */
-async function defaultQueryFn({ queryKey, signal }) {
-  const segments = [];
-  let params = null;
+async function defaultQueryFn({ queryKey, signal }: QueryFunctionContext): Promise<unknown> {
+  const segments: string[] = [];
+  let params: Record<string, string | number | undefined | null> | null = null;
 
-  for (const part of queryKey) {
+  for (const part of queryKey as QueryKeyPart[]) {
     if (typeof part === 'string') {
       segments.push(part);
     } else if (part && typeof part === 'object') {
@@ -82,7 +84,7 @@ async function defaultQueryFn({ queryKey, signal }) {
   return apiRequest(path, { signal });
 }
 
-export function createQueryClient() {
+export function createQueryClient(): QueryClient {
   return new QueryClient({
     defaultOptions: {
       queries: {
@@ -103,12 +105,12 @@ export function createQueryClient() {
         // A 401 is terminal — apiRequest has already raised the
         // session-expiry event and the user is being redirected. A 4xx will
         // not fix itself either, so only retry transient failures.
-        retry: (failureCount, error) => {
-          const status = error?.status;
+        retry: (failureCount: number, error: unknown) => {
+          const status = (error as { status?: number } | null)?.status;
           if (status && status >= 400 && status < 500) return false;
           return failureCount < 2;
         },
-        retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
+        retryDelay: (attempt: number) => Math.min(1000 * 2 ** attempt, 8000),
       },
       mutations: {
         retry: false,

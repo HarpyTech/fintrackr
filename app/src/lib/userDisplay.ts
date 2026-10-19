@@ -5,8 +5,11 @@
  * useMemo blocks in both TopNavigation.jsx and MobileHeader.jsx. Extracted so
  * the avatar reads the same everywhere.
  */
+import type { UserProfile } from '../types';
 
-export function resolveDisplayName(profile, sessionUser) {
+type DisplayProfile = Pick<UserProfile, 'first_name' | 'last_name'> | null | undefined;
+
+export function resolveDisplayName(profile: DisplayProfile, sessionUser: string | null | undefined): string {
   const firstName = profile?.first_name?.trim();
   const lastName = profile?.last_name?.trim();
 
@@ -16,7 +19,7 @@ export function resolveDisplayName(profile, sessionUser) {
   return sessionUser || 'User';
 }
 
-export function resolveInitials(profile, sessionUser) {
+export function resolveInitials(profile: DisplayProfile, sessionUser: string | null | undefined): string {
   const firstName = profile?.first_name?.trim();
   const lastName = profile?.last_name?.trim();
 

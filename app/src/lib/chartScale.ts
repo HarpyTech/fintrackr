@@ -11,19 +11,26 @@
  *   - rankSeriesKeys → stable top-N series for multi-series charts
  */
 
+export interface ChartRow {
+  [key: string]: string | number | boolean | null | undefined;
+}
+
+export interface NiceScale {
+  domain: [number, number];
+  ticks: number[];
+  step: number;
+}
+
 /**
  * Round a range to a "nice" number: 1, 2, 2.5, 5 or 10 × a power of ten.
  * Heckbert's algorithm (Graphics Gems, 1990).
- *
- * @param {number} range Positive magnitude to round.
- * @param {boolean} round Round to nearest (true) vs round up (false).
  */
-export function niceNum(range, round) {
+export function niceNum(range: number, round: boolean): number {
   if (!Number.isFinite(range) || range <= 0) return 1;
 
   const exponent = Math.floor(Math.log10(range));
   const fraction = range / 10 ** exponent;
-  let niceFraction;
+  let niceFraction: number;
 
   if (round) {
     if (fraction < 1.5) niceFraction = 1;
@@ -42,7 +49,7 @@ export function niceNum(range, round) {
  * Strip binary floating-point drift from a computed tick.
  * Without this, a step of 0.1 produces 0.30000000000000004.
  */
-function cleanTick(value, step) {
+function cleanTick(value: number, step: number): number {
   // Keep one more decimal place than the step itself requires.
   const decimals = Math.max(0, -Math.floor(Math.log10(step)) + 1);
   return Number(value.toFixed(Math.min(decimals, 10)));
@@ -55,12 +62,8 @@ function cleanTick(value, step) {
  * Recharts invent ticks, the caller passes both `domain` and `ticks`, so the
  * top tick always sits just above the tallest bar and every tick is a round
  * number at any magnitude (₹50 or ₹15,00,000).
- *
- * @param {number} maxValue Largest value that must fit on the axis.
- * @param {{targetTicks?: number}} [options] Desired tick count (approximate).
- * @returns {{domain: [number, number], ticks: number[], step: number}}
  */
-export function niceScale(maxValue, { targetTicks = 5 } = {}) {
+export function niceScale(maxValue: number, { targetTicks = 5 }: { targetTicks?: number } = {}): NiceScale {
   const rawMax = Number.isFinite(maxValue) ? maxValue : 0;
 
   // All-zero series are common here: daily_summary and monthly_summary
@@ -74,7 +77,7 @@ export function niceScale(maxValue, { targetTicks = 5 } = {}) {
   const step = niceNum(rawMax / divisions, true);
   const niceMax = Math.ceil(rawMax / step) * step;
 
-  const ticks = [];
+  const ticks: number[] = [];
   // Guard the loop against a pathological step; += on floats can drift, so
   // the tick value is recomputed from the index each iteration.
   const count = Math.round(niceMax / step);
@@ -88,12 +91,14 @@ export function niceScale(maxValue, { targetTicks = 5 } = {}) {
 /**
  * Largest value a chart must accommodate.
  *
- * @param {object[]} rows Chart rows.
- * @param {string[]} keys Value keys to consider.
- * @param {{stacked?: boolean}} [options] When stacked, bars sum per row, so
- *   the axis must fit the row total rather than the largest single series.
+ * When stacked, bars sum per row, so the axis must fit the row total rather
+ * than the largest single series.
  */
-export function maxValueOf(rows, keys, { stacked = false } = {}) {
+export function maxValueOf(
+  rows: ChartRow[] | undefined,
+  keys: string[] | undefined,
+  { stacked = false }: { stacked?: boolean } = {},
+): number {
   if (!Array.isArray(rows) || rows.length === 0 || !keys?.length) return 0;
 
   let max = 0;
@@ -117,21 +122,30 @@ export function maxValueOf(rows, keys, { stacked = false } = {}) {
  *
  * Recharts' `interval` is "labels to skip between rendered labels", so 0
  * renders every label. A 31-day month on a 320px screen needs interval 4-5.
- *
- * @param {number} pointCount Number of data points.
- * @param {number} maxLabels Most labels that fit legibly.
- * @returns {number} Value for the XAxis `interval` prop.
  */
-export function labelInterval(pointCount, maxLabels) {
+export function labelInterval(pointCount: number, maxLabels: number): number {
   if (!pointCount || !maxLabels || pointCount <= maxLabels) return 0;
   return Math.ceil(pointCount / maxLabels) - 1;
 }
 
 /** Shorten a label for a cramped axis or legend, with an ellipsis. */
-export function truncateLabel(text, max = 14) {
+export function truncateLabel(text: unknown, max = 14): string {
   const value = String(text ?? '');
   if (value.length <= max) return value;
   return `${value.slice(0, Math.max(1, max - 1)).trimEnd()}…`;
+}
+
+export interface TopNWithOtherOptions {
+  nameKey: string;
+  valueKey?: string;
+  limit?: number;
+  otherLabel?: string;
+}
+
+export interface TopNWithOtherResult {
+  data: ChartRow[];
+  otherCount: number;
+  otherTotal: number;
 }
 
 /**
@@ -142,18 +156,11 @@ export function truncateLabel(text, max = 14) {
  * donut would otherwise grow one slice per distinct value. The API already
  * sorts these summaries descending by total, but this re-sorts defensively
  * rather than trusting call-order.
- *
- * @param {object[]} items Source rows.
- * @param {{nameKey: string, valueKey?: string, limit?: number,
- *          otherLabel?: string}} options
- * @returns {{data: object[], otherCount: number, otherTotal: number}}
  */
-export function topNWithOther(items, {
-  nameKey,
-  valueKey = 'total',
-  limit = 7,
-  otherLabel = 'Other',
-} = {}) {
+export function topNWithOther(
+  items: ChartRow[] | undefined,
+  { nameKey, valueKey = 'total', limit = 7, otherLabel = 'Other' }: TopNWithOtherOptions,
+): TopNWithOtherResult {
   const rows = Array.isArray(items) ? items : [];
   if (rows.length === 0) {
     return { data: [], otherCount: 0, otherTotal: 0 };
@@ -188,30 +195,34 @@ export function topNWithOther(items, {
   };
 }
 
+export interface RankSeriesKeysResult {
+  keys: string[];
+  overflow: string[];
+}
+
 /**
  * Rank multi-series keys by grand total and keep the top `limit`.
  *
  * Returned in a stable, total-ranked order so a series keeps its colour when
  * the month filter changes — deriving series order from row insertion order
  * instead makes the whole chart repaint on every filter change.
- *
- * @param {object[]} rows Pivoted rows (one per X value).
- * @param {string[]} keys Candidate series keys.
- * @param {number} limit Maximum series to keep.
- * @returns {{keys: string[], overflow: string[]}}
  */
-export function rankSeriesKeys(rows, keys, limit) {
+export function rankSeriesKeys(
+  rows: ChartRow[] | undefined,
+  keys: string[] | undefined,
+  limit: number,
+): RankSeriesKeysResult {
   if (!keys?.length) return { keys: [], overflow: [] };
 
-  const totals = new Map(keys.map((key) => [key, 0]));
+  const totals = new Map<string, number>(keys.map((key) => [key, 0]));
   for (const row of rows || []) {
     for (const key of keys) {
-      totals.set(key, totals.get(key) + Number(row?.[key] || 0));
+      totals.set(key, (totals.get(key) || 0) + Number(row?.[key] || 0));
     }
   }
 
   const ranked = [...keys].sort((a, b) => {
-    const diff = totals.get(b) - totals.get(a);
+    const diff = (totals.get(b) || 0) - (totals.get(a) || 0);
     // Alphabetical tie-break keeps the order deterministic across renders.
     return diff !== 0 ? diff : String(a).localeCompare(String(b));
   });

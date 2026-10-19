@@ -7,7 +7,17 @@
  * Order matters: the first match wins, so list more specific routes before
  * their parents. Entries with `exact: true` only match the identical path.
  */
-const PAGE_META = [
+
+export interface PageMetaEntry {
+  prefix: string;
+  exact?: boolean;
+  title: string;
+  subtitle: string;
+  description: string;
+  documentTitle?: string;
+}
+
+const PAGE_META: PageMetaEntry[] = [
   { prefix: '/', exact: true, title: 'FinTrackr', documentTitle: 'FinTrackr — Personal Finance Tracking', subtitle: '', description: 'FinTrackr helps you capture receipts, categorise spending and visualise where your money goes — with AI-powered expense extraction.' },
   { prefix: '/dashboard', title: 'Dashboard', subtitle: 'Your spending at a glance', description: 'See your spending at a glance with charts, totals and recent expenses.' },
   { prefix: '/report', title: 'Report', subtitle: 'Filter and export your expense history', description: 'Filter, review and export your full expense history.' },
@@ -25,13 +35,14 @@ const PAGE_META = [
   { prefix: '/reset-password', exact: true, title: 'Reset password', subtitle: '', description: 'Choose a new password for your FinTrackr account.' },
 ];
 
-const FALLBACK = {
+const FALLBACK: PageMetaEntry = {
+  prefix: '',
   title: 'FinTrackr',
   subtitle: '',
   description: PAGE_META[0].description,
 };
 
-export function resolvePageMeta(pathname) {
+export function resolvePageMeta(pathname: string | undefined | null): PageMetaEntry {
   const path = pathname || '';
   const match = PAGE_META.find((entry) =>
     entry.exact ? path === entry.prefix : path.startsWith(entry.prefix),

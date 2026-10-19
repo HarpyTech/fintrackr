@@ -14,7 +14,7 @@ import { queryKeys } from './queryClient';
  *
  * Renders nothing; it exists purely for the subscription.
  */
-export function ExpenseCacheSync() {
+export function ExpenseCacheSync(): null {
   const queryClient = useQueryClient();
 
   useEffect(() => {
