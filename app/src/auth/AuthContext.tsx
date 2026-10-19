@@ -20,23 +20,11 @@ import {
   clearDeviceBinding,
   isInstalledPwa,
 } from '../lib/deviceBinding';
+import type { Session, UserProfile, WebAuthnCredentialSummary } from '../types';
 
 const BiometricPromptLazy = lazy(() => import('../components/BiometricPrompt'));
 
-interface Session {
-  authenticated: boolean;
-  user: string | null;
-  role: string | null;
-}
-
-interface Profile {
-  username: string;
-  role: string;
-  first_name?: string | null;
-  last_name?: string | null;
-  phone?: string | null;
-  address?: string | null;
-}
+type Profile = UserProfile;
 
 interface AuthContextValue {
   session: Session;
@@ -78,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return null;
     }
     try {
-      const data = (await apiRequest('/users/me')) as Profile;
+      const data = await apiRequest<Profile>('/users/me');
       setProfile(data);
       return data;
     } catch {
@@ -89,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshSession = useCallback(async (): Promise<void> => {
     try {
-      const data = (await apiRequest('/auth/session')) as Session;
+      const data = await apiRequest<Session>('/auth/session');
       setSession(data);
     } catch {
       setSession({ authenticated: false, user: null, role: null });
@@ -117,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     (async () => {
       try {
-        const data = (await apiRequest('/auth/session')) as Session;
+        const data = await apiRequest<Session>('/auth/session');
         setSession(data);
         setLoading(false);
         return;
@@ -174,7 +162,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!currentDeviceId) return;
 
     try {
-      const data = (await apiRequest('/webauthn/credentials')) as { credentials: { device_id: string }[] };
+      const data = await apiRequest<{ credentials: WebAuthnCredentialSummary[] }>('/webauthn/credentials');
       const hasCredentialForCurrentDevice = (data.credentials || []).some(
         (credential) => credential.device_id === currentDeviceId,
       );
@@ -238,10 +226,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const updateProfile = async (payload: Partial<Profile>): Promise<Profile> => {
-    const data = (await apiRequest('/users/me', {
+    const data = await apiRequest<Profile>('/users/me', {
       method: 'PATCH',
       body: JSON.stringify(payload),
-    })) as Profile;
+    });
     setProfile(data);
     return data;
   };

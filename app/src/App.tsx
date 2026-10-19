@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, ReactNode, Suspense } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { useAuth } from './auth/AuthContext';
@@ -41,7 +41,7 @@ function HomeRoute() {
   return <Navigate to="/login" replace />;
 }
 
-function ProtectedRoute({ children }) {
+function ProtectedRoute({ children }: { children: ReactNode }) {
   const { session, loading } = useAuth();
 
   if (loading) {
@@ -55,7 +55,7 @@ function ProtectedRoute({ children }) {
   return <ProtectedLayout>{children}</ProtectedLayout>;
 }
 
-function AdminRoute({ children }) {
+function AdminRoute({ children }: { children: ReactNode }) {
   const { session, loading } = useAuth();
 
   if (loading) {
@@ -158,25 +158,25 @@ export default function App() {
                   </ProtectedRoute>
                 }
               />
-{isBillingAdminEnabled ? (
-              <Route
-                path="/billing"
-                element={
-                  <ProtectedRoute>
-                    <BillingPage />
-                  </ProtectedRoute>
-                }
-              />
-) : null}
               {isBillingAdminEnabled ? (
-              <Route
-                path="/admin/users"
-                element={
-                  <AdminRoute>
-                    <AdminUsersPage />
-                  </AdminRoute>
-                }
-              />
+                <Route
+                  path="/billing"
+                  element={
+                    <ProtectedRoute>
+                      <BillingPage />
+                    </ProtectedRoute>
+                  }
+                />
+              ) : null}
+              {isBillingAdminEnabled ? (
+                <Route
+                  path="/admin/users"
+                  element={
+                    <AdminRoute>
+                      <AdminUsersPage />
+                    </AdminRoute>
+                  }
+                />
               ) : null}
               <Route path="*" element={<NotFoundPage />} />
             </Routes>

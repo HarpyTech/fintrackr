@@ -21,11 +21,11 @@ document.head.appendChild(interLink);
 
 const queryClient = createQueryClient();
 
-ReactDOM.createRoot(document.getElementById('root')).render(
+ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     {/* Last-resort net: catches errors thrown by the providers below (theme,
         PWA, auth, query client) before the router even mounts. The route-level
-        boundary in App.jsx can't see these, since they render above it. No
+        boundary in App.tsx can't see these, since they render above it. No
         router or theme context can be assumed alive here, so the fallback
         reloads the page instead of navigating. */}
     <ErrorBoundary
