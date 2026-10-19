@@ -1,8 +1,27 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 
-const PwaContext = createContext(null);
+export type PwaPlatform = 'ios' | 'android' | 'windows' | 'macos' | 'web';
+export type InstallStatus = 'idle' | 'available' | 'prompting' | 'accepted' | 'dismissed' | 'installed';
 
-function detectPlatform() {
+/** Not yet part of lib.dom.d.ts — Chromium-only install prompt event. */
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+}
+
+export interface PwaContextValue {
+  canInstall: boolean;
+  installStatus: InstallStatus;
+  isOffline: boolean;
+  isStandalone: boolean;
+  platform: PwaPlatform;
+  promptInstall: () => Promise<{ outcome: string }>;
+  syncMessage: string;
+}
+
+const PwaContext = createContext<PwaContextValue | null>(null);
+
+function detectPlatform(): PwaPlatform {
   const userAgent = navigator.userAgent || '';
 
   if (/iPad|iPhone|iPod/i.test(userAgent)) {
@@ -20,23 +39,30 @@ function detectPlatform() {
   return 'web';
 }
 
-function getStandaloneState() {
-  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+function getStandaloneState(): boolean {
+  return (
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (window.navigator as Navigator & { standalone?: boolean }).standalone === true
+  );
 }
 
-export function PwaProvider({ children }) {
-  const [deferredPrompt, setDeferredPrompt] = useState(null);
-  const [installStatus, setInstallStatus] = useState(getStandaloneState() ? 'installed' : 'idle');
+interface ServiceWorkerSyncMessage {
+  type?: string;
+}
+
+export function PwaProvider({ children }: { children: ReactNode }) {
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [installStatus, setInstallStatus] = useState<InstallStatus>(getStandaloneState() ? 'installed' : 'idle');
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
-  const [platform, setPlatform] = useState(detectPlatform());
+  const [platform, setPlatform] = useState<PwaPlatform>(detectPlatform());
   const [syncMessage, setSyncMessage] = useState('');
 
   useEffect(() => {
     const standaloneMediaQuery = window.matchMedia('(display-mode: standalone)');
 
-    function handleBeforeInstallPrompt(event) {
+    function handleBeforeInstallPrompt(event: Event) {
       event.preventDefault();
-      setDeferredPrompt(event);
+      setDeferredPrompt(event as BeforeInstallPromptEvent);
       setInstallStatus((current) => (current === 'installed' ? current : 'available'));
     }
 
@@ -61,7 +87,7 @@ export function PwaProvider({ children }) {
       }
     }
 
-    function handleServiceWorkerMessage(event) {
+    function handleServiceWorkerMessage(event: MessageEvent<ServiceWorkerSyncMessage>) {
       const messageType = event.data?.type;
       if (messageType === 'FINTRACKR_OFFLINE_REQUEST_SYNCED') {
         setSyncMessage('Queued expense changes synced successfully.');
@@ -92,7 +118,7 @@ export function PwaProvider({ children }) {
     };
   }, []);
 
-  async function promptInstall() {
+  async function promptInstall(): Promise<{ outcome: string }> {
     if (!deferredPrompt) {
       return { outcome: 'unsupported' };
     }
@@ -105,7 +131,7 @@ export function PwaProvider({ children }) {
     return choice;
   }
 
-  const value = useMemo(() => ({
+  const value = useMemo<PwaContextValue>(() => ({
     canInstall: Boolean(deferredPrompt) && installStatus !== 'installed',
     installStatus,
     isOffline,
@@ -118,7 +144,7 @@ export function PwaProvider({ children }) {
   return <PwaContext.Provider value={value}>{children}</PwaContext.Provider>;
 }
 
-export function usePwa() {
+export function usePwa(): PwaContextValue {
   const context = useContext(PwaContext);
   if (!context) {
     throw new Error('usePwa must be used inside PwaProvider');
