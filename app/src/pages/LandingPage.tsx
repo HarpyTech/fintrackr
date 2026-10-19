@@ -2,7 +2,13 @@ import { Link } from 'react-router-dom';
 import SiteFooter from '../components/SiteFooter';
 import InstallAppButton from '../components/InstallAppButton';
 
-const highlights = [
+interface Highlight {
+  icon: string;
+  title: string;
+  text: string;
+}
+
+const highlights: Highlight[] = [
   {
     icon: 'AI',
     title: 'AI-Powered Insights',
@@ -20,7 +26,7 @@ const highlights = [
   },
 ];
 
-const outcomes = [
+const outcomes: string[] = [
   'Reduce manual data entry with AI-assisted expense extraction',
   'Gain clear visibility into spending patterns across categories and vendors',
   'Build better financial habits with data-driven insights',

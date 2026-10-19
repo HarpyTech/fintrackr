@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, FormEvent } from 'react';
 import { LogOut, Smartphone, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
@@ -16,12 +16,32 @@ const PHONE_PATTERN = /^\+?[0-9]{8,15}$/;
 const ADDRESS_MIN_LENGTH = 10;
 const ADDRESS_MAX_LENGTH = 120;
 
+interface WebAuthnDevice {
+  device_id: string;
+  device_name?: string | null;
+  last_used_at?: string | null;
+}
+
+interface ManagedDevice extends WebAuthnDevice {
+  isCurrent: boolean;
+  isUnknown: boolean;
+  sortLastUsed: number;
+  displayName: string;
+}
+
+interface ProfileForm {
+  first_name: string;
+  last_name: string;
+  phone: string;
+  address: string;
+}
+
 export default function SettingsPage() {
   const navigate = useNavigate();
   const { session, profile, updateProfile, logout } = useAuth();
   const { isSupported: isWebAuthnSupported } = useWebAuthn();
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<ProfileForm>({
     first_name: profile?.first_name || '',
     last_name: profile?.last_name || '',
     phone: profile?.phone || '',
@@ -31,15 +51,15 @@ export default function SettingsPage() {
   const [saveMessage, setSaveMessage] = useState('');
   const [saveError, setSaveError] = useState('');
 
-  const [devices, setDevices] = useState([]);
+  const [devices, setDevices] = useState<WebAuthnDevice[]>([]);
   const [devicesLoading, setDevicesLoading] = useState(false);
   const [devicesError, setDevicesError] = useState('');
   const [devicesInfo, setDevicesInfo] = useState('');
   const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
-  const [deletingDeviceId, setDeletingDeviceId] = useState(null);
+  const [deletingDeviceId, setDeletingDeviceId] = useState<string | null>(null);
   const [bulkRemoving, setBulkRemoving] = useState(false);
-  const [confirmDevice, setConfirmDevice] = useState(null);
-  const [currentDeviceId, setCurrentDeviceId] = useState(null);
+  const [confirmDevice, setConfirmDevice] = useState<ManagedDevice | null>(null);
+  const [currentDeviceId, setCurrentDeviceId] = useState<string | null>(null);
 
   useEffect(() => {
     setForm({
@@ -56,10 +76,10 @@ export default function SettingsPage() {
     setDevicesError('');
     setDevicesInfo('');
     try {
-      const data = await apiRequest('/webauthn/credentials');
+      const data = await apiRequest<{ credentials: WebAuthnDevice[] }>('/webauthn/credentials');
       setDevices(data.credentials || []);
     } catch (err) {
-      setDevicesError(err.message || 'Failed to load devices.');
+      setDevicesError(err instanceof Error ? err.message : 'Failed to load devices.');
     } finally {
       setDevicesLoading(false);
     }
@@ -77,7 +97,7 @@ export default function SettingsPage() {
     })();
   }, [isWebAuthnSupported]);
 
-  const managedDevices = useMemo(() => {
+  const managedDevices = useMemo<ManagedDevice[]>(() => {
     const mapped = devices.map((device) => {
       const isCurrent = Boolean(currentDeviceId) && device.device_id === currentDeviceId;
       const hasName = Boolean(device.device_name && device.device_name.trim());
@@ -88,7 +108,7 @@ export default function SettingsPage() {
         isCurrent,
         isUnknown,
         sortLastUsed,
-        displayName: hasName ? device.device_name : `Device ${device.device_id.slice(0, 8)}`,
+        displayName: hasName ? (device.device_name as string) : `Device ${device.device_id.slice(0, 8)}`,
       };
     });
 
@@ -136,7 +156,7 @@ export default function SettingsPage() {
 
   const hasValidationErrors = Boolean(phoneValidationError || addressValidationError);
 
-  async function handleSaveProfile(event) {
+  async function handleSaveProfile(event: FormEvent) {
     event.preventDefault();
     if (hasValidationErrors) {
       setSaveError('Please fix the highlighted fields and try again.');
@@ -154,13 +174,13 @@ export default function SettingsPage() {
       });
       setSaveMessage('Profile updated successfully.');
     } catch (err) {
-      setSaveError(err.message);
+      setSaveError(err instanceof Error ? err.message : 'Failed to save profile.');
     } finally {
       setSaving(false);
     }
   }
 
-  async function removeDevice(device) {
+  async function removeDevice(device: ManagedDevice) {
     const deviceId = device.device_id;
     setDeletingDeviceId(deviceId);
     setDevicesError('');
@@ -173,13 +193,13 @@ export default function SettingsPage() {
       setDevices((prev) => prev.filter((d) => d.device_id !== deviceId));
       setDevicesInfo(`${device.displayName} removed.`);
     } catch (err) {
-      setDevicesError(err.message || 'Failed to remove device.');
+      setDevicesError(err instanceof Error ? err.message : 'Failed to remove device.');
     } finally {
       setDeletingDeviceId(null);
     }
   }
 
-  function handleDeleteDevice(device) {
+  function handleDeleteDevice(device: ManagedDevice) {
     setConfirmDevice(device);
   }
 
@@ -204,14 +224,14 @@ export default function SettingsPage() {
     setDevicesInfo('');
 
     let removedCount = 0;
-    const failedDevices = [];
-    const failedDeviceIds = [];
+    const failedDevices: string[] = [];
+    const failedDeviceIds: string[] = [];
 
     for (const device of removableOtherDevices) {
       try {
         await apiRequest(`/webauthn/credentials/${encodeURIComponent(device.device_id)}`, { method: 'DELETE' });
         removedCount += 1;
-      } catch (_err) {
+      } catch {
         failedDevices.push(device.displayName);
         failedDeviceIds.push(device.device_id);
       }

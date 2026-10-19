@@ -1,12 +1,25 @@
 import { useState } from 'react';
 import { CheckCircle, Zap, Crown, Sparkles } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { usePlan } from '../lib/featureFlags';
 import { apiRequest } from '../lib/api';
 import { SUPPORT_EMAIL } from '../lib/supportEmail';
 import ErrorAlert from '../components/ErrorAlert';
 
-const PLANS = [
+interface Plan {
+  key: string;
+  name: string;
+  price: string;
+  period: string;
+  Icon: LucideIcon;
+  accentVar: string;
+  bgVar: string;
+  highlight?: boolean;
+  features: string[];
+}
+
+const PLANS: Plan[] = [
   {
     key: 'free',
     name: 'Free',
@@ -59,16 +72,16 @@ const PLANS = [
 ];
 
 export default function BillingPage() {
-  const { profile, refreshProfile } = useAuth();
+  const { refreshProfile } = useAuth();
   const { plan: currentPlan } = usePlan();
-  const [upgrading, setUpgrading] = useState(null);
+  const [upgrading, setUpgrading] = useState<string | null>(null);
   const [upgradeError, setUpgradeError] = useState('');
   const [upgradeSuccess, setUpgradeSuccess] = useState('');
 
-  const tierOrder = { free: 0, go: 1, max: 2 };
+  const tierOrder: Record<string, number> = { free: 0, go: 1, max: 2 };
   const currentTier = tierOrder[currentPlan] ?? 0;
 
-  async function handleUpgrade(planKey) {
+  async function handleUpgrade(planKey: string) {
     if (planKey === currentPlan) return;
     setUpgrading(planKey);
     setUpgradeError('');
@@ -82,7 +95,7 @@ export default function BillingPage() {
       const label = PLANS.find((p) => p.key === planKey)?.name || planKey;
       setUpgradeSuccess(`You are now on the ${label} plan.`);
     } catch (err) {
-      setUpgradeError(err.message || 'Unable to change plan. Please try again.');
+      setUpgradeError(err instanceof Error ? err.message : 'Unable to change plan. Please try again.');
     } finally {
       setUpgrading(null);
     }

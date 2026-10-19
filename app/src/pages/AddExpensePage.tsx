@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AlertCircle, Camera, Upload } from 'lucide-react';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -6,26 +6,46 @@ import { useAuth } from '../auth/AuthContext';
 import { apiRequest } from '../lib/api';
 import { useToast } from '../components/ToastProvider';
 import { isBillingAdminEnabled } from '../lib/featureFlags';
+import type { Expense, ExpenseLimitStatus, ExtractAndCreateResponse } from '../types';
 
 const CATEGORIES = ['Food', 'Travel', 'Utilities', 'Shopping', 'Health', 'Other'];
+
+interface ExpenseForm {
+  amount: string;
+  category: string;
+  description: string;
+  expense_date: string;
+}
+
+interface QueuedResponse {
+  queued: true;
+  offline: true;
+  message: string;
+}
+
+interface ApiError extends Error {
+  status?: number;
+}
+
+type InputType = 'manual' | 'text' | 'image' | 'camera' | 'mixed';
 
 export default function AddExpensePage() {
   const { logout } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
 
-  const [expenseForm, setExpenseForm] = useState({
+  const [expenseForm, setExpenseForm] = useState<ExpenseForm>({
     amount: '',
     category: CATEGORIES[0],
     description: '',
     expense_date: new Date().toISOString().slice(0, 10),
   });
   const [aiInputText, setAiInputText] = useState('');
-  const [aiImageFile, setAiImageFile] = useState(null);
-  const [cameraImageFile, setCameraImageFile] = useState(null);
+  const [aiImageFile, setAiImageFile] = useState<File | null>(null);
+  const [cameraImageFile, setCameraImageFile] = useState<File | null>(null);
   const [extracting, setExtracting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [lastExtracted, setLastExtracted] = useState(null);
+  const [lastExtracted, setLastExtracted] = useState<Record<string, unknown> | null>(null);
   const [sessionLimitReached, setSessionLimitReached] = useState(false);
   const [expenseLimit, setExpenseLimit] = useState(10);
   const [aiPreviewUrl, setAiPreviewUrl] = useState('');
@@ -60,7 +80,7 @@ export default function AddExpensePage() {
 
   async function syncExpenseLimitState() {
     try {
-      const response = await apiRequest('/expenses/limit-status');
+      const response = await apiRequest<ExpenseLimitStatus>('/expenses/limit-status');
       const effectiveLimit = Number(response.limit);
       setExpenseLimit(
         Number.isFinite(effectiveLimit) && effectiveLimit > 0 ? effectiveLimit : 10
@@ -76,12 +96,12 @@ export default function AddExpensePage() {
     navigate('/login');
   }
 
-  async function addExpense(event) {
+  async function addExpense(event: FormEvent) {
     event.preventDefault();
     setSubmitting(true);
 
     try {
-      const response = await apiRequest('/expenses', {
+      const response = await apiRequest<Expense | QueuedResponse>('/expenses', {
         method: 'POST',
         offlineQueue: true,
         body: JSON.stringify({
@@ -98,7 +118,7 @@ export default function AddExpensePage() {
         amount: '',
         description: '',
       }));
-      if (response?.queued) {
+      if ('queued' in response && response.queued) {
         toast.success(response.message);
         return;
       }
@@ -107,17 +127,18 @@ export default function AddExpensePage() {
       window.dispatchEvent(new CustomEvent('expense:created'));
       await syncExpenseLimitState();
     } catch (err) {
-      if (err.status === 429) {
+      const apiError = err as ApiError;
+      if (apiError.status === 429) {
         setSessionLimitReached(true);
       } else {
-        toast.error(err.message || 'Unable to save expense. Please try again.');
+        toast.error(apiError.message || 'Unable to save expense. Please try again.');
       }
     } finally {
       setSubmitting(false);
     }
   }
 
-  async function addExpenseFromAi(event) {
+  async function addExpenseFromAi(event: FormEvent) {
     event.preventDefault();
 
     const selectedImageFile = cameraImageFile || aiImageFile;
@@ -143,7 +164,7 @@ export default function AddExpensePage() {
       }
       formData.append('input_type', derivedInputType);
 
-      const response = await apiRequest('/expenses/extract-and-create', {
+      const response = await apiRequest<ExtractAndCreateResponse>('/expenses/extract-and-create', {
         method: 'POST',
         body: formData,
       });
@@ -156,17 +177,22 @@ export default function AddExpensePage() {
       window.dispatchEvent(new CustomEvent('expense:created'));
       await syncExpenseLimitState();
     } catch (err) {
-      if (err.status === 429) {
+      const apiError = err as ApiError;
+      if (apiError.status === 429) {
         setSessionLimitReached(true);
       } else {
-        toast.error(err.message || 'Unable to extract expense. Please try again.');
+        toast.error(apiError.message || 'Unable to extract expense. Please try again.');
       }
     } finally {
       setExtracting(false);
     }
   }
 
-  function getDerivedInputType({ textInput, imageFile, cameraFile }) {
+  function getDerivedInputType({ textInput, imageFile, cameraFile }: {
+    textInput: string;
+    imageFile: File | null;
+    cameraFile: File | null;
+  }): InputType {
     const hasText = Boolean(textInput.trim());
     const hasImage = Boolean(imageFile);
     const hasCamera = Boolean(cameraFile);
@@ -390,4 +416,3 @@ export default function AddExpensePage() {
     </main>
   );
 }
-

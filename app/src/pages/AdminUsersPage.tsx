@@ -11,16 +11,8 @@ import { apiRequest } from '../lib/api';
 import ErrorAlert from '../components/ErrorAlert';
 import PageSpinner from '../components/PageSpinner';
 import UserEditDialog from '../components/UserEditDialog';
-
-interface AdminUser {
-  username: string;
-  role: string;
-  plan: string;
-  expense_limit: number;
-  disable_rate_limit: boolean;
-  email_verified: boolean;
-  expense_count: number;
-}
+import type { AdminUser } from '../types';
+import type { GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
 
 const PLAN_COLOR: Record<string, 'default' | 'primary' | 'success'> = {
   free: 'default',
@@ -63,7 +55,7 @@ export default function AdminUsersPage() {
     debounceRef.current = setTimeout(() => setDebouncedSearch(value), 300);
   }
 
-  const columns = useMemo(() => [
+  const columns = useMemo<GridColDef<AdminUser>[]>(() => [
     {
       field: 'username',
       headerName: 'Email',
@@ -74,7 +66,7 @@ export default function AdminUsersPage() {
       field: 'role',
       headerName: 'Role',
       width: 100,
-      renderCell: ({ value }: { value: string }) => (
+      renderCell: ({ value }: GridRenderCellParams<AdminUser, string>) => (
         <Chip
           label={value}
           size="small"
@@ -88,11 +80,11 @@ export default function AdminUsersPage() {
       field: 'plan',
       headerName: 'Plan',
       width: 110,
-      renderCell: ({ value }: { value: string }) => (
+      renderCell: ({ value }: GridRenderCellParams<AdminUser, string>) => (
         <Chip
           label={value}
           size="small"
-          color={PLAN_COLOR[value] ?? 'default'}
+          color={PLAN_COLOR[value ?? ''] ?? 'default'}
           sx={{ fontSize: 11, textTransform: 'capitalize' }}
         />
       ),
@@ -121,7 +113,7 @@ export default function AdminUsersPage() {
       width: 85,
       align: 'center' as const,
       headerAlign: 'center' as const,
-      renderCell: ({ value }: { value: boolean }) =>
+      renderCell: ({ value }: GridRenderCellParams<AdminUser, boolean>) =>
         value ? (
           <CheckCircle size={16} color="var(--success)" />
         ) : (
@@ -135,7 +127,7 @@ export default function AdminUsersPage() {
       sortable: false,
       align: 'center' as const,
       headerAlign: 'center' as const,
-      renderCell: ({ row }: { row: AdminUser }) => (
+      renderCell: ({ row }: GridRenderCellParams<AdminUser>) => (
         <Tooltip title="Edit user">
           <IconButton size="small" aria-label="Edit user" onClick={() => setEditTarget(row)}>
             <Pencil size={15} />
@@ -160,12 +152,14 @@ export default function AdminUsersPage() {
             size="small"
             fullWidth
             sx={{ mb: 2, maxWidth: 400 }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Search size={16} />
-                </InputAdornment>
-              ),
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Search size={16} />
+                  </InputAdornment>
+                ),
+              },
             }}
           />
 

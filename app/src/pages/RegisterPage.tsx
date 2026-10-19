@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { notifySuccess } from '../lib/notify';
@@ -14,7 +14,7 @@ export default function RegisterPage() {
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  async function handleRequestOtp(event) {
+  async function handleRequestOtp(event: FormEvent) {
     event.preventDefault();
     setError('');
     setMessage('');
@@ -30,13 +30,13 @@ export default function RegisterPage() {
       setOtpStep(true);
       setMessage('Verification OTP sent to your email. Enter it below to activate your account.');
     } catch (err) {
-      setError(err.message);
+      setError(err instanceof Error ? err.message : 'Unable to send OTP.');
     } finally {
       setSubmitting(false);
     }
   }
 
-  async function handleVerifyOtp(event) {
+  async function handleVerifyOtp(event: FormEvent) {
     event.preventDefault();
     setError('');
     setMessage('');
@@ -47,7 +47,7 @@ export default function RegisterPage() {
       notifySuccess('Email verified — please sign in.');
       navigate('/login');
     } catch (err) {
-      setError(err.message);
+      setError(err instanceof Error ? err.message : 'Verification failed.');
     } finally {
       setSubmitting(false);
     }

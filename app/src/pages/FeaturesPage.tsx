@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import SiteFooter from '../components/SiteFooter';
+import type { LucideIcon } from 'lucide-react';
 import {
   Camera,
   TrendingUp,
@@ -12,7 +13,18 @@ import {
   ArrowRight,
 } from 'lucide-react';
 
-const WORKFLOWS = [
+interface Workflow {
+  step: number;
+  title: string;
+  description: string;
+  color: string;
+  Icon: LucideIcon;
+  imageSrc: string;
+  imageAlt: string;
+  details: string[];
+}
+
+const WORKFLOWS: Workflow[] = [
   {
     step: 1,
     title: 'Capture Your Receipt',
@@ -55,7 +67,14 @@ const WORKFLOWS = [
   },
 ];
 
-const FEATURES = [
+interface Feature {
+  Icon: LucideIcon;
+  title: string;
+  description: string;
+  colorClass: string;
+}
+
+const FEATURES: Feature[] = [
   { Icon: Camera, title: 'Smart Receipt Scanning', description: 'AI-powered OCR technology extracts data from receipts instantly', colorClass: 'features-proto-icon-blue' },
   { Icon: MessageCircle, title: 'Chat Assistant', description: 'Ask questions about your spending in plain English', colorClass: 'features-proto-icon-purple' },
   { Icon: BarChart3, title: 'Visual Analytics', description: 'Beautiful charts and graphs to understand your finances', colorClass: 'features-proto-icon-green' },
@@ -64,7 +83,13 @@ const FEATURES = [
   { Icon: Smartphone, title: 'Mobile Optimized', description: 'Works seamlessly on desktop, tablet, and mobile', colorClass: 'features-proto-icon-indigo' },
 ];
 
-const STORY_ITEMS = [
+interface StoryItem {
+  emoji: string;
+  time: string;
+  detail: string;
+}
+
+const STORY_ITEMS: StoryItem[] = [
   { emoji: '☕', time: 'Morning: Coffee Run', detail: 'Snap receipt, AI logs ₹450 to "Food" category. Done in 3 seconds.' },
   { emoji: '🚗', time: 'Lunch: Uber to Restaurant', detail: 'Open app, type "Uber ₹250", automatically categorized as Transport.' },
   { emoji: '💬', time: 'Evening: Check Spending', detail: 'Ask chat: "How much did I spend on food this week?" Get instant answer.' },

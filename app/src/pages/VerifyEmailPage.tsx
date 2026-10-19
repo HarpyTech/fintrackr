@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { notifySuccess } from '../lib/notify';
@@ -16,7 +16,7 @@ export default function VerifyEmailPage() {
   const [verifying, setVerifying] = useState(false);
   const [resending, setResending] = useState(false);
 
-  async function handleVerify(event) {
+  async function handleVerify(event: FormEvent) {
     event.preventDefault();
     setError('');
     setMessage('');
@@ -33,7 +33,7 @@ export default function VerifyEmailPage() {
       notifySuccess('Email verified — please sign in.');
       navigate('/login');
     } catch (err) {
-      setError(err.message);
+      setError(err instanceof Error ? err.message : 'Verification failed.');
     } finally {
       setVerifying(false);
     }
@@ -53,7 +53,7 @@ export default function VerifyEmailPage() {
       await resendSignupOtp(email);
       setMessage('A new OTP has been sent to your email.');
     } catch (err) {
-      setError(err.message);
+      setError(err instanceof Error ? err.message : 'Unable to resend OTP.');
     } finally {
       setResending(false);
     }

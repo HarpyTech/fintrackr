@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 
@@ -9,7 +9,7 @@ export default function ForgotPasswordPage() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  async function handleSubmit(event) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setError('');
     setSubmitting(true);
@@ -17,7 +17,7 @@ export default function ForgotPasswordPage() {
       await requestPasswordReset(email);
       navigate(`/reset-password?email=${encodeURIComponent(email)}`);
     } catch (err) {
-      setError(err.message || 'Something went wrong. Please try again.');
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     } finally {
       setSubmitting(false);
     }

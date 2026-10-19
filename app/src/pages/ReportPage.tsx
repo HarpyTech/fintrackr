@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import Box from '@mui/material/Box';
@@ -7,8 +6,8 @@ import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import { DataGrid, GridToolbar } from '@mui/x-data-grid';
+import type { GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
 import { Pencil, Trash2 } from 'lucide-react';
-import { useAuth } from '../auth/AuthContext';
 import { apiRequest } from '../lib/api';
 import { notifyError, notifySuccess } from '../lib/notify';
 import { formatInr } from '../lib/chartColors';
@@ -16,6 +15,7 @@ import ErrorAlert from '../components/ErrorAlert';
 import PageSpinner from '../components/PageSpinner';
 import ConfirmDialog from '../components/ConfirmDialog';
 import ExpenseEditDialog from '../components/ExpenseEditDialog';
+import type { Expense, ExpenseListResponse } from '../types';
 
 const DATAGRID_SX = {
   border: 'none',
@@ -28,23 +28,40 @@ const DATAGRID_SX = {
   '& .MuiDataGrid-toolbarContainer': { padding: '8px 4px' },
 };
 
+interface HistoryFilters {
+  startDate: string;
+  endDate: string;
+  category: string;
+}
+
+interface LineItemRow {
+  id: string;
+  expenseId: string;
+  expenseDate: string;
+  category: string;
+  vendor: string;
+  inputType: string;
+  itemName: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+}
+
 export default function ReportPage() {
-  const { logout } = useAuth();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const [historyView, setHistoryView] = useState('expense');
-  const [historyFilters, setHistoryFilters] = useState({
+  const [historyView, setHistoryView] = useState<'expense' | 'line_items'>('expense');
+  const [historyFilters, setHistoryFilters] = useState<HistoryFilters>({
     startDate: '',
     endDate: '',
     category: 'all',
   });
 
   // Edit dialog state
-  const [editTarget, setEditTarget] = useState(null);
+  const [editTarget, setEditTarget] = useState<Expense | null>(null);
 
   // Delete confirm dialog state
-  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState<Expense | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
 
@@ -56,11 +73,11 @@ export default function ReportPage() {
     refetch,
   } = useQuery({
     queryKey: ['expenses'],
-    queryFn: () => apiRequest('/expenses?limit=200').then((r) => r.items || []),
+    queryFn: () => apiRequest<ExpenseListResponse>('/expenses?limit=200').then((r) => r.items || []),
   });
 
   const expenses = data || [];
-  const error = isError ? (queryError?.message || 'Unable to load expenses. Please try again.') : '';
+  const error = isError ? ((queryError as Error | null)?.message || 'Unable to load expenses. Please try again.') : '';
 
   useEffect(() => {
     function handleExpenseCreated() {
@@ -80,7 +97,7 @@ export default function ReportPage() {
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
       notifySuccess('Expense deleted.');
     } catch (err) {
-      const message = err.message || 'Unable to delete expense. Please try again.';
+      const message = err instanceof Error ? err.message : 'Unable to delete expense. Please try again.';
       setDeleteError(message);
       notifyError(message);
     } finally {
@@ -108,7 +125,7 @@ export default function ReportPage() {
     });
   }, [expenses, historyFilters]);
 
-  const filteredLineItems = useMemo(() => {
+  const filteredLineItems = useMemo<LineItemRow[]>(() => {
     return filteredExpenses.flatMap((expense) => {
       const items = Array.isArray(expense.line_items) ? expense.line_items : [];
       if (items.length === 0) return [];
@@ -132,7 +149,7 @@ export default function ReportPage() {
     [filteredExpenses]
   );
 
-  function toTitleCase(value) {
+  function toTitleCase(value: unknown): string {
     return String(value || '')
       .split(/[_\s-]+/)
       .filter(Boolean)
@@ -141,7 +158,7 @@ export default function ReportPage() {
   }
 
   // DataGrid column definitions
-  const expenseColumns = useMemo(() => [
+  const expenseColumns = useMemo<GridColDef<Expense>[]>(() => [
     {
       field: 'expense_date',
       headerName: 'Date',
@@ -158,7 +175,7 @@ export default function ReportPage() {
       field: 'input_type',
       headerName: 'Type',
       width: 110,
-      renderCell: ({ value }) => (
+      renderCell: ({ value }: GridRenderCellParams<Expense, string>) => (
         <Chip
           label={toTitleCase(value || 'manual')}
           size="small"
@@ -205,9 +222,8 @@ export default function ReportPage() {
       filterable: false,
       align: 'center',
       headerAlign: 'center',
-      renderCell: ({ row }) => (
-        <Box display="flex" gap={0.5}>
-          <Tooltip title="Edit expense">
+      renderCell: ({ row }: GridRenderCellParams<Expense>) => (
+        <Box sx={{ display: 'flex', gap: 0.5 }}>          <Tooltip title="Edit expense">
             <IconButton
               size="small"
               aria-label="Edit expense"
@@ -231,7 +247,7 @@ export default function ReportPage() {
     },
   ], []);
 
-  const lineItemColumns = useMemo(() => [
+  const lineItemColumns = useMemo<GridColDef<LineItemRow>[]>(() => [
     { field: 'expenseDate', headerName: 'Date', width: 110 },
     {
       field: 'category',
@@ -244,7 +260,7 @@ export default function ReportPage() {
       field: 'inputType',
       headerName: 'Type',
       width: 110,
-      renderCell: ({ value }) => (
+      renderCell: ({ value }: GridRenderCellParams<LineItemRow, string>) => (
         <Chip
           label={toTitleCase(value || 'manual')}
           size="small"

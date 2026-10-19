@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, FormEvent } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
@@ -7,7 +7,7 @@ import PasswordInput from '../components/PasswordInput';
 import { useWebAuthn } from '../hooks/useWebAuthn';
 import { getBoundUsername, getStoredCredentialId, isInstalledPwa } from '../lib/deviceBinding';
 
-const OAUTH_ERROR_MESSAGES = {
+const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   oauth_denied: 'Google sign-in was cancelled or denied.',
   domain_not_allowed: 'Your email domain is not authorized to sign in.',
   oauth_failed: 'Google sign-in failed. Please try again.',
@@ -63,7 +63,7 @@ export default function LoginPage() {
       try {
         await loginWithBiometric(username);
         navigate('/dashboard', { replace: true });
-      } catch (_) {
+      } catch {
         // Fall through to the password form without exposing device-specific UI.
       } finally {
         if (active) {
@@ -85,7 +85,7 @@ export default function LoginPage() {
     return <AppLoader label="Signing you in…" full />;
   }
 
-  async function handleSubmit(event) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setError('');
     setSubmitting(true);
@@ -93,12 +93,13 @@ export default function LoginPage() {
       await login(form.username, form.password);
       navigate('/dashboard');
     } catch (err) {
-      if ((err.message || '').toLowerCase().includes('email not verified')) {
+      const message = err instanceof Error ? err.message : '';
+      if (message.toLowerCase().includes('email not verified')) {
         const encodedEmail = encodeURIComponent(form.username);
         navigate(`/verify-email?email=${encodedEmail}`);
         return;
       }
-      setError(err.message);
+      setError(message);
     } finally {
       setSubmitting(false);
     }

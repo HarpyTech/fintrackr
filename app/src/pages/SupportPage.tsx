@@ -1,18 +1,36 @@
-import { useState } from 'react';
+import { useState, FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { isBillingAdminEnabled } from '../lib/featureFlags';
 import { Mail, MessageCircle, FileText, Phone, Clock, MapPin, Send } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import SiteFooter from '../components/SiteFooter';
 
 import { SUPPORT_EMAIL } from '../lib/supportEmail';
 
-const SUPPORT_CHANNELS = [
+interface SupportChannel {
+  Icon: LucideIcon;
+  title: string;
+  description: string;
+  detail: string;
+  color: string;
+  action: string;
+  href: string;
+}
+
+const SUPPORT_CHANNELS: SupportChannel[] = [
   { Icon: Mail, title: 'Email Support', description: 'Get help via email', detail: SUPPORT_EMAIL, color: 'blue', action: 'Send Email', href: `mailto:${SUPPORT_EMAIL}` },
   { Icon: MessageCircle, title: 'Email Us', description: 'Message our team', detail: 'Typically replies within a few hours', color: 'green', action: 'Send Email', href: `mailto:${SUPPORT_EMAIL}` },
   { Icon: Phone, title: 'Request a Call', description: 'Ask us to arrange a call by email', detail: 'We will reply by email to arrange a time', color: 'purple', action: 'Request Call', href: `mailto:${SUPPORT_EMAIL}?subject=Call%20Request` },
   { Icon: FileText, title: 'Help Center', description: 'Browse guides & FAQs', detail: 'Common questions answered below', color: 'orange', action: 'View FAQs', href: '#faqs' },
 ];
 
-const FAQS = [
+interface Faq {
+  question: string;
+  answer: string;
+  billingOnly?: boolean;
+}
+
+const FAQS: Faq[] = [
   {
     question: 'How do I reset my password?',
     answer: "Go to the login page and click 'Forgot Password'. Enter your email address and we'll send you a reset link.",
@@ -43,7 +61,7 @@ export default function SupportPage() {
   const [formData, setFormData] = useState({ name: '', email: '', subject: '', message: '' });
   const [submitted, setSubmitted] = useState(false);
 
-  function handleSubmit(e) {
+  function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const subject = encodeURIComponent(`[Support] ${formData.subject || 'General Inquiry'} — ${formData.name}`);
     const body = encodeURIComponent(

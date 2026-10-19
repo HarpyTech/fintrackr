@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CalendarDays, Camera, DollarSign, FileText, X } from 'lucide-react';
@@ -13,11 +13,39 @@ import { queryKeys } from '../lib/queryClient';
 import { CHART_ACCENT, CHART_ACCENT_ALT, formatInr } from '../lib/chartColors';
 import { useToast } from '../components/ToastProvider';
 import OnboardingBanner from '../components/OnboardingBanner';
+import type {
+  CategoryMonthlySummary,
+  CategorySummary,
+  DailySummary,
+  ExtractAndCreateResponse,
+  MonthlySummary,
+  VendorSummary,
+  YearlySummary,
+} from '../types';
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
+interface ApiError extends Error {
+  sessionExpired?: boolean;
+}
+
+interface ApiListResponse<T> {
+  items?: T[];
+}
+
+function items<T>(response: ApiListResponse<T> | undefined): T[] {
+  return response?.items || [];
+}
+
+interface ChartCardProps {
+  title?: string;
+  children: ReactNode;
+  className?: string;
+  headerSlot?: ReactNode | null;
+}
+
 /** Wraps a chart so one bad dataset cannot blank the whole dashboard. */
-function ChartCard({ title, children, className = '', headerSlot = null }) {
+function ChartCard({ title, children, className = '', headerSlot = null }: ChartCardProps) {
   return (
     <article className={`dashboard-proto-card ${className}`.trim()}>
       {headerSlot || (title ? <h3>{title}</h3> : null)}
@@ -38,10 +66,10 @@ export default function DashboardPage() {
   const toast = useToast();
   const queryClient = useQueryClient();
 
-  const [cameraImageFile, setCameraImageFile] = useState(null);
+  const [cameraImageFile, setCameraImageFile] = useState<File | null>(null);
   const [cameraPreviewUrl, setCameraPreviewUrl] = useState('');
   const [extracting, setExtracting] = useState(false);
-  const [lastExtracted, setLastExtracted] = useState(null);
+  const [lastExtracted, setLastExtracted] = useState<Record<string, unknown> | null>(null);
 
   const [filterYear, setFilterYear] = useState(new Date().getFullYear());
   const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
@@ -68,7 +96,6 @@ export default function DashboardPage() {
    * `select` unwraps the API's `{items: [...]}` envelope so components keep
    * receiving plain arrays.
    */
-  const items = (response) => response?.items || [];
   const queryEnabled = Boolean(session?.authenticated && session?.user);
 
   // Do not reuse an empty dashboard cache after login, logout, or account
@@ -80,19 +107,19 @@ export default function DashboardPage() {
 
   const expensesQuery = useQuery({
     queryKey: queryKeys.expenses.list(),
-    select: items,
+    select: items<unknown>,
     enabled: queryEnabled,
   });
 
   const monthlyQuery = useQuery({
     queryKey: queryKeys.expenses.summary.monthly(currentYear),
-    select: items,
+    select: items<MonthlySummary>,
     enabled: queryEnabled,
   });
 
   const yearlyQuery = useQuery({
     queryKey: queryKeys.expenses.summary.yearly(),
-    select: items,
+    select: items<YearlySummary>,
     enabled: queryEnabled,
   });
 
@@ -100,31 +127,31 @@ export default function DashboardPage() {
   // Avg-by-Category chart below — one cache entry, one request.
   const categoriesYearQuery = useQuery({
     queryKey: queryKeys.expenses.summary.categories(currentYear),
-    select: items,
+    select: items<CategorySummary>,
     enabled: queryEnabled,
   });
 
   const dailyQuery = useQuery({
     queryKey: queryKeys.expenses.summary.daily(filterYear, filterMonth),
-    select: items,
+    select: items<DailySummary>,
     enabled: queryEnabled,
   });
 
   const categoryMonthlyQuery = useQuery({
     queryKey: queryKeys.expenses.summary.categoriesMonthly(filterYear, filterMonth),
-    select: items,
+    select: items<CategorySummary>,
     enabled: queryEnabled,
   });
 
   const vendorMonthlyQuery = useQuery({
     queryKey: queryKeys.expenses.summary.vendorsMonthly(filterYear, filterMonth),
-    select: items,
+    select: items<VendorSummary>,
     enabled: queryEnabled,
   });
 
   const categoryFilterYearQuery = useQuery({
     queryKey: queryKeys.expenses.summary.categories(filterYear),
-    select: items,
+    select: items<CategoryMonthlySummary>,
     enabled: queryEnabled,
   });
 
@@ -139,8 +166,8 @@ export default function DashboardPage() {
 
   // A 401 is already handled globally by apiRequest + AuthContext, so those
   // are filtered out rather than shown twice.
-  const messageOf = (query, fallback) => {
-    const err = query.error;
+  const messageOf = (query: { error: unknown }, fallback: string): string => {
+    const err = query.error as ApiError | null;
     if (!err || err.sessionExpired) return '';
     return err.message || fallback;
   };
@@ -181,7 +208,7 @@ export default function DashboardPage() {
     navigate('/login');
   }
 
-  async function addExpenseFromCamera(event) {
+  async function addExpenseFromCamera(event: FormEvent) {
     event.preventDefault();
 
     if (!cameraImageFile) {
@@ -195,7 +222,7 @@ export default function DashboardPage() {
       formData.append('image', cameraImageFile);
       formData.append('input_type', 'camera');
 
-      const response = await apiRequest('/expenses/extract-and-create', {
+      const response = await apiRequest<ExtractAndCreateResponse & { queued?: boolean }>('/expenses/extract-and-create', {
         method: 'POST',
         body: formData,
       });
@@ -210,8 +237,9 @@ export default function DashboardPage() {
       // Marks every expense-derived query stale; only mounted ones refetch.
       queryClient.invalidateQueries({ queryKey: queryKeys.expenses.all });
     } catch (err) {
-      if (!err.sessionExpired) {
-        toast.error(err.message);
+      const apiError = err as ApiError;
+      if (!apiError.sessionExpired) {
+        toast.error(apiError.message);
       }
     } finally {
       setExtracting(false);
@@ -237,7 +265,7 @@ export default function DashboardPage() {
   const avgPerEntry = yearEntries > 0 ? yearTotal / yearEntries : 0;
 
   const completedOnboardingSteps = useMemo(() => {
-    const steps = [];
+    const steps: string[] = [];
     if (expenses.length > 0) steps.push('add_expense');
     try {
       if (localStorage.getItem('fintrackr_onboarding_insights') === '1') steps.push('try_insights');
@@ -497,4 +525,3 @@ export default function DashboardPage() {
     </main>
   );
 }
-

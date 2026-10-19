@@ -1,10 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import PasswordInput from '../components/PasswordInput';
 
-const STEP_FORM = 'form';
-const STEP_DONE = 'done';
+type Step = 'form' | 'done';
+
+const STEP_FORM: Step = 'form';
+const STEP_DONE: Step = 'done';
 
 export default function ResetPasswordPage() {
   const { requestPasswordReset, resetPassword } = useAuth();
@@ -12,7 +14,7 @@ export default function ResetPasswordPage() {
   const [searchParams] = useSearchParams();
   const initialEmail = useMemo(() => searchParams.get('email') || '', [searchParams]);
 
-  const [step, setStep] = useState(STEP_FORM);
+  const [step, setStep] = useState<Step>(STEP_FORM);
   const [email] = useState(initialEmail);
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -22,7 +24,7 @@ export default function ResetPasswordPage() {
   const [submitting, setSubmitting] = useState(false);
   const [resending, setResending] = useState(false);
 
-  async function handleResetPassword(event) {
+  async function handleResetPassword(event: FormEvent) {
     event.preventDefault();
     setError('');
 
@@ -44,7 +46,7 @@ export default function ResetPasswordPage() {
       await resetPassword(email, otp, newPassword);
       setStep(STEP_DONE);
     } catch (err) {
-      const msg = err.message || 'Something went wrong. Please try again.';
+      const msg = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
       setError(msg);
     } finally {
       setSubmitting(false);
@@ -61,7 +63,7 @@ export default function ResetPasswordPage() {
       setOtp('');
       setMessage('A new reset code has been sent to your email.');
     } catch (err) {
-      setError(err.message || 'Failed to resend code. Please try again.');
+      setError(err instanceof Error ? err.message : 'Failed to resend code. Please try again.');
     } finally {
       setResending(false);
     }

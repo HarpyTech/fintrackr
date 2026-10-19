@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, KeyboardEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   ArrowDownRight,
@@ -19,6 +19,8 @@ import { formatInr } from '../lib/chartColors';
 import { queryKeys } from '../lib/queryClient';
 import { isBillingAdminEnabled, usePlan } from '../lib/featureFlags';
 import { Link } from 'react-router-dom';
+import type { LucideIcon } from 'lucide-react';
+import type { InsightsOverview } from '../types';
 
 const SUGGESTIONS = [
   'How much did I spend last month?',
@@ -28,7 +30,17 @@ const SUGGESTIONS = [
   'Show my monthly trend',
 ];
 
-function KpiTile({ icon: Icon, tone, label, value, meta, deltaPct, direction }) {
+interface KpiTileProps {
+  icon: LucideIcon;
+  tone: string;
+  label: string;
+  value: string | number;
+  meta?: string;
+  deltaPct?: number | null;
+  direction?: 'up' | 'down';
+}
+
+function KpiTile({ icon: Icon, tone, label, value, meta, deltaPct, direction }: KpiTileProps) {
   const DeltaIcon = direction === 'down' ? ArrowDownRight : ArrowUpRight;
 
   return (
@@ -60,15 +72,15 @@ function KpiTile({ icon: Icon, tone, label, value, meta, deltaPct, direction }) 
 
 export default function InsightsPage() {
   const [input, setInput] = useState('');
-  const textareaRef = useRef(null);
-  const chatRef = useRef(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const chatRef = useRef<HTMLDivElement | null>(null);
   const { isFree } = usePlan();
 
   const {
     answers, ask, cancel, streaming, phase, phaseLabel, pendingQuestion, error,
   } = useAgentQuery();
 
-  const overviewQuery = useQuery({
+  const overviewQuery = useQuery<InsightsOverview>({
     queryKey: queryKeys.insights.overview(),
   });
   const overview = overviewQuery.data;
@@ -86,7 +98,7 @@ export default function InsightsPage() {
     chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: 'smooth' });
   }, [answers.length, streaming]);
 
-  function submit(question) {
+  function submit(question?: string) {
     const trimmed = (question ?? input).trim();
     if (!trimmed || streaming) return;
     ask(trimmed);
@@ -94,7 +106,7 @@ export default function InsightsPage() {
     textareaRef.current?.focus();
   }
 
-  function handleKeyDown(event) {
+  function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
       submit();
@@ -134,15 +146,15 @@ export default function InsightsPage() {
                   icon={DollarSign}
                   tone="blue"
                   label="This month"
-                  value={formatInr(overview?.this_month)}
+                  value={formatInr(overview?.this_month ?? 0)}
                   deltaPct={monthDelta}
-                  direction={monthDelta >= 0 ? 'up' : 'down'}
+                  direction={(monthDelta ?? 0) >= 0 ? 'up' : 'down'}
                 />
                 <KpiTile
                   icon={BarChart3}
                   tone="green"
                   label="All time"
-                  value={formatInr(overview?.total_spend)}
+                  value={formatInr(overview?.total_spend ?? 0)}
                   meta={`${overview?.total_transactions ?? 0} transactions`}
                 />
                 <KpiTile
@@ -160,7 +172,7 @@ export default function InsightsPage() {
                   icon={Sparkles}
                   tone="orange"
                   label="Last month"
-                  value={formatInr(overview?.last_month)}
+                  value={formatInr(overview?.last_month ?? 0)}
                   meta="For comparison"
                 />
               </>
@@ -269,7 +281,6 @@ export default function InsightsPage() {
             </div>
           </div>
         </div>
-
       </div>
     </div>
   );
