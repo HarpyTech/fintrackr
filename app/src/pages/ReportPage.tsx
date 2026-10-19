@@ -129,18 +129,20 @@ export default function ReportPage() {
     return filteredExpenses.flatMap((expense) => {
       const items = Array.isArray(expense.line_items) ? expense.line_items : [];
       if (items.length === 0) return [];
-      return items.map((lineItem, index) => ({
-        id: `${expense.id}-${index}`,
-        expenseId: expense.id,
-        expenseDate: String(expense.expense_date || '').slice(0, 10),
-        category: expense.category,
-        vendor: expense.vendor,
-        inputType: expense.input_type || 'manual',
-        itemName: lineItem.name,
-        quantity: Number(lineItem.quantity || 0),
-        unitPrice: Number(lineItem.unit_price || 0),
-        total: Number(lineItem.total || 0),
-      }));
+      return items
+        .filter((lineItem): lineItem is NonNullable<typeof lineItem> => lineItem != null)
+        .map((lineItem, index) => ({
+          id: `${expense.id}-${index}`,
+          expenseId: expense.id,
+          expenseDate: String(expense.expense_date || '').slice(0, 10),
+          category: expense.category,
+          vendor: expense.vendor,
+          inputType: expense.input_type || 'manual',
+          itemName: lineItem.name,
+          quantity: Number(lineItem.quantity || 0),
+          unitPrice: Number(lineItem.unit_price || 0),
+          total: Number(lineItem.total || 0),
+        }));
     });
   }, [filteredExpenses]);
 

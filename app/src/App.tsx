@@ -1,4 +1,4 @@
-import { lazy, ReactNode, Suspense } from 'react';
+import React, { lazy, ReactNode, Suspense } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { useAuth } from './auth/AuthContext';
@@ -16,22 +16,46 @@ import { isInstalledPwa } from './lib/deviceBinding';
  * authenticated screens — or Recharts, which the dashboard pulls in — before
  * first paint. LoginPage stays eager: an installed PWA redirects straight to
  * it on launch, so an extra chunk round-trip there is felt immediately.
+ *
+ * lazyWithRetry catches failed chunk fetches (stale hashes after a deploy)
+ * and reloads the page so the browser picks up the new HTML and fresh URLs,
+ * instead of landing on the error-boundary screen.
  */
-const RegisterPage = lazy(() => import('./pages/RegisterPage'));
-const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage'));
-const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
-const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
-const DashboardPage = lazy(() => import('./pages/DashboardPage'));
-const ReportPage = lazy(() => import('./pages/ReportPage'));
-const AddExpensePage = lazy(() => import('./pages/AddExpensePage'));
-const LandingPage = lazy(() => import('./pages/LandingPage'));
-const FeaturesPage = lazy(() => import('./pages/FeaturesPage'));
-const InsightsPage = lazy(() => import('./pages/InsightsPage'));
-const SupportPage = lazy(() => import('./pages/SupportPage'));
-const SettingsPage = lazy(() => import('./pages/SettingsPage'));
-const AdminUsersPage = lazy(() => import('./pages/AdminUsersPage'));
-const BillingPage = lazy(() => import('./pages/BillingPage'));
-const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+function lazyWithRetry<T extends React.ComponentType<unknown>>(
+  importFn: () => Promise<{ default: T }>,
+): React.LazyExoticComponent<T> {
+  return lazy(() =>
+    importFn().catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      const isChunkError =
+        (err instanceof Error && err.name === 'ChunkLoadError') ||
+        /Loading chunk \d+ failed/.test(msg) ||
+        /Failed to fetch dynamically imported module/.test(msg) ||
+        /Importing a module script failed/.test(msg) ||
+        /error loading dynamically imported module/i.test(msg);
+      if (isChunkError) {
+        window.location.reload();
+      }
+      throw err;
+    }),
+  );
+}
+
+const RegisterPage = lazyWithRetry(() => import('./pages/RegisterPage'));
+const VerifyEmailPage = lazyWithRetry(() => import('./pages/VerifyEmailPage'));
+const ForgotPasswordPage = lazyWithRetry(() => import('./pages/ForgotPasswordPage'));
+const ResetPasswordPage = lazyWithRetry(() => import('./pages/ResetPasswordPage'));
+const DashboardPage = lazyWithRetry(() => import('./pages/DashboardPage'));
+const ReportPage = lazyWithRetry(() => import('./pages/ReportPage'));
+const AddExpensePage = lazyWithRetry(() => import('./pages/AddExpensePage'));
+const LandingPage = lazyWithRetry(() => import('./pages/LandingPage'));
+const FeaturesPage = lazyWithRetry(() => import('./pages/FeaturesPage'));
+const InsightsPage = lazyWithRetry(() => import('./pages/InsightsPage'));
+const SupportPage = lazyWithRetry(() => import('./pages/SupportPage'));
+const SettingsPage = lazyWithRetry(() => import('./pages/SettingsPage'));
+const AdminUsersPage = lazyWithRetry(() => import('./pages/AdminUsersPage'));
+const BillingPage = lazyWithRetry(() => import('./pages/BillingPage'));
+const NotFoundPage = lazyWithRetry(() => import('./pages/NotFoundPage'));
 
 function HomeRoute() {
   if (!isInstalledPwa()) {
