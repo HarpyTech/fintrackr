@@ -1,3 +1,4 @@
+import { ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import AppHeader from '../components/AppHeader';
@@ -13,9 +14,9 @@ import PageTransition from '../components/PageTransition';
  *
  * The header is mounted here rather than by each page, so every route gets one
  * consistently (Settings previously had none on desktop) and the page title is
- * declared in exactly one place — see lib/pageMeta.js.
+ * declared in exactly one place — see lib/pageMeta.ts.
  */
-export default function ProtectedLayout({ children }) {
+export default function ProtectedLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
 
   return (
