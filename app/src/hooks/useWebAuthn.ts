@@ -19,7 +19,7 @@ import {
 // Base64url helpers (WebAuthn API uses ArrayBuffer; server uses base64url)
 // ---------------------------------------------------------------------------
 
-function base64urlToBuffer(base64url) {
+function base64urlToBuffer(base64url: string): ArrayBuffer {
   // Pad to multiple of 4
   const padded = base64url.replace(/-/g, '+').replace(/_/g, '/');
   const binary = atob(padded);
@@ -30,7 +30,7 @@ function base64urlToBuffer(base64url) {
   return buffer.buffer;
 }
 
-function bufferToBase64url(buffer) {
+function bufferToBase64url(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   let binary = '';
   for (const b of bytes) {
@@ -43,44 +43,107 @@ function bufferToBase64url(buffer) {
 // Serialise a PublicKeyCredential into a plain JSON-able object
 // ---------------------------------------------------------------------------
 
-function serializeRegistrationCredential(credential) {
+interface SerializedRegistrationCredential {
+  id: string;
+  rawId: string;
+  type: string;
+  response: {
+    clientDataJSON: string;
+    attestationObject: string;
+  };
+}
+
+interface SerializedAuthenticationCredential {
+  id: string;
+  rawId: string;
+  type: string;
+  response: {
+    clientDataJSON: string;
+    authenticatorData: string;
+    signature: string;
+    userHandle: string | null;
+  };
+}
+
+function serializeRegistrationCredential(
+  credential: PublicKeyCredential,
+): SerializedRegistrationCredential {
+  const response = credential.response as AuthenticatorAttestationResponse;
   return {
     id: credential.id,
     rawId: bufferToBase64url(credential.rawId),
     type: credential.type,
     response: {
-      clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
-      attestationObject: bufferToBase64url(credential.response.attestationObject),
+      clientDataJSON: bufferToBase64url(response.clientDataJSON),
+      attestationObject: bufferToBase64url(response.attestationObject),
     },
   };
 }
 
-function getDeviceLabel() {
+interface NavigatorUABrand {
+  brand: string;
+  version: string;
+}
+
+interface NavigatorUAData {
+  platform?: string;
+  brands?: NavigatorUABrand[];
+}
+
+function getDeviceLabel(): string {
   if (typeof navigator === 'undefined') {
     return 'This device';
   }
 
-  const platform = navigator.userAgentData?.platform || navigator.platform || 'Unknown platform';
-  const browserBrand = navigator.userAgentData?.brands?.find((brand) => brand.brand !== 'Not A;Brand')?.brand;
+  const uaData = (navigator as Navigator & { userAgentData?: NavigatorUAData }).userAgentData;
+  const platform = uaData?.platform || navigator.platform || 'Unknown platform';
+  const browserBrand = uaData?.brands?.find((brand) => brand.brand !== 'Not A;Brand')?.brand;
   const browser = browserBrand || 'Browser';
 
   return `${browser} on ${platform}`;
 }
 
-function serializeAuthenticationCredential(credential) {
+function serializeAuthenticationCredential(
+  credential: PublicKeyCredential,
+): SerializedAuthenticationCredential {
+  const response = credential.response as AuthenticatorAssertionResponse;
   return {
     id: credential.id,
     rawId: bufferToBase64url(credential.rawId),
     type: credential.type,
     response: {
-      clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
-      authenticatorData: bufferToBase64url(credential.response.authenticatorData),
-      signature: bufferToBase64url(credential.response.signature),
-      userHandle: credential.response.userHandle
-        ? bufferToBase64url(credential.response.userHandle)
-        : null,
+      clientDataJSON: bufferToBase64url(response.clientDataJSON),
+      authenticatorData: bufferToBase64url(response.authenticatorData),
+      signature: bufferToBase64url(response.signature),
+      userHandle: response.userHandle ? bufferToBase64url(response.userHandle) : null,
     },
   };
+}
+
+// ---------------------------------------------------------------------------
+// Server payload shapes (base64url-encoded fields, before buffer conversion)
+// ---------------------------------------------------------------------------
+
+interface PublicKeyCredentialDescriptorJSON {
+  id: string;
+  type: string;
+  transports?: string[];
+}
+
+interface RegistrationOptionsJSON extends Omit<PublicKeyCredentialCreationOptions, 'challenge' | 'user' | 'excludeCredentials'> {
+  challenge: string;
+  user: Omit<PublicKeyCredentialUserEntity, 'id'> & { id: string };
+  excludeCredentials?: PublicKeyCredentialDescriptorJSON[];
+}
+
+interface AuthenticationOptionsJSON extends Omit<PublicKeyCredentialRequestOptions, 'challenge' | 'allowCredentials'> {
+  challenge: string;
+  allowCredentials?: PublicKeyCredentialDescriptorJSON[];
+}
+
+export interface WebAuthnRegisterResult {
+  success: true;
+  deviceId: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -89,7 +152,7 @@ function serializeAuthenticationCredential(credential) {
 
 export function useWebAuthn() {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
   const isSupported =
     typeof window !== 'undefined' &&
@@ -100,7 +163,7 @@ export function useWebAuthn() {
    * Register a new biometric credential for `username`.
    * Should be called after a successful email/password login.
    */
-  const registerBiometric = useCallback(async (username) => {
+  const registerBiometric = useCallback(async (username: string): Promise<WebAuthnRegisterResult> => {
     if (!isSupported) throw new Error('WebAuthn is not supported on this device.');
 
     setLoading(true);
@@ -110,13 +173,13 @@ export function useWebAuthn() {
       const deviceName = getDeviceLabel();
 
       // 1. Get challenge from server
-      const optionsJson = await apiRequest('/webauthn/register', {
+      const optionsJson = await apiRequest<RegistrationOptionsJSON>('/webauthn/register', {
         method: 'POST',
         body: JSON.stringify({ username, device_id: deviceId }),
       });
 
       // 2. Convert challenge and user.id to ArrayBuffer
-      const publicKey = {
+      const publicKey: PublicKeyCredentialCreationOptions = {
         ...optionsJson,
         challenge: base64urlToBuffer(optionsJson.challenge),
         user: {
@@ -126,11 +189,11 @@ export function useWebAuthn() {
         excludeCredentials: (optionsJson.excludeCredentials || []).map((c) => ({
           ...c,
           id: base64urlToBuffer(c.id),
-        })),
+        })) as PublicKeyCredentialDescriptor[],
       };
 
       // 3. Invoke browser authenticator
-      const credential = await navigator.credentials.create({ publicKey });
+      const credential = (await navigator.credentials.create({ publicKey })) as PublicKeyCredential;
       const credentialJson = serializeRegistrationCredential(credential);
 
       // 4. Verify with server
@@ -150,7 +213,7 @@ export function useWebAuthn() {
 
       return { success: true, deviceId };
     } catch (err) {
-      const msg = err?.message || 'Biometric registration failed.';
+      const msg = err instanceof Error ? err.message : 'Biometric registration failed.';
       setError(msg);
       throw new Error(msg);
     } finally {
@@ -162,7 +225,7 @@ export function useWebAuthn() {
    * Authenticate using a stored biometric credential for `username`.
    * Returns the server token response on success.
    */
-  const authenticateBiometric = useCallback(async (username) => {
+  const authenticateBiometric = useCallback(async (username: string): Promise<unknown> => {
     if (!isSupported) throw new Error('WebAuthn is not supported on this device.');
 
     setLoading(true);
@@ -172,23 +235,23 @@ export function useWebAuthn() {
       const isPwa = isInstalledPwa();
 
       // 1. Get challenge
-      const optionsJson = await apiRequest('/webauthn/authenticate', {
+      const optionsJson = await apiRequest<AuthenticationOptionsJSON>('/webauthn/authenticate', {
         method: 'POST',
         body: JSON.stringify({ username, device_id: deviceId }),
       });
 
       // 2. Convert challenge + allowCredentials ids
-      const publicKey = {
+      const publicKey: PublicKeyCredentialRequestOptions = {
         ...optionsJson,
         challenge: base64urlToBuffer(optionsJson.challenge),
         allowCredentials: (optionsJson.allowCredentials || []).map((c) => ({
           ...c,
           id: base64urlToBuffer(c.id),
-        })),
+        })) as PublicKeyCredentialDescriptor[],
       };
 
       // 3. Browser authentication ceremony
-      const credential = await navigator.credentials.get({ publicKey });
+      const credential = (await navigator.credentials.get({ publicKey })) as PublicKeyCredential;
       const credentialJson = serializeAuthenticationCredential(credential);
 
       // 4. Verify with server → receive tokens
@@ -204,7 +267,7 @@ export function useWebAuthn() {
 
       return result;
     } catch (err) {
-      const msg = err?.message || 'Biometric authentication failed.';
+      const msg = err instanceof Error ? err.message : 'Biometric authentication failed.';
       setError(msg);
       throw new Error(msg);
     } finally {

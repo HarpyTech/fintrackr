@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, RefObject } from 'react';
 
 const FOCUSABLE_SELECTOR = [
   'a[href]',
@@ -9,9 +9,9 @@ const FOCUSABLE_SELECTOR = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(', ');
 
-function getFocusable(container) {
+function getFocusable(container: HTMLElement | null): HTMLElement[] {
   if (!container) return [];
-  return Array.from(container.querySelectorAll(FOCUSABLE_SELECTOR)).filter(
+  return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
     (el) => el.offsetParent !== null || el === document.activeElement,
   );
 }
@@ -26,13 +26,13 @@ function getFocusable(container) {
  * Also wires Escape-to-close and restores focus to the element that opened
  * the dialog on unmount.
  *
- * @param {boolean} active Whether the trap is engaged.
- * @param {() => void} [onEscape] Called when Escape is pressed.
- * @returns {React.RefObject<HTMLElement>} Attach to the dialog container.
+ * @param active Whether the trap is engaged.
+ * @param onEscape Called when Escape is pressed.
+ * @returns Attach to the dialog container.
  */
-export function useFocusTrap(active, onEscape) {
-  const containerRef = useRef(null);
-  const previouslyFocusedRef = useRef(null);
+export function useFocusTrap(active: boolean, onEscape?: () => void): RefObject<HTMLDivElement> {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const previouslyFocusedRef = useRef<Element | null>(null);
   const onEscapeRef = useRef(onEscape);
 
   useEffect(() => {
@@ -50,13 +50,13 @@ export function useFocusTrap(active, onEscape) {
     const initial = focusable[0] || container;
     if (initial) {
       // A container without a tabindex cannot receive focus programmatically.
-      if (initial === container && !container.hasAttribute('tabindex')) {
+      if (initial === container && container && !container.hasAttribute('tabindex')) {
         container.setAttribute('tabindex', '-1');
       }
       initial.focus({ preventScroll: true });
     }
 
-    function handleKeyDown(event) {
+    function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
         event.stopPropagation();
         onEscapeRef.current?.();
@@ -77,10 +77,10 @@ export function useFocusTrap(active, onEscape) {
 
       // Wrap around at both ends, and pull focus back in if it has escaped
       // the container entirely (for example after a click outside).
-      if (event.shiftKey && (current === first || !container.contains(current))) {
+      if (event.shiftKey && (current === first || !container?.contains(current))) {
         event.preventDefault();
         last.focus();
-      } else if (!event.shiftKey && (current === last || !container.contains(current))) {
+      } else if (!event.shiftKey && (current === last || !container?.contains(current))) {
         event.preventDefault();
         first.focus();
       }
@@ -90,7 +90,7 @@ export function useFocusTrap(active, onEscape) {
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown, true);
-      const toRestore = previouslyFocusedRef.current;
+      const toRestore = previouslyFocusedRef.current as HTMLElement | null;
       if (toRestore && typeof toRestore.focus === 'function') {
         toRestore.focus({ preventScroll: true });
       }

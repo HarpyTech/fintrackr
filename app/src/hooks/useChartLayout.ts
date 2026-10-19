@@ -10,10 +10,10 @@ const MOBILE_QUERY = '(max-width: 767px)';
 /**
  * Subscribe to a media query.
  *
- * Mirrors the matchMedia pattern already used in theme/ThemeContext.jsx and
- * pwa/PwaContext.jsx, including the addListener fallback for Safari < 14.
+ * Mirrors the matchMedia pattern already used in theme/ThemeContext.tsx and
+ * pwa/PwaContext.tsx, including the addListener fallback for Safari < 14.
  */
-export function useMediaQuery(query) {
+export function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(() => {
     if (typeof window === 'undefined') return false;
     return window.matchMedia(query).matches;
@@ -23,7 +23,7 @@ export function useMediaQuery(query) {
     if (typeof window === 'undefined') return undefined;
 
     const mediaQuery = window.matchMedia(query);
-    const handleChange = (event) => setMatches(event.matches);
+    const handleChange = (event: MediaQueryListEvent) => setMatches(event.matches);
 
     // Re-sync on mount: the query may have changed between the initial state
     // computation and the effect firing.
@@ -41,11 +41,28 @@ export function useMediaQuery(query) {
   return matches;
 }
 
-export function useIsMobile() {
+export function useIsMobile(): boolean {
   return useMediaQuery(MOBILE_QUERY);
 }
 
-const MOBILE_LAYOUT = {
+export interface ChartLayout {
+  isMobile: boolean;
+  targetTicks: number;
+  yAxisWidth: number;
+  maxXLabels: number;
+  donutLimit: number;
+  seriesLimit: number;
+  tickFontSize: number;
+  legendFontSize: number;
+  donutRadii: { inner: number; outer: number };
+  // Minimum horizontal room a single month group needs before grouped bars
+  // become too thin to read. Drives ChartFrame's scrollable track.
+  groupMinWidth: number;
+  showAxisLabel: boolean;
+  showGridVertical: boolean;
+}
+
+const MOBILE_LAYOUT: ChartLayout = {
   isMobile: true,
   targetTicks: 4,
   yAxisWidth: 44,
@@ -55,14 +72,12 @@ const MOBILE_LAYOUT = {
   tickFontSize: 10,
   legendFontSize: 10,
   donutRadii: { inner: 44, outer: 68 },
-  // Minimum horizontal room a single month group needs before grouped bars
-  // become too thin to read. Drives ChartFrame's scrollable track.
   groupMinWidth: 46,
   showAxisLabel: false,
   showGridVertical: false,
 };
 
-const DESKTOP_LAYOUT = {
+const DESKTOP_LAYOUT: ChartLayout = {
   isMobile: false,
   targetTicks: 6,
   yAxisWidth: 64,
@@ -83,7 +98,7 @@ const DESKTOP_LAYOUT = {
  * Charts read their sizing from here rather than hard-coding values, so a
  * tuning change lands in one place and new charts inherit correct behaviour.
  */
-export function useChartLayout() {
+export function useChartLayout(): ChartLayout {
   const isMobile = useIsMobile();
   return useMemo(() => (isMobile ? MOBILE_LAYOUT : DESKTOP_LAYOUT), [isMobile]);
 }

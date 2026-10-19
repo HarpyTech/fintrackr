@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiRequest } from '../lib/api';
 import { ask, streamAsk, supportsStreaming } from '../lib/insightsStream';
+import type { AgentPhase, AnalyticsAnswer, AnalyticsHistoryResponse } from '../types';
+
+interface AgentQueryError extends Error {
+  sessionExpired?: boolean;
+}
 
 /**
  * Drives one analytics conversation.
@@ -14,14 +19,14 @@ import { ask, streamAsk, supportsStreaming } from '../lib/insightsStream';
  * navigation and page refreshes (90-day TTL on the backend).
  */
 export function useAgentQuery() {
-  const [answers, setAnswers] = useState([]);
+  const [answers, setAnswers] = useState<AnalyticsAnswer[]>([]);
   const [streaming, setStreaming] = useState(false);
-  const [phase, setPhase] = useState('');
+  const [phase, setPhase] = useState<AgentPhase>('');
   const [phaseLabel, setPhaseLabel] = useState('');
   const [error, setError] = useState('');
   const [pendingQuestion, setPendingQuestion] = useState('');
 
-  const abortRef = useRef(null);
+  const abortRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -35,7 +40,7 @@ export function useAgentQuery() {
   // Load the last 20 answers from the server on mount.
   useEffect(() => {
     let active = true;
-    apiRequest('/insights/history')
+    apiRequest<AnalyticsHistoryResponse>('/insights/history')
       .then((data) => {
         if (active && data?.items?.length) {
           setAnswers(data.items);
@@ -58,7 +63,7 @@ export function useAgentQuery() {
     }
   }, []);
 
-  const askQuestion = useCallback(async (question) => {
+  const askQuestion = useCallback(async (question: string) => {
     const trimmed = (question || '').trim();
     if (!trimmed || streaming) return;
 
@@ -73,7 +78,7 @@ export function useAgentQuery() {
     setPhase('queued');
     setPhaseLabel('Starting');
 
-    const receive = (answer) => {
+    const receive = (answer: AnalyticsAnswer | null) => {
       if (!mountedRef.current || !answer) return;
       // Oldest first — chat transcript order.
       setAnswers((prev) => [...prev, answer]);
@@ -95,11 +100,12 @@ export function useAgentQuery() {
         receive(answer);
       }
     } catch (err) {
-      if (err?.name === 'AbortError') return;
+      const agentError = err as AgentQueryError;
+      if (agentError?.name === 'AbortError') return;
       // A 401 is already handled globally: apiRequest/streamAsk raise the
       // session-expiry event and the user is redirected.
-      if (mountedRef.current && !err?.sessionExpired) {
-        setError(err?.message || 'Could not answer that question.');
+      if (mountedRef.current && !agentError?.sessionExpired) {
+        setError(agentError?.message || 'Could not answer that question.');
       }
     } finally {
       if (mountedRef.current) {
