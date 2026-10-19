@@ -1,4 +1,13 @@
+import { ComponentType, ReactNode } from 'react';
 import { Inbox } from 'lucide-react';
+
+interface EmptyStateProps {
+  icon?: ComponentType<{ className?: string }>;
+  title?: string;
+  body?: string;
+  action?: ReactNode;
+  compact?: boolean;
+}
 
 /**
  * Shared empty state.
@@ -12,7 +21,7 @@ export default function EmptyState({
   body,
   action = null,
   compact = false,
-}) {
+}: EmptyStateProps) {
   return (
     <div
       className="empty-state"

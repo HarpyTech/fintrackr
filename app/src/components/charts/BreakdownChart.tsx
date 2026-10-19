@@ -1,5 +1,5 @@
 import { Cell, Legend, Pie, PieChart, Tooltip } from 'recharts';
-import ChartFrame from './ChartFrame';
+import ChartFrame, { ChartSize } from './ChartFrame';
 import { useChartLayout } from '../../hooks/useChartLayout';
 import {
   CHART_COLORS,
@@ -8,10 +8,26 @@ import {
   tooltipStyles,
   useChartTheme,
 } from '../../lib/chartColors';
-import { topNWithOther, truncateLabel } from '../../lib/chartScale';
+import { topNWithOther, truncateLabel, ChartRow } from '../../lib/chartScale';
 
 /** Reserved for the "Other" bucket so it never impersonates a real slice. */
 const OTHER_COLOR = CHART_COLORS[CHART_COLORS.length - 1]; // slate
+
+export interface BreakdownChartProps {
+  items: ChartRow[];
+  nameKey: string | undefined;
+  valueKey?: string;
+  loading?: boolean;
+  error?: string;
+  unknownLabel?: string;
+  emptyTitle?: string;
+  emptyBody?: string;
+  size?: ChartSize;
+}
+
+interface LegendPayload {
+  payload?: { __isOther?: boolean } & Record<string, unknown>;
+}
 
 /**
  * Donut breakdown of a categorical dimension.
@@ -33,23 +49,24 @@ export default function BreakdownChart({
   emptyTitle = 'Nothing to show yet',
   emptyBody = 'This breakdown appears once expenses are recorded for the period.',
   size = 'md',
-}) {
+}: BreakdownChartProps) {
   const chartTheme = useChartTheme();
   const layout = useChartLayout();
 
   const rows = Array.isArray(items) ? items : [];
+  const key = nameKey || '';
 
   // Blank vendor names come back as '' from the API; label them before
   // bucketing so an unnamed vendor is distinguishable from the Other bucket.
   const normalized = rows.map((row) => ({
     ...row,
-    [nameKey]: row?.[nameKey] === '' || row?.[nameKey] == null
+    [key]: row?.[key] === '' || row?.[key] == null
       ? unknownLabel
-      : row[nameKey],
+      : row[key],
   }));
 
   const { data, otherCount } = topNWithOther(normalized, {
-    nameKey,
+    nameKey: key,
     valueKey,
     limit: layout.donutLimit,
   });
@@ -69,28 +86,28 @@ export default function BreakdownChart({
         <Pie
           data={data}
           dataKey={valueKey}
-          nameKey={nameKey}
+          nameKey={key}
           innerRadius={layout.donutRadii.inner}
           outerRadius={layout.donutRadii.outer}
           paddingAngle={1}
         >
           {data.map((entry, index) => (
             <Cell
-              key={`cell-${entry[nameKey]}-${index}`}
+              key={`cell-${entry[key]}-${index}`}
               fill={entry.__isOther ? OTHER_COLOR : chartColor(index)}
             />
           ))}
         </Pie>
         <Legend
           wrapperStyle={{ color: chartTheme.axis, fontSize: layout.legendFontSize }}
-          formatter={(value, entry) =>
+          formatter={(value: string, entry?: LegendPayload) =>
             entry?.payload?.__isOther && otherCount
               ? `Other (${otherCount})`
               : truncateLabel(value, layout.isMobile ? 12 : 18)
           }
         />
         <Tooltip
-          formatter={(value, name, entry) => {
+          formatter={(value: number | string, name: string, entry?: LegendPayload) => {
             const share = grandTotal > 0 ? (Number(value) / grandTotal) * 100 : 0;
             const label = entry?.payload?.__isOther
               ? `Other (${otherCount} items)`

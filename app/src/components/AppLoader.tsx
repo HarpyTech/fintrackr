@@ -5,7 +5,7 @@
  * bare "Loading session..." paragraph, which was the first thing a returning
  * user saw on every protected route.
  */
-export default function AppLoader({ label = 'Loading…', full = false }) {
+export default function AppLoader({ label = 'Loading…', full = false }: { label?: string; full?: boolean }) {
   return (
     <div className={`app-loader${full ? ' app-loader-full' : ''}`} role="status" aria-live="polite">
       <span className="app-loader-spinner" aria-hidden="true" />

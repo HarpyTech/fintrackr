@@ -1,4 +1,6 @@
-const STEP_LABELS = {
+import type { AgentPhase } from '../../types';
+
+const STEP_LABELS: Record<string, string> = {
   queued:    'Getting ready…',
   context:   'Reading your expense profile…',
   planning:  'Understanding your question…',
@@ -8,7 +10,7 @@ const STEP_LABELS = {
   fallback:  'Using offline analytics…',
 };
 
-export default function AgentProgress({ phase, label }) {
+export default function AgentProgress({ phase, label }: { phase: AgentPhase; label?: string }) {
   const text = label || STEP_LABELS[phase] || 'Thinking…';
   return (
     <div className="insights-progress" role="status" aria-live="polite">

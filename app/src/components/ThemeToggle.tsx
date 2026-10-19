@@ -1,14 +1,20 @@
-import { useTheme } from '../theme/ThemeContext';
+import { useTheme, ThemeSetting } from '../theme/ThemeContext';
 import { Laptop, Moon, Sun } from 'lucide-react';
 
-export default function ThemeToggle({ floating = false }) {
-  const { theme, setTheme, effectiveTheme } = useTheme();
+interface ThemeOption {
+  value: ThemeSetting;
+  icon: typeof Sun;
+  label: string;
+}
 
-  const options = [
-    { value: 'light', icon: Sun, label: 'Light' },
-    { value: 'dark', icon: Moon, label: 'Dark' },
-    { value: 'system', icon: Laptop, label: 'System' },
-  ];
+const OPTIONS: ThemeOption[] = [
+  { value: 'light', icon: Sun, label: 'Light' },
+  { value: 'dark', icon: Moon, label: 'Dark' },
+  { value: 'system', icon: Laptop, label: 'System' },
+];
+
+export default function ThemeToggle({ floating = false }: { floating?: boolean }) {
+  const { theme, setTheme, effectiveTheme } = useTheme();
 
   const containerLabel =
     theme === 'system'
@@ -21,7 +27,7 @@ export default function ThemeToggle({ floating = false }) {
       role="group"
       aria-label={containerLabel}
     >
-      {options.map((option) => {
+      {OPTIONS.map((option) => {
         const Icon = option.icon;
         const isActive = option.value === theme;
         const title =

@@ -14,14 +14,7 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { apiRequest } from '../lib/api';
 import { notifyError, notifySuccess } from '../lib/notify';
-
-interface AdminUser {
-  username: string;
-  role: string;
-  plan: string;
-  expense_limit: number;
-  disable_rate_limit: boolean;
-}
+import type { AdminUser } from '../types';
 
 interface UserEditDialogProps {
   open: boolean;
@@ -148,7 +141,7 @@ export default function UserEditDialog({ open, user, onClose, onSaved }: UserEdi
               onChange={(e) => setExpenseLimit(e.target.value)}
               disabled={saving || isEnterprise}
               placeholder={isEnterprise ? 'Unlimited' : ''}
-              inputProps={{ min: 1, step: 1 }}
+              slotProps={{ htmlInput: { min: 1, step: 1 } }}
               size="small"
               helperText={isEnterprise ? 'Unlimited for Enterprise plan' : undefined}
             />

@@ -4,7 +4,13 @@ import { CheckCircle2, Circle, X } from 'lucide-react';
 
 const STORAGE_KEY = 'fintrackr_onboarding_dismissed';
 
-const STEPS = [
+interface OnboardingStep {
+  id: string;
+  label: string;
+  to: string;
+}
+
+const STEPS: OnboardingStep[] = [
   {
     id: 'add_expense',
     label: 'Add your first expense',
@@ -22,7 +28,7 @@ const STEPS = [
   },
 ];
 
-function isDismissed() {
+function isDismissed(): boolean {
   try {
     return localStorage.getItem(STORAGE_KEY) === '1';
   } catch {
@@ -30,7 +36,7 @@ function isDismissed() {
   }
 }
 
-export default function OnboardingBanner({ completedStepIds = [] }) {
+export default function OnboardingBanner({ completedStepIds = [] }: { completedStepIds?: string[] }) {
   const [dismissed, setDismissed] = useState(isDismissed);
 
   if (dismissed) return null;

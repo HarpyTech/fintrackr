@@ -1,5 +1,6 @@
 import {
   createContext,
+  ReactNode,
   useCallback,
   useContext,
   useEffect,
@@ -8,11 +9,26 @@ import {
   useState,
 } from 'react';
 import { AlertTriangle, CheckCircle2, Info, X, XCircle } from 'lucide-react';
-import { TOAST_EVENT } from '../lib/notify';
+import { TOAST_EVENT, ToastDetail, ToastTone } from '../lib/notify';
 
-const ToastContext = createContext(null);
+interface Toast {
+  id: number;
+  message: string;
+  tone: ToastTone;
+}
 
-const TONE_ICONS = {
+export interface ToastContextValue {
+  push: (detail: ToastDetail) => number | null;
+  dismiss: (id: number) => void;
+  success: (message: string, duration?: number) => number | null;
+  error: (message: string, duration?: number) => number | null;
+  warning: (message: string, duration?: number) => number | null;
+  info: (message: string, duration?: number) => number | null;
+}
+
+const ToastContext = createContext<ToastContextValue | null>(null);
+
+const TONE_ICONS: Record<ToastTone, typeof Info> = {
   success: CheckCircle2,
   error: XCircle,
   warning: AlertTriangle,
@@ -22,12 +38,12 @@ const TONE_ICONS = {
 const DEFAULT_DURATION = 4200;
 const MAX_VISIBLE = 4;
 
-export function ToastProvider({ children }) {
-  const [toasts, setToasts] = useState([]);
-  const timersRef = useRef(new Map());
+export function ToastProvider({ children }: { children: ReactNode }) {
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const timersRef = useRef(new Map<number, number>());
   const idRef = useRef(0);
 
-  const dismiss = useCallback((id) => {
+  const dismiss = useCallback((id: number) => {
     setToasts((current) => current.filter((toast) => toast.id !== id));
     const timer = timersRef.current.get(id);
     if (timer) {
@@ -37,7 +53,7 @@ export function ToastProvider({ children }) {
   }, []);
 
   const push = useCallback(
-    ({ message, tone = 'info', duration = DEFAULT_DURATION }) => {
+    ({ message, tone = 'info', duration = DEFAULT_DURATION }: ToastDetail): number | null => {
       if (!message) return null;
 
       idRef.current += 1;
@@ -64,8 +80,8 @@ export function ToastProvider({ children }) {
 
   // Bridge CustomEvents emitted by the non-React fetch layer.
   useEffect(() => {
-    function handleToastEvent(event) {
-      push(event.detail || {});
+    function handleToastEvent(event: Event) {
+      push((event as CustomEvent<ToastDetail>).detail || { message: '' });
     }
 
     window.addEventListener(TOAST_EVENT, handleToastEvent);
@@ -81,14 +97,14 @@ export function ToastProvider({ children }) {
     };
   }, []);
 
-  const value = useMemo(
+  const value = useMemo<ToastContextValue>(
     () => ({
       push,
       dismiss,
-      success: (message, duration) => push({ message, tone: 'success', duration }),
-      error: (message, duration) => push({ message, tone: 'error', duration }),
-      warning: (message, duration) => push({ message, tone: 'warning', duration }),
-      info: (message, duration) => push({ message, tone: 'info', duration }),
+      success: (message: string, duration?: number) => push({ message, tone: 'success', duration }),
+      error: (message: string, duration?: number) => push({ message, tone: 'error', duration }),
+      warning: (message: string, duration?: number) => push({ message, tone: 'warning', duration }),
+      info: (message: string, duration?: number) => push({ message, tone: 'info', duration }),
     }),
     [push, dismiss],
   );
@@ -126,7 +142,7 @@ export function ToastProvider({ children }) {
   );
 }
 
-export function useToast() {
+export function useToast(): ToastContextValue {
   const ctx = useContext(ToastContext);
   if (!ctx) {
     throw new Error('useToast must be used within ToastProvider');

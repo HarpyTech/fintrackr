@@ -1,5 +1,6 @@
 import { ArrowDownRight, ArrowUpRight, Minus } from 'lucide-react';
 import { formatInr } from '../../lib/chartColors';
+import type { AnalyticsFormat, AnalyticsHighlight } from '../../types';
 
 /**
  * Headline figures for an agent answer.
@@ -13,7 +14,7 @@ import { formatInr } from '../../lib/chartColors';
  */
 const THEMES = ['blue', 'purple', 'green', 'orange'];
 
-function formatValue(value, format) {
+function formatValue(value: AnalyticsHighlight['value'], format: AnalyticsFormat | undefined): string {
   if (value === null || value === undefined) return '—';
   if (format === 'currency') return formatInr(value);
   if (format === 'number') {
@@ -25,7 +26,7 @@ function formatValue(value, format) {
   return String(value);
 }
 
-function DeltaBadge({ deltaPct, direction }) {
+function DeltaBadge({ deltaPct, direction }: { deltaPct?: number | null; direction?: AnalyticsHighlight['direction'] }) {
   if (deltaPct === null || deltaPct === undefined) return null;
 
   const modifier =
@@ -41,7 +42,7 @@ function DeltaBadge({ deltaPct, direction }) {
   );
 }
 
-export default function KpiGrid({ highlights }) {
+export default function KpiGrid({ highlights }: { highlights: AnalyticsHighlight[] }) {
   const items = (highlights || []).filter(Boolean);
   if (items.length === 0) return null;
 

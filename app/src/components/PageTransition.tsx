@@ -1,3 +1,4 @@
+import { ReactNode } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 
 /**
@@ -19,7 +20,7 @@ const reducedVariants = {
   exit: { opacity: 1, y: 0 },
 };
 
-export default function PageTransition({ children }) {
+export default function PageTransition({ children }: { children: ReactNode }) {
   const prefersReducedMotion = useReducedMotion();
 
   return (

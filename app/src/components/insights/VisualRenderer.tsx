@@ -1,11 +1,13 @@
-import BreakdownChart from '../charts/BreakdownChart';
-import CategoryTrendChart from '../charts/CategoryTrendChart';
-import TrendBarChart from '../charts/TrendBarChart';
 import ErrorBoundary from '../ErrorBoundary';
 import DataTable from './DataTable';
 import KpiGrid from './KpiGrid';
-import { CHART_ACCENT, CHART_ACCENT_ALT, formatInr } from '../../lib/chartColors';
+import BreakdownChart from '../charts/BreakdownChart';
+import CategoryTrendChart, { CategoryTrendItem } from '../charts/CategoryTrendChart';
+import TrendBarChart from '../charts/TrendBarChart';
+import type { ChartSize } from '../charts/ChartFrame';
+import { CHART_ACCENT, CHART_ACCENT_ALT } from '../../lib/chartColors';
 import { useChartLayout } from '../../hooks/useChartLayout';
+import type { AnalyticsDataset, AnalyticsVisual } from '../../types';
 
 /**
  * Maps a server visual spec onto a chart component.
@@ -19,11 +21,19 @@ import { useChartLayout } from '../../hooks/useChartLayout';
  * apply them via useChartLayout()/useChartTheme(), so a breakdown of 30
  * vendors is still capped to 5 slices on a phone and 7 on a desktop.
  */
-function resolveColor(name) {
+function resolveColor(name: string | undefined): string {
   return name === 'accent_alt' ? CHART_ACCENT_ALT : CHART_ACCENT;
 }
 
-const CHART_REGISTRY = {
+interface ChartRegistryArgs {
+  visual: AnalyticsVisual;
+  dataset: AnalyticsDataset;
+  size?: ChartSize;
+}
+
+type ChartSizeOrUndefined = ChartSize | undefined;
+
+const CHART_REGISTRY: Record<string, (args: ChartRegistryArgs) => JSX.Element> = {
   trend_bar: ({ visual, dataset, size }) => (
     <TrendBarChart
       items={dataset.rows}
@@ -50,7 +60,7 @@ const CHART_REGISTRY = {
 
   category_trend: ({ dataset, size }) => (
     <CategoryTrendChart
-      items={dataset.rows}
+      items={dataset.rows as unknown as CategoryTrendItem[]}
       size={size}
       emptyTitle="Nothing to compare"
       emptyBody="This query returned no rows to compare."
@@ -76,7 +86,7 @@ const CHART_REGISTRY = {
   },
 };
 
-export default function VisualRenderer({ visual, dataset }) {
+export default function VisualRenderer({ visual, dataset }: { visual: AnalyticsVisual; dataset: AnalyticsDataset }) {
   const layout = useChartLayout();
 
   if (!visual || !dataset) return null;
@@ -87,9 +97,9 @@ export default function VisualRenderer({ visual, dataset }) {
 
   // Charts get one step smaller on mobile; the server's size is the desktop
   // intent.
-  const size = layout.isMobile
-    ? { lg: 'md', md: 'sm', sm: 'sm' }[visual.size] || 'sm'
-    : visual.size || 'md';
+  const size: ChartSizeOrUndefined = layout.isMobile
+    ? (({ lg: 'md', md: 'sm', sm: 'sm' } as Record<string, ChartSize>)[visual.size || 'sm'] || 'sm')
+    : (visual.size as ChartSizeOrUndefined) || 'md';
 
   return (
     <section className="insights-visual">
@@ -109,7 +119,7 @@ export default function VisualRenderer({ visual, dataset }) {
         title="This chart could not be drawn"
         body="The rest of the answer is unaffected."
       >
-        {render({ visual, dataset, size, formatInr })}
+        {render({ visual, dataset, size })}
       </ErrorBoundary>
     </section>
   );

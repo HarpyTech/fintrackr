@@ -7,7 +7,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import ChartFrame from './ChartFrame';
+import ChartFrame, { ChartSize } from './ChartFrame';
 import { useChartLayout } from '../../hooks/useChartLayout';
 import {
   CHART_COLORS,
@@ -23,6 +23,7 @@ import {
   niceScale,
   rankSeriesKeys,
   truncateLabel,
+  ChartRow,
 } from '../../lib/chartScale';
 
 const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -30,6 +31,21 @@ const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
 
 const OTHER_KEY = 'Other';
 const OTHER_COLOR = CHART_COLORS[CHART_COLORS.length - 1]; // slate
+
+export interface CategoryTrendItem {
+  category: string;
+  month: number;
+  total: number;
+}
+
+export interface CategoryTrendChartProps {
+  items: CategoryTrendItem[];
+  loading?: boolean;
+  error?: string;
+  emptyTitle?: string;
+  emptyBody?: string;
+  size?: ChartSize;
+}
 
 /**
  * Pivot flat {category, month, total} rows into one row per month, with a
@@ -39,11 +55,11 @@ const OTHER_COLOR = CHART_COLORS[CHART_COLORS.length - 1]; // slate
  * into a single `Other` column so the series count stays bounded no matter
  * how many category names the extraction step invents.
  */
-function pivot(items, keepKeys) {
+function pivot(items: CategoryTrendItem[], keepKeys: string[]): ChartRow[] {
   if (!items?.length) return [];
 
   const keep = new Set(keepKeys);
-  const monthMap = {};
+  const monthMap: Record<string, ChartRow> = {};
 
   for (const item of items) {
     const abbr = MONTH_ABBR[(item.month || 1) - 1];
@@ -52,7 +68,7 @@ function pivot(items, keepKeys) {
     if (!monthMap[abbr]) monthMap[abbr] = { month: abbr };
 
     const column = keep.has(item.category) ? item.category : OTHER_KEY;
-    monthMap[abbr][column] = (monthMap[abbr][column] || 0) + Number(item.total || 0);
+    monthMap[abbr][column] = Number(monthMap[abbr][column] || 0) + Number(item.total || 0);
   }
 
   return MONTH_ABBR.filter((abbr) => monthMap[abbr]).map((abbr) => monthMap[abbr]);
@@ -76,7 +92,7 @@ export default function CategoryTrendChart({
   emptyTitle = 'Nothing to compare yet',
   emptyBody = 'Add expenses across a few months to see how each category averages out.',
   size = 'lg',
-}) {
+}: CategoryTrendChartProps) {
   const chartTheme = useChartTheme();
   const layout = useChartLayout();
 
@@ -137,13 +153,13 @@ export default function CategoryTrendChart({
           width={layout.yAxisWidth}
         />
         <Tooltip
-          formatter={(value, name) => [formatInr(value), name]}
+          formatter={(value: number | string, name: string) => [formatInr(value), name]}
           cursor={{ fill: chartTheme.grid, fillOpacity: 0.35 }}
           {...tooltipStyles(chartTheme)}
         />
         <Legend
           wrapperStyle={{ color: chartTheme.axis, fontSize: layout.legendFontSize }}
-          formatter={(value) => truncateLabel(value, layout.isMobile ? 10 : 18)}
+          formatter={(value: string) => truncateLabel(value, layout.isMobile ? 10 : 18)}
         />
         {seriesKeys.map((key, index) => (
           <Bar

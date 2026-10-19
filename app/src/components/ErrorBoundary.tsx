@@ -1,5 +1,19 @@
-import { Component } from 'react';
+import { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle } from 'lucide-react';
+
+interface ErrorBoundaryProps {
+  children: ReactNode;
+  fallback?: ReactNode;
+  label?: string;
+  title?: string;
+  body?: string;
+  /** Lets a caller reset the boundary without remounting its subtree via `key`. */
+  resetKey?: unknown;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+}
 
 /**
  * Catches render-time exceptions in the subtree.
@@ -12,20 +26,20 @@ import { AlertTriangle } from 'lucide-react';
  * Must be a class component: there is no hook equivalent of
  * componentDidCatch / getDerivedStateFromError.
  */
-export default class ErrorBoundary extends Component {
-  constructor(props) {
+export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false };
     this.handleRetry = this.handleRetry.bind(this);
   }
 
-  static getDerivedStateFromError() {
+  static getDerivedStateFromError(): ErrorBoundaryState {
     return { hasError: true };
   }
 
-  componentDidUpdate(prevProps) {
+  componentDidUpdate(prevProps: ErrorBoundaryProps) {
     // Lets a caller reset the boundary without remounting its subtree via
-    // `key` — App.jsx needs this so route changes clear a stale crash
+    // `key` — App.tsx needs this so route changes clear a stale crash
     // without also tearing down the AnimatePresence tree used for page
     // transitions.
     if (
@@ -37,7 +51,7 @@ export default class ErrorBoundary extends Component {
     }
   }
 
-  componentDidCatch(error, info) {
+  componentDidCatch(error: Error, info: ErrorInfo) {
     // eslint-disable-next-line no-console
     console.error(
       `[ErrorBoundary] ${this.props.label || 'component'} failed to render`,

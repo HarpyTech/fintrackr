@@ -2,6 +2,7 @@ import { AlertCircle, HelpCircle } from 'lucide-react';
 import KpiGrid from './KpiGrid';
 import QueryTransparency from './QueryTransparency';
 import VisualRenderer from './VisualRenderer';
+import type { AnalyticsAnswer, AnalyticsDataset } from '../../types';
 
 /**
  * Renders one complete agent answer.
@@ -14,7 +15,7 @@ import VisualRenderer from './VisualRenderer';
  * Every branch is driven by the envelope's stable keys, so a question type the
  * UI has never seen still renders.
  */
-function Markdownish({ text }) {
+function Markdownish({ text }: { text?: string }) {
   // The narrative uses only **bold** and paragraph breaks, so a full markdown
   // parser would be a dependency for two features. Anything else is rendered
   // literally rather than interpreted, which also keeps it injection-safe.
@@ -37,7 +38,7 @@ function Markdownish({ text }) {
   );
 }
 
-export default function AgentResult({ answer, onFollowup }) {
+export default function AgentResult({ answer, onFollowup }: { answer: AnalyticsAnswer; onFollowup?: (followup: string) => void }) {
   if (!answer) return null;
 
   const {
@@ -52,7 +53,7 @@ export default function AgentResult({ answer, onFollowup }) {
     degraded,
   } = answer;
 
-  const datasetById = datasets.reduce((map, dataset) => {
+  const datasetById = datasets.reduce<Record<string, AnalyticsDataset>>((map, dataset) => {
     map[dataset.id] = dataset;
     return map;
   }, {});

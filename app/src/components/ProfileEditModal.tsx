@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, FormEvent } from 'react';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
@@ -11,13 +11,20 @@ const PHONE_PATTERN = /^\+?[0-9]{8,15}$/;
 const ADDRESS_MIN_LENGTH = 10;
 const ADDRESS_MAX_LENGTH = 120;
 
-export default function ProfileEditModal({ isOpen, onClose }) {
+interface ProfileEditForm {
+  first_name: string;
+  last_name: string;
+  phone: string;
+  address: string;
+}
+
+export default function ProfileEditModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { profile, updateProfile } = useAuth();
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<ProfileEditForm>({
     first_name: profile?.first_name || '',
     last_name: profile?.last_name || '',
     phone: profile?.phone || '',
@@ -52,7 +59,7 @@ export default function ProfileEditModal({ isOpen, onClose }) {
 
   const hasValidationErrors = Boolean(phoneValidationError || addressValidationError);
 
-  async function handleSaveProfile(event) {
+  async function handleSaveProfile(event: FormEvent) {
     event.preventDefault();
     if (hasValidationErrors) {
       setError('Please fix the highlighted profile fields and try again.');
@@ -73,7 +80,7 @@ export default function ProfileEditModal({ isOpen, onClose }) {
         onClose();
       }, 500);
     } catch (err) {
-      setError(err.message || 'Failed to save profile. Please try again.');
+      setError(err instanceof Error ? err.message : 'Failed to save profile. Please try again.');
     } finally {
       setSaving(false);
     }

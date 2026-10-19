@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import { usePwa } from '../pwa/PwaContext';
+import { usePwa, PwaPlatform } from '../pwa/PwaContext';
 
-function getInstallHelp(platform) {
+function getInstallHelp(platform: PwaPlatform): string {
   if (platform === 'ios') {
     return 'On iPhone or iPad, use Safari Share > Add to Home Screen.';
   }
@@ -14,7 +14,7 @@ function getInstallHelp(platform) {
   return 'If the browser does not show a prompt, install from the browser menu.';
 }
 
-export default function InstallAppButton({ variant = 'default' }) {
+export default function InstallAppButton({ variant = 'default' }: { variant?: 'default' | 'hero' }) {
   const { canInstall, installStatus, isOffline, isStandalone, platform, promptInstall } = usePwa();
   const [feedback, setFeedback] = useState('');
 

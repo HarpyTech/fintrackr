@@ -18,21 +18,26 @@ import { useAuth } from '../auth/AuthContext';
 import { isBillingAdminEnabled, isSupportPageEnabled } from '../lib/featureFlags';
 import { resolveDisplayName, resolveInitials } from '../lib/userDisplay';
 
+const PLAN_BADGE_LABELS: Record<string, string> = { go: 'Go', max: 'Max' };
 
-const PLAN_BADGE_LABELS = { go: 'Go', max: 'Max' };
+interface MenuItem {
+  to: string;
+  icon: typeof LayoutDashboard;
+  label: string;
+}
 
 export default function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
-  const drawerRef = useRef(null);
+  const drawerRef = useRef<HTMLDivElement | null>(null);
   const location = useLocation();
   const { session, profile, logout } = useAuth();
   const isAdmin = session?.role === 'admin';
   const plan = profile?.plan || 'free';
   const planBadge = PLAN_BADGE_LABELS[plan] || null;
 
-  const menuItems = [
+  const menuItems: MenuItem[] = [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/insights', icon: MessageSquare, label: 'Insights' },
     { to: '/report', icon: FileText, label: 'Report' },
@@ -56,8 +61,8 @@ export default function Sidebar() {
     if (!moreOpen) return undefined;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    drawerRef.current?.querySelector('a, button')?.focus();
-    const onKey = (e) => {
+    drawerRef.current?.querySelector<HTMLElement>('a, button')?.focus();
+    const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setMoreOpen(false);
     };
     document.addEventListener('keydown', onKey);

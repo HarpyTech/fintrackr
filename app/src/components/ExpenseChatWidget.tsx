@@ -1,7 +1,24 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, FormEvent } from 'react';
 import { apiRequest } from '../lib/api';
+import type { Expense } from '../types';
 
-function createEntry(role, text, tone = 'default') {
+type ChatRole = 'user' | 'assistant';
+type ChatTone = 'default' | 'success' | 'error' | 'missing';
+
+interface ChatEntry {
+  id: string;
+  role: ChatRole;
+  text: string;
+  tone: ChatTone;
+}
+
+interface ChatCreateResponse {
+  message: string;
+  expense?: Expense;
+  needs_vendor_confirm?: boolean;
+}
+
+function createEntry(role: ChatRole, text: string, tone: ChatTone = 'default'): ChatEntry {
   return {
     id: `${role}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     role,
@@ -10,7 +27,7 @@ function createEntry(role, text, tone = 'default') {
   };
 }
 
-function parseMissingFields(message) {
+function parseMissingFields(message: string): string[] {
   if (!message) {
     return [];
   }
@@ -41,7 +58,7 @@ function parseMissingFields(message) {
     .filter(Boolean);
 }
 
-function looksLikeAnalysisMessage(message) {
+function looksLikeAnalysisMessage(message: string): boolean {
   const lower = String(message || '').trim().toLowerCase();
   if (!lower) {
     return false;
@@ -74,11 +91,11 @@ export default function ExpenseChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [draft, setDraft] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState<ChatEntry[]>([]);
   const [pendingExpenseContext, setPendingExpenseContext] = useState('');
-  const [pendingMissingFields, setPendingMissingFields] = useState([]);
+  const [pendingMissingFields, setPendingMissingFields] = useState<string[]>([]);
   const [pendingVendorConfirmMode, setPendingVendorConfirmMode] = useState(false);
-  const scrollRef = useRef(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     window.dispatchEvent(
@@ -107,7 +124,7 @@ export default function ExpenseChatWidget() {
     });
   }, [isOpen, messages]);
 
-  async function handleSubmit(event) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     const latestUserMessage = draft.trim();
     if (!latestUserMessage || submitting) {
@@ -124,7 +141,7 @@ export default function ExpenseChatWidget() {
     setSubmitting(true);
 
     try {
-      const response = await apiRequest('/expenses/chat-create', {
+      const response = await apiRequest<ChatCreateResponse>('/expenses/chat-create', {
         method: 'POST',
         body: JSON.stringify({ message: composedMessage }),
       });
@@ -162,7 +179,8 @@ export default function ExpenseChatWidget() {
         );
       }
     } catch (err) {
-      const missingFields = parseMissingFields(err.message || '');
+      const message = err instanceof Error ? err.message : '';
+      const missingFields = parseMissingFields(message);
       if (missingFields.length > 0) {
         setPendingExpenseContext(composedMessage);
         setPendingMissingFields(missingFields);
@@ -179,7 +197,7 @@ export default function ExpenseChatWidget() {
         setPendingMissingFields([]);
         setMessages((prev) => [
           ...prev,
-          createEntry('assistant', err.message || 'Unable to save that expense right now.', 'error'),
+          createEntry('assistant', message || 'Unable to save that expense right now.', 'error'),
         ]);
       }
     } finally {

@@ -28,7 +28,7 @@ export default function AppHeader() {
   const { session, profile } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const menuRef = useRef(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
 
   const meta = resolvePageMeta(location.pathname);
 
@@ -45,12 +45,12 @@ export default function AppHeader() {
   useEffect(() => {
     if (!isMenuOpen) return undefined;
 
-    function handlePointerDown(event) {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
+    function handlePointerDown(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setIsMenuOpen(false);
       }
     }
-    function handleEscape(event) {
+    function handleEscape(event: KeyboardEvent) {
       if (event.key === 'Escape') setIsMenuOpen(false);
     }
 

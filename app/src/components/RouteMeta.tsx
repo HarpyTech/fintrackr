@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { resolvePageMeta } from '../lib/pageMeta';
 
-function setMeta(selector, attr, value) {
+function setMeta(selector: string, attr: string, value: string) {
   const el = document.head.querySelector(selector);
   if (el) el.setAttribute(attr, value);
 }

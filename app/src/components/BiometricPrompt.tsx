@@ -11,9 +11,16 @@ import { useState } from 'react';
 import { useWebAuthn } from '../hooks/useWebAuthn';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 
-export default function BiometricPrompt({ username, onDismiss }) {
+type PromptStatus = 'idle' | 'success' | 'error';
+
+interface BiometricPromptProps {
+  username: string;
+  onDismiss: () => void;
+}
+
+export default function BiometricPrompt({ username, onDismiss }: BiometricPromptProps) {
   const { isSupported, loading, registerBiometric } = useWebAuthn();
-  const [status, setStatus] = useState('idle'); // 'idle' | 'success' | 'error'
+  const [status, setStatus] = useState<PromptStatus>('idle');
   const [errorMsg, setErrorMsg] = useState('');
 
   // Called before the early return so hook order stays stable across renders.
@@ -35,7 +42,7 @@ export default function BiometricPrompt({ username, onDismiss }) {
       setTimeout(onDismiss, 1500);
     } catch (err) {
       setStatus('error');
-      setErrorMsg(err.message);
+      setErrorMsg(err instanceof Error ? err.message : 'Biometric registration failed.');
     }
   }
 

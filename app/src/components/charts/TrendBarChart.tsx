@@ -6,7 +6,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import ChartFrame from './ChartFrame';
+import ChartFrame, { ChartSize } from './ChartFrame';
 import { useChartLayout } from '../../hooks/useChartLayout';
 import {
   CHART_ACCENT,
@@ -15,7 +15,20 @@ import {
   tooltipStyles,
   useChartTheme,
 } from '../../lib/chartColors';
-import { labelInterval, maxValueOf, niceScale } from '../../lib/chartScale';
+import { labelInterval, maxValueOf, niceScale, ChartRow } from '../../lib/chartScale';
+
+export interface TrendBarChartProps {
+  items: ChartRow[];
+  xKey: string | undefined;
+  valueKey?: string;
+  loading?: boolean;
+  error?: string;
+  color?: string;
+  xLabel?: string;
+  emptyTitle?: string;
+  emptyBody?: string;
+  size?: ChartSize;
+}
 
 /**
  * Single-series bar chart over a time axis.
@@ -34,7 +47,7 @@ export default function TrendBarChart({
   emptyTitle = 'Nothing to show yet',
   emptyBody = 'Data will appear here once expenses are recorded for this period.',
   size = 'md',
-}) {
+}: TrendBarChartProps) {
   const chartTheme = useChartTheme();
   const layout = useChartLayout();
 
@@ -94,7 +107,7 @@ export default function TrendBarChart({
           width={layout.yAxisWidth}
         />
         <Tooltip
-          formatter={(value) => formatInr(value)}
+          formatter={(value: number | string) => formatInr(value)}
           cursor={{ fill: chartTheme.grid, fillOpacity: 0.35 }}
           {...tooltipStyles(chartTheme)}
         />

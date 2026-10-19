@@ -1,5 +1,12 @@
 import { useState } from 'react';
 import { Check, Copy, Database } from 'lucide-react';
+import type { AnalyticsConfidence, AnalyticsQueryView } from '../../types';
+
+interface QueryTransparencyProps {
+  query?: AnalyticsQueryView;
+  confidence?: AnalyticsConfidence;
+  degraded?: boolean;
+}
 
 /**
  * Shows exactly which query produced an answer.
@@ -11,7 +18,7 @@ import { Check, Copy, Database } from 'lucide-react';
  *
  * Collapsed by default; the summary line carries the useful facts.
  */
-export default function QueryTransparency({ query, confidence, degraded }) {
+export default function QueryTransparency({ query, confidence, degraded }: QueryTransparencyProps) {
   const [copied, setCopied] = useState(false);
 
   if (!query && !confidence?.caveats?.length) return null;
@@ -30,7 +37,7 @@ export default function QueryTransparency({ query, confidence, degraded }) {
   }
 
   const level = confidence?.level || 'low';
-  const summaryParts = [];
+  const summaryParts: string[] = [];
   if (query?.row_count !== undefined) {
     summaryParts.push(`${query.row_count} row${query.row_count === 1 ? '' : 's'}`);
   }
@@ -82,8 +89,8 @@ export default function QueryTransparency({ query, confidence, degraded }) {
           <>
             <div className="insights-transparency-code-head">
               <span>
-                {query.op === 'find' ? 'Filter' : 'Aggregation pipeline'}
-                {query.collection ? ` · ${query.collection}` : ''}
+                {query?.op === 'find' ? 'Filter' : 'Aggregation pipeline'}
+                {query?.collection ? ` · ${query.collection}` : ''}
               </span>
               <button
                 type="button"

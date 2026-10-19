@@ -1,5 +1,19 @@
+import { ReactElement } from 'react';
 import { ResponsiveContainer } from 'recharts';
 import EmptyState from '../EmptyState';
+
+export type ChartSize = 'sm' | 'md' | 'lg';
+
+export interface ChartFrameProps {
+  loading?: boolean;
+  error?: string;
+  isEmpty?: boolean;
+  emptyTitle?: string;
+  emptyBody?: string;
+  size?: ChartSize;
+  scrollMinWidth?: number;
+  children: ReactElement;
+}
 
 /**
  * Sizing and state wrapper shared by every chart.
@@ -30,7 +44,7 @@ export default function ChartFrame({
   size = 'md',
   scrollMinWidth = 0,
   children,
-}) {
+}: ChartFrameProps) {
   if (error) {
     return <p className="error-text">{error}</p>;
   }

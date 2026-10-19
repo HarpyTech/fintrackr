@@ -3,9 +3,16 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
-export default function MonthYearFilter({ year, month, onYearChange, onMonthChange }) {
+interface MonthYearFilterProps {
+  year: number;
+  month: number;
+  onYearChange: (year: number) => void;
+  onMonthChange: (month: number) => void;
+}
+
+export default function MonthYearFilter({ year, month, onYearChange, onMonthChange }: MonthYearFilterProps) {
   const currentYear = new Date().getFullYear();
-  const years = [];
+  const years: number[] = [];
   for (let y = 2024; y <= currentYear; y++) {
     years.push(y);
   }

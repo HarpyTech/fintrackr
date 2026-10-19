@@ -1,5 +1,6 @@
 import { formatInr } from '../../lib/chartColors';
 import { useChartLayout } from '../../hooks/useChartLayout';
+import type { AnalyticsDataset, AnalyticsFormat } from '../../types';
 
 /**
  * Generic table for an agent dataset.
@@ -11,7 +12,7 @@ import { useChartLayout } from '../../hooks/useChartLayout';
  * On mobile a wide table becomes stacked label/value rows rather than a
  * horizontal scroll, which is unusable one-handed.
  */
-function formatCell(value, type) {
+function formatCell(value: string | number | null | undefined, type: AnalyticsFormat | undefined): string {
   if (value === null || value === undefined || value === '') {
     return '—';
   }
@@ -24,7 +25,7 @@ function formatCell(value, type) {
   return String(value);
 }
 
-export default function DataTable({ dataset }) {
+export default function DataTable({ dataset }: { dataset: AnalyticsDataset }) {
   const layout = useChartLayout();
   const columns = dataset?.columns || [];
   const rows = dataset?.rows || [];
