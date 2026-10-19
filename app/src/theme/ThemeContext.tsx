@@ -1,13 +1,25 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 
 const STORAGE_KEY = 'fintrackr-theme';
-const ThemeContext = createContext(null);
 
-function isValidTheme(value) {
+export type ThemeSetting = 'light' | 'dark' | 'system';
+export type EffectiveTheme = 'light' | 'dark';
+
+export interface ThemeContextValue {
+  theme: ThemeSetting;
+  isDark: boolean;
+  effectiveTheme: EffectiveTheme;
+  setTheme: (theme: ThemeSetting) => void;
+  toggleTheme: () => void;
+}
+
+const ThemeContext = createContext<ThemeContextValue | null>(null);
+
+function isValidTheme(value: string | null): value is ThemeSetting {
   return value === 'light' || value === 'dark' || value === 'system';
 }
 
-function getSystemTheme() {
+function getSystemTheme(): EffectiveTheme {
   if (typeof window === 'undefined') {
     return 'light';
   }
@@ -17,7 +29,7 @@ function getSystemTheme() {
     : 'light';
 }
 
-function getPreferredTheme() {
+function getPreferredTheme(): ThemeSetting {
   if (typeof window === 'undefined') {
     return 'system';
   }
@@ -30,10 +42,10 @@ function getPreferredTheme() {
   return 'system';
 }
 
-export function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState(getPreferredTheme);
-  const [effectiveTheme, setEffectiveTheme] = useState(() =>
-    getPreferredTheme() === 'system' ? getSystemTheme() : getPreferredTheme()
+export function ThemeProvider({ children }: { children: ReactNode }) {
+  const [theme, setTheme] = useState<ThemeSetting>(getPreferredTheme);
+  const [effectiveTheme, setEffectiveTheme] = useState<EffectiveTheme>(() =>
+    getPreferredTheme() === 'system' ? getSystemTheme() : (getPreferredTheme() as EffectiveTheme)
   );
 
   useEffect(() => {
@@ -65,7 +77,7 @@ export function ThemeProvider({ children }) {
     return () => mediaQuery.removeListener(handleChange);
   }, [theme]);
 
-  const value = useMemo(
+  const value = useMemo<ThemeContextValue>(
     () => ({
       theme,
       isDark: effectiveTheme === 'dark',
@@ -87,7 +99,7 @@ export function ThemeProvider({ children }) {
   );
 }
 
-export function useTheme() {
+export function useTheme(): ThemeContextValue {
   const context = useContext(ThemeContext);
 
   if (!context) {
