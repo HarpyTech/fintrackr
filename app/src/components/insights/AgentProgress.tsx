@@ -1,17 +1,17 @@
 import type { AgentPhase } from '../../types';
 
 const STEP_LABELS: Record<string, string> = {
-  queued:    'Getting ready…',
-  context:   'Reading your expense profile…',
-  planning:  'Understanding your question…',
-  validating:'Checking the query is safe…',
-  executing: 'Querying your expenses…',
-  charting:  'Preparing the answer…',
-  fallback:  'Using offline analytics…',
+  queued:    'Processing your question…',
+  context:   'Processing your question…',
+  planning:  'Processing your question…',
+  validating:'Processing your question…',
+  executing: 'Processing your question…',
+  charting:  'Processing your question…',
+  fallback:  'Processing your question…',
 };
 
-export default function AgentProgress({ phase, label }: { phase: AgentPhase; label?: string }) {
-  const text = label || STEP_LABELS[phase] || 'Thinking…';
+export default function AgentProgress({ phase }: { phase: AgentPhase; label?: string }) {
+  const text = STEP_LABELS[phase] || 'Processing your question…';
   return (
     <div className="insights-progress" role="status" aria-live="polite">
       <span className="insights-progress-dot-pulse" aria-hidden="true" />

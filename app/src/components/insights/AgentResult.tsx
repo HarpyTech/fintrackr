@@ -1,24 +1,9 @@
-import { AlertCircle, HelpCircle } from 'lucide-react';
+import { AlertCircle, RefreshCw } from 'lucide-react';
 import KpiGrid from './KpiGrid';
-import QueryTransparency from './QueryTransparency';
 import VisualRenderer from './VisualRenderer';
 import type { AnalyticsAnswer, AnalyticsDataset } from '../../types';
 
-/**
- * Renders one complete agent answer.
- *
- * Order is deliberate: the headline and figures first (what you asked), then
- * the charts, then the prose, then how it was calculated. A reader who trusts
- * the answer never has to open the transparency panel; a reader who does not
- * has it right there.
- *
- * Every branch is driven by the envelope's stable keys, so a question type the
- * UI has never seen still renders.
- */
 function Markdownish({ text }: { text?: string }) {
-  // The narrative uses only **bold** and paragraph breaks, so a full markdown
-  // parser would be a dependency for two features. Anything else is rendered
-  // literally rather than interpreted, which also keeps it injection-safe.
   if (!text) return null;
 
   return (
@@ -38,37 +23,48 @@ function Markdownish({ text }: { text?: string }) {
   );
 }
 
-export default function AgentResult({ answer, onFollowup }: { answer: AnalyticsAnswer; onFollowup?: (followup: string) => void }) {
+export default function AgentResult({
+  answer,
+  onRetry,
+}: {
+  answer: AnalyticsAnswer;
+  onRetry?: (question: string) => void;
+}) {
   if (!answer) return null;
 
-  const {
-    question,
-    status,
-    narrative,
-    datasets = [],
-    visuals = [],
-    query,
-    confidence,
-    followups = [],
-    degraded,
-  } = answer;
+  const { question, status, narrative, datasets = [], visuals = [] } = answer;
 
-  const datasetById = datasets.reduce<Record<string, AnalyticsDataset>>((map, dataset) => {
-    map[dataset.id] = dataset;
+  if (status === 'error') {
+    return (
+      <article className="insights-result insights-result--error">
+        <p className="insights-result-error-msg">
+          <AlertCircle size={15} aria-hidden="true" />
+          We couldn't load this right now.
+        </p>
+        {onRetry ? (
+          <button
+            type="button"
+            className="insights-result-retry"
+            onClick={() => onRetry(question)}
+          >
+            <RefreshCw size={14} aria-hidden="true" />
+            Try again
+          </button>
+        ) : null}
+      </article>
+    );
+  }
+
+  const datasetById = datasets.reduce<Record<string, AnalyticsDataset>>((map, ds) => {
+    map[ds.id] = ds;
     return map;
   }, {});
-
-  const refused = status === 'refused';
 
   return (
     <article className="insights-result">
       <header className="insights-result-head">
-        <p className="insights-result-question">{question}</p>
         <h2 className="insights-result-headline">
-          {refused ? (
-            <HelpCircle size={18} aria-hidden="true" className="insights-result-icon" />
-          ) : null}
-          {narrative?.headline || 'Result'}
+          {narrative?.headline || (status === 'empty' ? 'No results found' : 'Result')}
         </h2>
       </header>
 
@@ -85,33 +81,6 @@ export default function AgentResult({ answer, onFollowup }: { answer: AnalyticsA
       ))}
 
       <Markdownish text={narrative?.body_md} />
-
-      {answer.error?.reason && !refused ? (
-        <p className="insights-result-warning">
-          <AlertCircle size={14} aria-hidden="true" />
-          {answer.error.reason}
-        </p>
-      ) : null}
-
-      <QueryTransparency query={query} confidence={confidence} degraded={degraded} />
-
-      {followups.length ? (
-        <footer className="insights-result-followups">
-          <span className="insights-result-followups-label">Next</span>
-          <div className="insights-result-followup-pills">
-            {followups.map((followup) => (
-              <button
-                key={followup}
-                type="button"
-                className="insights-proto-quick-btn"
-                onClick={() => onFollowup?.(followup)}
-              >
-                {followup}
-              </button>
-            ))}
-          </div>
-        </footer>
-      ) : null}
     </article>
   );
 }
