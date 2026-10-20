@@ -23,11 +23,13 @@ export function useAgentQuery() {
   const [streaming, setStreaming] = useState(false);
   const [phase, setPhase] = useState<AgentPhase>('');
   const [phaseLabel, setPhaseLabel] = useState('');
-  const [error, setError] = useState('');
   const [pendingQuestion, setPendingQuestion] = useState('');
 
   const abortRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
+  // Ref-based guard prevents double-submission during the same render cycle
+  // before the streaming state update has been applied.
+  const streamingRef = useRef(false);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -43,7 +45,11 @@ export function useAgentQuery() {
     apiRequest<AnalyticsHistoryResponse>('/insights/history')
       .then((data) => {
         if (active && data?.items?.length) {
-          setAnswers(data.items);
+          setAnswers((prev) => {
+            const existingIds = new Set(prev.map((a) => a.answer_id));
+            const fresh = data.items.filter((item) => !existingIds.has(item.answer_id));
+            return fresh.length ? [...prev, ...fresh] : prev;
+          });
         }
       })
       .catch(() => {
@@ -56,6 +62,7 @@ export function useAgentQuery() {
     abortRef.current?.abort();
     abortRef.current = null;
     if (mountedRef.current) {
+      streamingRef.current = false;
       setStreaming(false);
       setPhase('');
       setPhaseLabel('');
@@ -63,35 +70,36 @@ export function useAgentQuery() {
     }
   }, []);
 
+  const receive = useCallback((answer: AnalyticsAnswer | null) => {
+    if (!mountedRef.current || !answer) return;
+    setAnswers((prev) =>
+      prev.some((a) => a.answer_id === answer.answer_id) ? prev : [...prev, answer],
+    );
+  }, []);
+
   const askQuestion = useCallback(async (question: string) => {
     const trimmed = (question || '').trim();
-    if (!trimmed || streaming) return;
+    if (!trimmed || streamingRef.current) return;
 
     // A new question supersedes any in-flight one.
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
 
+    streamingRef.current = true;
     setStreaming(true);
-    setError('');
     setPendingQuestion(trimmed);
     setPhase('queued');
-    setPhaseLabel('Starting');
-
-    const receive = (answer: AnalyticsAnswer | null) => {
-      if (!mountedRef.current || !answer) return;
-      // Oldest first — chat transcript order.
-      setAnswers((prev) => [...prev, answer]);
-    };
+    setPhaseLabel('');
 
     try {
       if (supportsStreaming()) {
         await streamAsk(trimmed, {
           signal: controller.signal,
-          onPhase: (name, label) => {
+          onPhase: (name) => {
             if (!mountedRef.current) return;
             setPhase(name);
-            setPhaseLabel(label || '');
+            setPhaseLabel('');
           },
           onDone: receive,
         });
@@ -102,13 +110,19 @@ export function useAgentQuery() {
     } catch (err) {
       const agentError = err as AgentQueryError;
       if (agentError?.name === 'AbortError') return;
-      // A 401 is already handled globally: apiRequest/streamAsk raise the
-      // session-expiry event and the user is redirected.
       if (mountedRef.current && !agentError?.sessionExpired) {
-        setError(agentError?.message || 'Could not answer that question.');
+        // Add a synthetic error card to the thread instead of a top-level banner.
+        receive({
+          answer_id: `err-${Date.now()}`,
+          question: trimmed,
+          status: 'error',
+          datasets: [],
+          visuals: [],
+        });
       }
     } finally {
       if (mountedRef.current) {
+        streamingRef.current = false;
         setStreaming(false);
         setPhase('');
         setPhaseLabel('');
@@ -116,11 +130,10 @@ export function useAgentQuery() {
         abortRef.current = null;
       }
     }
-  }, [streaming]);
+  }, [receive]);
 
   const clear = useCallback(() => {
     setAnswers([]);
-    setError('');
   }, []);
 
   return {
@@ -132,7 +145,6 @@ export function useAgentQuery() {
     phase,
     phaseLabel,
     pendingQuestion,
-    error,
   };
 }
 

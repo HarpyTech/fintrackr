@@ -733,3 +733,73 @@
 .dashboard-proto-span-2 {
   grid-column: span 2;
 }
+
+/* --- Chart card header (title + info icon row) --- */
+.chart-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.chart-card-header h3 {
+  margin: 0;
+  flex: 1;
+}
+
+/* Info icon button — resets browser button styles */
+.chart-info-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 50%;
+  color: var(--accent);
+  cursor: default;
+  position: relative;
+}
+
+.chart-info-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Tooltip bubble shown on hover / focus-visible */
+.chart-info-btn .chart-info-tip {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  width: 220px;
+  padding: 8px 10px;
+  background: var(--surface-raised, var(--surface));
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  color: var(--fg);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: left;
+  white-space: normal;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.chart-info-btn:hover .chart-info-tip,
+.chart-info-btn:focus-visible .chart-info-tip {
+  display: block;
+}
+
+/* Skeleton for chart card title while data loads */
+.chart-card-title-skeleton {
+  height: 18px;
+  width: 140px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+}

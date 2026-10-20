@@ -77,7 +77,7 @@ export default function InsightsPage() {
   const { isFree } = usePlan();
 
   const {
-    answers, ask, cancel, streaming, phase, phaseLabel, pendingQuestion, error,
+    answers, ask, cancel, streaming, phase, phaseLabel, pendingQuestion,
   } = useAgentQuery();
 
   const overviewQuery = useQuery<InsightsOverview>({
@@ -111,6 +111,10 @@ export default function InsightsPage() {
       event.preventDefault();
       submit();
     }
+  }
+
+  function retry(question: string) {
+    ask(question);
   }
 
   const monthDelta = overview?.month_delta_pct;
@@ -182,17 +186,12 @@ export default function InsightsPage() {
 
         {/* ── Chat transcript (scrollable middle) ── */}
         <div className="insights-chat" ref={chatRef}>
-          {!hasHistory && !error ? (
+          {!hasHistory ? (
             <EmptyState
               icon={Sparkles}
               title="Ask your first question"
-              body="Every answer is generated from a real query against your own
-                    expenses, and you can inspect exactly what was run."
+              body="Get instant answers about your spending — totals, trends, top vendors and more."
             />
-          ) : null}
-
-          {error ? (
-            <p className="error-text insights-results-error">{error}</p>
           ) : null}
 
           {/* Completed turns — oldest first */}
@@ -207,7 +206,7 @@ export default function InsightsPage() {
                   title="This answer could not be displayed"
                   body="Try asking the question again."
                 >
-                  <AgentResult answer={answer} onFollowup={submit} />
+                  <AgentResult answer={answer} onRetry={retry} />
                 </ErrorBoundary>
               </div>
             </div>

@@ -25,6 +25,7 @@ export interface TrendBarChartProps {
   error?: string;
   color?: string;
   xLabel?: string;
+  xFormatter?: (value: unknown) => string;
   emptyTitle?: string;
   emptyBody?: string;
   size?: ChartSize;
@@ -44,6 +45,7 @@ export default function TrendBarChart({
   error = '',
   color = CHART_ACCENT,
   xLabel = '',
+  xFormatter,
   emptyTitle = 'Nothing to show yet',
   emptyBody = 'Data will appear here once expenses are recorded for this period.',
   size = 'md',
@@ -82,11 +84,9 @@ export default function TrendBarChart({
           dataKey={xKey}
           stroke={chartTheme.axis}
           tick={{ fill: chartTheme.axis, fontSize: layout.tickFontSize }}
-          // Thin the labels rather than letting 31 of them overlap at 320px.
           interval={labelInterval(rows.length, layout.maxXLabels)}
           minTickGap={layout.isMobile ? 12 : 5}
-          // The axis title collides with the tick row in the reduced mobile
-          // height, and the card heading already names the axis.
+          tickFormatter={xFormatter}
           label={
             xLabel && layout.showAxisLabel
               ? {

@@ -19,7 +19,6 @@ import {
 } from '../../lib/chartColors';
 import {
   labelInterval,
-  maxValueOf,
   niceScale,
   rankSeriesKeys,
   truncateLabel,
@@ -105,22 +104,20 @@ export default function CategoryTrendChart({
   const { keys: topKeys, overflow } = rankSeriesKeys(
     fullPivot,
     allCategories,
-    layout.seriesLimit,
+    15,
   );
 
   const data = overflow.length > 0 ? pivot(rows, topKeys) : fullPivot;
   const seriesKeys = overflow.length > 0 ? [...topKeys, OTHER_KEY] : topKeys;
 
-  const { domain, ticks } = niceScale(maxValueOf(data, seriesKeys), {
+  // For stacked bars, domain must cover the max total height per month (sum of all stacks).
+  const maxStacked = data.reduce((max, row) => {
+    const sum = seriesKeys.reduce((s, k) => s + Number(row[k] || 0), 0);
+    return Math.max(max, sum);
+  }, 0);
+  const { domain, ticks } = niceScale(maxStacked, {
     targetTicks: layout.targetTicks,
   });
-
-  // Grouped bars were kept over stacked, so on narrow screens the chart is
-  // scrolled rather than compressed — 12 month groups × N series below a
-  // minimum width per group is unreadable.
-  const scrollMinWidth = layout.groupMinWidth
-    ? Math.max(0, data.length * seriesKeys.length * layout.groupMinWidth)
-    : 0;
 
   return (
     <ChartFrame
@@ -130,9 +127,8 @@ export default function CategoryTrendChart({
       emptyTitle={emptyTitle}
       emptyBody={emptyBody}
       size={size}
-      scrollMinWidth={scrollMinWidth}
     >
-      <BarChart data={data} margin={{ top: 8, right: 8, bottom: 4, left: 0 }}>
+      <BarChart data={data} margin={{ top: 8, right: 10, bottom: 4, left: 0 }}>
         <CartesianGrid
           strokeDasharray="3 3"
           stroke={chartTheme.grid}
@@ -142,7 +138,7 @@ export default function CategoryTrendChart({
           dataKey="month"
           stroke={chartTheme.axis}
           tick={{ fill: chartTheme.axis, fontSize: layout.tickFontSize }}
-          interval={scrollMinWidth ? 0 : labelInterval(data.length, layout.maxXLabels)}
+          interval={labelInterval(data.length, layout.maxXLabels)}
         />
         <YAxis
           domain={domain}
@@ -158,6 +154,9 @@ export default function CategoryTrendChart({
           {...tooltipStyles(chartTheme)}
         />
         <Legend
+          layout="vertical"
+          align="right"
+          verticalAlign="middle"
           wrapperStyle={{ color: chartTheme.axis, fontSize: layout.legendFontSize }}
           formatter={(value: string) => truncateLabel(value, layout.isMobile ? 10 : 18)}
         />
@@ -165,8 +164,9 @@ export default function CategoryTrendChart({
           <Bar
             key={key}
             dataKey={key}
+            stackId="a"
             fill={key === OTHER_KEY ? OTHER_COLOR : chartColor(index)}
-            radius={[3, 3, 0, 0]}
+            radius={index === seriesKeys.length - 1 ? [3, 3, 0, 0] : [0, 0, 0, 0]}
             minPointSize={2}
           />
         ))}
