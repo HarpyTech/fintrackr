@@ -90,6 +90,7 @@ export default function BreakdownChart({
           innerRadius={layout.donutRadii.inner}
           outerRadius={layout.donutRadii.outer}
           paddingAngle={1}
+          cx={layout.isMobile ? '50%' : '35%'}
         >
           {data.map((entry, index) => (
             <Cell
@@ -99,6 +100,9 @@ export default function BreakdownChart({
           ))}
         </Pie>
         <Legend
+          layout="vertical"
+          align="right"
+          verticalAlign="middle"
           wrapperStyle={{ color: chartTheme.axis, fontSize: layout.legendFontSize }}
           formatter={(value: string, entry?: LegendPayload) =>
             entry?.payload?.__isOther && otherCount

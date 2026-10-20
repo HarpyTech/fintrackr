@@ -1,7 +1,7 @@
 import { ReactNode, useEffect, useMemo, useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { CalendarDays, Camera, DollarSign, FileText, X } from 'lucide-react';
+import { CalendarDays, Camera, DollarSign, FileText, Info, X } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import ErrorBoundary from '../components/ErrorBoundary';
 import MonthYearFilter from '../components/MonthYearFilter';
@@ -10,7 +10,7 @@ import CategoryTrendChart from '../components/charts/CategoryTrendChart';
 import TrendBarChart from '../components/charts/TrendBarChart';
 import { apiRequest } from '../lib/api';
 import { queryKeys } from '../lib/queryClient';
-import { CHART_ACCENT, CHART_ACCENT_ALT, formatInr } from '../lib/chartColors';
+import { CHART_ACCENT, formatInr } from '../lib/chartColors';
 import { useToast } from '../components/ToastProvider';
 import OnboardingBanner from '../components/OnboardingBanner';
 import type {
@@ -20,10 +20,10 @@ import type {
   ExtractAndCreateResponse,
   MonthlySummary,
   VendorSummary,
-  YearlySummary,
 } from '../types';
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MONTH_ABBR  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 interface ApiError extends Error {
   sessionExpired?: boolean;
@@ -42,13 +42,33 @@ interface ChartCardProps {
   children: ReactNode;
   className?: string;
   headerSlot?: ReactNode | null;
+  info?: string;
+  loading?: boolean;
+}
+
+function ChartInfoIcon({ text }: { text: string }) {
+  return (
+    <button type="button" className="chart-info-btn" aria-label={`About this chart: ${text}`}>
+      <Info size={14} aria-hidden="true" />
+      <span className="chart-info-tip">{text}</span>
+    </button>
+  );
 }
 
 /** Wraps a chart so one bad dataset cannot blank the whole dashboard. */
-function ChartCard({ title, children, className = '', headerSlot = null }: ChartCardProps) {
+function ChartCard({ title, children, className = '', headerSlot = null, info, loading = false }: ChartCardProps) {
+  const header = headerSlot || (title ? (
+    <div className="chart-card-header">
+      {loading
+        ? <div className="skeleton chart-card-title-skeleton" aria-hidden="true" />
+        : <h3>{title}</h3>}
+      {info && !loading ? <ChartInfoIcon text={info} /> : null}
+    </div>
+  ) : null);
+
   return (
     <article className={`dashboard-proto-card ${className}`.trim()}>
-      {headerSlot || (title ? <h3>{title}</h3> : null)}
+      {header}
       <ErrorBoundary
         label={title || 'chart'}
         title="Chart unavailable"
@@ -117,12 +137,6 @@ export default function DashboardPage() {
     enabled: queryEnabled,
   });
 
-  const yearlyQuery = useQuery({
-    queryKey: queryKeys.expenses.summary.yearly(),
-    select: items<YearlySummary>,
-    enabled: queryEnabled,
-  });
-
   // Shared by Category Split and, when the filter year matches, by the
   // Avg-by-Category chart below — one cache entry, one request.
   const categoriesYearQuery = useQuery({
@@ -157,7 +171,6 @@ export default function DashboardPage() {
 
   const expenses = expensesQuery.data || [];
   const monthly = monthlyQuery.data || [];
-  const yearly = yearlyQuery.data || [];
   const categoryData = categoriesYearQuery.data || [];
   const dailyItems = dailyQuery.data || [];
   const categoryMonthlyItems = categoryMonthlyQuery.data || [];
@@ -175,13 +188,11 @@ export default function DashboardPage() {
   const summaryLoading =
     expensesQuery.isPending ||
     monthlyQuery.isPending ||
-    yearlyQuery.isPending ||
     categoriesYearQuery.isPending;
 
   const summaryError =
     messageOf(expensesQuery, 'Failed to load expenses.') ||
     messageOf(monthlyQuery, 'Failed to load monthly data.') ||
-    messageOf(yearlyQuery, 'Failed to load yearly data.') ||
     messageOf(categoriesYearQuery, 'Failed to load category data.');
 
   const dailyError = messageOf(dailyQuery, 'Failed to load daily data.');
@@ -423,31 +434,28 @@ export default function DashboardPage() {
         {/* ── Analytics Grid ── */}
         <div className="dashboard-proto-grid">
           {/* Monthly Trend */}
-          <ChartCard title={`Monthly Trend (${currentYear})`}>
+          <ChartCard
+            title={`Monthly Trend (${currentYear})`}
+            loading={summaryLoading}
+            info="Bar chart of your total spending for each month of the current year. Spot seasonal peaks and low-spend months at a glance."
+          >
             <TrendBarChart
               items={monthly}
               xKey="month"
               loading={summaryLoading}
               color={CHART_ACCENT}
+              xFormatter={(val) => MONTH_ABBR[(val as number) - 1] || String(val)}
               emptyTitle="No monthly data yet"
               emptyBody={`Expenses recorded during ${currentYear} will trend here.`}
             />
           </ChartCard>
 
-          {/* Yearly Trend */}
-          <ChartCard title="Yearly Trend">
-            <TrendBarChart
-              items={yearly}
-              xKey="year"
-              loading={summaryLoading}
-              color={CHART_ACCENT_ALT}
-              emptyTitle="No yearly data yet"
-              emptyBody="Year-over-year totals appear once you have expenses on record."
-            />
-          </ChartCard>
-
           {/* Category Split */}
-          <ChartCard title="Category Split">
+          <ChartCard
+            title="Category Split"
+            loading={summaryLoading}
+            info="Donut chart showing how your year-to-date spending is distributed across categories. Helps identify where most of your money goes."
+          >
             <BreakdownChart
               items={categoryData}
               nameKey="category"
@@ -486,7 +494,11 @@ export default function DashboardPage() {
           </ChartCard>
 
           {/* Expenses by Category */}
-          <ChartCard title={`Expenses by Category — ${MONTH_NAMES[filterMonth - 1]} ${filterYear}`}>
+          <ChartCard
+            title={`Expenses by Category — ${MONTH_NAMES[filterMonth - 1]} ${filterYear}`}
+            loading={categoryMonthlyQuery.isPending}
+            info="Donut chart breaking down this month's expenses by category. Use it to compare where you spent relative to other categories."
+          >
             <BreakdownChart
               items={categoryMonthlyItems}
               nameKey="category"
@@ -498,7 +510,11 @@ export default function DashboardPage() {
           </ChartCard>
 
           {/* Expenses by Vendor */}
-          <ChartCard title={`Expenses by Vendor — ${MONTH_NAMES[filterMonth - 1]} ${filterYear}`}>
+          <ChartCard
+            title={`Expenses by Vendor — ${MONTH_NAMES[filterMonth - 1]} ${filterYear}`}
+            loading={vendorMonthlyQuery.isPending}
+            info="Donut chart showing this month's spending split by vendor. Highlights your top merchants and how much of your budget each one consumes."
+          >
             <BreakdownChart
               items={vendorMonthlyItems}
               nameKey="vendor"
@@ -513,6 +529,8 @@ export default function DashboardPage() {
           <ChartCard
             className="dashboard-proto-span-2"
             title={`Avg Expense by Category — ${filterYear}`}
+            loading={categoryFilterYearQuery.isPending}
+            info="Stacked bar chart comparing monthly spending across your top categories. Each bar segment represents a category so you can track how category mix shifts month to month."
           >
             <CategoryTrendChart
               items={categoryYearlyItems}
