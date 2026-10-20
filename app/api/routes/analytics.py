@@ -16,6 +16,7 @@ a shared resource worth protecting.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import logging
 from datetime import UTC, datetime
@@ -32,6 +33,56 @@ from app.services.analytics_agent_service import build_overview, run_analytics_a
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# Internal status → public status mapping
+_STATUS_MAP: dict[str, str] = {"ok": "ok", "partial": "ok", "refused": "error"}
+
+
+def _to_public(answer: dict) -> dict:
+    """Strip all internal diagnostic fields before sending to the client.
+
+    Only status (ok / empty / error), narrative, datasets and visuals are
+    customer-safe. Everything else is logged via _log_diagnostics and kept
+    in the DB for admin review.
+    """
+    raw = answer.get("status", "ok")
+    pub = _STATUS_MAP.get(raw, "ok")
+
+    if pub == "ok":
+        has_highlights = bool((answer.get("narrative") or {}).get("highlights"))
+        has_rows = any(
+            bool((ds or {}).get("rows")) for ds in (answer.get("datasets") or [])
+        )
+        if not has_highlights and not has_rows:
+            pub = "empty"
+
+    return {
+        "answer_id": answer.get("answer_id", ""),
+        "session_id": answer.get("session_id", ""),
+        "question": answer.get("question", ""),
+        "status": pub,
+        "narrative": answer.get("narrative"),
+        "datasets": answer.get("datasets") or [],
+        "visuals": answer.get("visuals") or [],
+    }
+
+
+def _log_diagnostics(username: str, answer: dict) -> None:
+    """Emit a structured log line with internal diagnostics for monitoring."""
+    uid = hashlib.sha256(username.encode()).hexdigest()[:16]
+    q = answer.get("query") or {}
+    m = answer.get("meta") or {}
+    logger.info(
+        "analytics uid=%s answer_id=%s status=%s degraded=%s "
+        "row_count=%s latency_ms=%s error=%s",
+        uid,
+        answer.get("answer_id"),
+        answer.get("status"),
+        answer.get("degraded", False),
+        q.get("row_count"),
+        m.get("latency_ms"),
+        (answer.get("error") or {}).get("reason", ""),
+    )
 
 
 class AskRequest(BaseModel):
@@ -66,8 +117,9 @@ async def ask(payload: AskRequest, user: str = Depends(get_current_user)):
             payload.question,
             session_id=payload.session_id,
         )
+        _log_diagnostics(user, result)
         _save_to_history(user, result)
-        return result
+        return _to_public(result)
     except Exception as exc:  # noqa: BLE001
         logger.error("Analytics agent failed for %s: %s", user, exc, exc_info=True)
         raise HTTPException(
@@ -108,8 +160,9 @@ async def ask_stream(payload: AskRequest, user: str = Depends(get_current_user))
                 session_id=payload.session_id,
                 on_phase=on_phase,
             )
+            _log_diagnostics(user, answer)
             _save_to_history(user, answer)
-            await queue.put(("done", answer))
+            await queue.put(("done", _to_public(answer)))
         except Exception as exc:  # noqa: BLE001
             logger.error(
                 "Streaming analytics failed for %s: %s", user, exc, exc_info=True
@@ -172,10 +225,10 @@ async def history(
             )
             # Reverse so the result is oldest-first for the chat transcript.
             docs.reverse()
-            # Strip the internal created_at timestamp before returning.
+            # Strip the internal created_at timestamp and all diagnostics before returning.
             for doc in docs:
                 doc.pop("created_at", None)
-            return docs
+            return [_to_public(doc) for doc in docs]
 
         items = await run_in_threadpool(_fetch)
         return {"items": items}
