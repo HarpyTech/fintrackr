@@ -241,7 +241,7 @@ export default function AddExpensePage() {
 
             <form onSubmit={addExpenseFromAi} className="add-expense-proto-fields">
               <label className="add-expense-proto-label">
-                Describe Expense
+                Describe Expense <span aria-hidden="true">*</span>
                 <textarea
                   rows={3}
                   placeholder="E.g., Lunch at Restaurant ABC for ₹1250…"
@@ -320,7 +320,11 @@ export default function AddExpensePage() {
               <button
                 type="submit"
                 className="add-expense-proto-submit"
-                disabled={extracting || sessionLimitReached}
+                disabled={
+                  extracting ||
+                  sessionLimitReached ||
+                  (!aiInputText.trim() && !aiImageFile && !cameraImageFile)
+                }
               >
                 {extracting ? (
                   <><CircularProgress size={16} color="inherit" style={{ marginRight: 8, verticalAlign: 'middle' }} /> Extracting…</>
@@ -344,11 +348,11 @@ export default function AddExpensePage() {
                 Amount <span aria-hidden="true">*</span>
                 <input
                   type="number"
-                  min="0.01"
-                  step="0.01"
+                  min="1.00"
+                  step="1"
                   required
                   aria-required="true"
-                  placeholder="0.00"
+                  placeholder="e.g. 250.00"
                   value={expenseForm.amount}
                   disabled={sessionLimitReached}
                   onChange={(e) =>
