@@ -229,6 +229,50 @@
   gap: var(--space-2);
 }
 
+.insights-result-followup-pill {
+  padding: 5px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--brand-soft, #dbeafe);
+  background: var(--brand-soft, #edf3ff);
+  color: var(--brand);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.insights-result-followup-pill:hover {
+  background: color-mix(in srgb, var(--brand) 12%, transparent);
+  border-color: var(--brand);
+}
+
+/* History divider between prior sessions and current session */
+.insights-chat-history-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: min(1280px, 100% - 48px);
+  margin: var(--space-2) auto;
+  color: var(--muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.insights-chat-history-divider::before,
+.insights-chat-history-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+/* Dim prior-session turns so current session stands out */
+.insights-chat-turn--history {
+  opacity: 0.6;
+}
+
 /* --- Visuals and KPI grid --- */
 .insights-kpi-grid {
   display: grid;
