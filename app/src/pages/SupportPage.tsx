@@ -1,7 +1,7 @@
 import { useState, FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { isBillingAdminEnabled } from '../lib/featureFlags';
-import { Mail, MessageCircle, FileText, Phone, Clock, MapPin, Send } from 'lucide-react';
+import { isBillingEnabled } from '../lib/featureFlags';
+import { Mail, MessageCircle, FileText, Phone, Clock, Send } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import SiteFooter from '../components/SiteFooter';
 
@@ -19,8 +19,7 @@ interface SupportChannel {
 
 const SUPPORT_CHANNELS: SupportChannel[] = [
   { Icon: Mail, title: 'Email Support', description: 'Get help via email', detail: SUPPORT_EMAIL, color: 'blue', action: 'Send Email', href: `mailto:${SUPPORT_EMAIL}` },
-  { Icon: MessageCircle, title: 'Email Us', description: 'Message our team', detail: 'Typically replies within a few hours', color: 'green', action: 'Send Email', href: `mailto:${SUPPORT_EMAIL}` },
-  { Icon: Phone, title: 'Request a Call', description: 'Ask us to arrange a call by email', detail: 'We will reply by email to arrange a time', color: 'purple', action: 'Request Call', href: `mailto:${SUPPORT_EMAIL}?subject=Call%20Request` },
+  { Icon: Phone, title: 'Request a Callback', description: 'Ask us to arrange a call', detail: 'Email us to schedule — we will reply within one business day', color: 'purple', action: 'Request Callback', href: `mailto:${SUPPORT_EMAIL}?subject=Call%20Request` },
   { Icon: FileText, title: 'Help Center', description: 'Browse guides & FAQs', detail: 'Common questions answered below', color: 'orange', action: 'View FAQs', href: '#faqs' },
 ];
 
@@ -50,10 +49,12 @@ const FAQS: Faq[] = [
   {
     question: 'How do I upgrade my plan?',
     answer: 'Go to the Billing page from the sidebar. You can view available plans and upgrade directly from there.',
+    billingOnly: true,
   },
   {
     question: 'Can I change my plan anytime?',
     answer: 'Yes, you can upgrade or downgrade your plan at any time from the Billing page. Changes take effect immediately.',
+    billingOnly: true,
   },
 ];
 
@@ -113,7 +114,7 @@ export default function SupportPage() {
             <h2 className="support-proto-card-title">Send Us a Message</h2>
             {submitted ? (
               <div className="support-proto-form-success">
-                ✉️ Your email app should open with your message — send it from there to reach us.
+                Your email client will open with this message pre-filled. Send it from there to reach us.
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="support-proto-form">
@@ -164,7 +165,7 @@ export default function SupportPage() {
                 </label>
                 <button type="submit" className="support-proto-form-submit">
                   <Send size={16} />
-                  Send Message
+                  Open Email App
                 </button>
               </form>
             )}
@@ -187,7 +188,7 @@ export default function SupportPage() {
                   </div>
                 </div>
                 <div className="support-proto-info-item">
-                  <MapPin size={20} className="support-proto-info-icon" />
+                  <Mail size={20} className="support-proto-info-icon" />
                   <div>
                     <p className="support-proto-info-item-title">Contact</p>
                     <p className="support-proto-info-item-detail">
@@ -214,7 +215,7 @@ export default function SupportPage() {
         <div id="faqs" className="support-proto-faq">
           <h2 className="support-proto-faq-title">Frequently Asked Questions</h2>
           <div className="support-proto-faq-list">
-            {FAQS.filter((faq) => !faq.billingOnly || isBillingAdminEnabled).map((faq, idx) => (
+            {FAQS.filter((faq) => !faq.billingOnly || isBillingEnabled).map((faq, idx) => (
               <div key={idx} className="support-proto-faq-item">
                 <h3 className="support-proto-faq-question">{faq.question}</h3>
                 <p className="support-proto-faq-answer">{faq.answer}</p>
