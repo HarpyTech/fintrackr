@@ -22,6 +22,7 @@ def test_runtime_config_serves_public_flags():
         "featureSupportPageEnabled",
         "featureBillingEnabled",
         "featureAdminEnabled",
+        "featureGoogleSigninEnabled",
         "supportEmail",
     }
 

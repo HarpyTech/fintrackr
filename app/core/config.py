@@ -104,6 +104,8 @@ class Settings(BaseSettings):
     FEATURE_SUPPORT_PAGE_ENABLED: bool = True
     FEATURE_BILLING_ENABLED: bool = False
     FEATURE_ADMIN_ENABLED: bool = False
+    # Also gates the /auth/google endpoints server-side, not just the button.
+    FEATURE_GOOGLE_SIGNIN_ENABLED: bool = False
     SUPPORT_EMAIL: str = ""
 
     # --- Google OAuth2 ---------------------------------------------------

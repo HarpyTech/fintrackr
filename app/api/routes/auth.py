@@ -377,9 +377,14 @@ def get_csrf_token(request: Request):
 # ---------------------------------------------------------------------------
 
 
+_GOOGLE_SIGNIN_UNAVAILABLE_URL = "/login?error=oauth_unavailable"
+
+
 @router.get("/google")
 def google_auth_redirect(response: Response):
     """Redirect the browser to Google's OAuth2 consent screen."""
+    if not settings.FEATURE_GOOGLE_SIGNIN_ENABLED:
+        return RedirectResponse(url=_GOOGLE_SIGNIN_UNAVAILABLE_URL, status_code=302)
     if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_CLIENT_SECRET:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -407,6 +412,9 @@ def google_auth_callback(
     error: str | None = None,
 ):
     """Handle the OAuth2 callback: exchange code, issue JWT, set cookie."""
+    if not settings.FEATURE_GOOGLE_SIGNIN_ENABLED:
+        return RedirectResponse(url=_GOOGLE_SIGNIN_UNAVAILABLE_URL, status_code=302)
+
     if error:
         logger.warning("Google OAuth error: %s", error)
         return RedirectResponse(url="/login?error=oauth_denied", status_code=302)
