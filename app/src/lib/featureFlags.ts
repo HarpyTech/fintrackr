@@ -13,8 +13,13 @@ export const isSupportPageEnabled: boolean = parseBooleanFlag(
   true,
 );
 
-export const isBillingAdminEnabled: boolean = parseBooleanFlag(
-  import.meta.env.VITE_FEATURE_BILLING_ADMIN_ENABLED,
+export const isBillingEnabled: boolean = parseBooleanFlag(
+  import.meta.env.VITE_FEATURE_BILLING_ENABLED,
+  false,
+);
+
+export const isAdminEnabled: boolean = parseBooleanFlag(
+  import.meta.env.VITE_FEATURE_ADMIN_ENABLED,
   false,
 );
 

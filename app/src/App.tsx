@@ -8,7 +8,7 @@ import AppLoader from './components/AppLoader';
 import ErrorBoundary from './components/ErrorBoundary';
 import RouteMeta from './components/RouteMeta';
 import LoginPage from './pages/LoginPage';
-import { isBillingAdminEnabled, isSupportPageEnabled } from './lib/featureFlags';
+import { isBillingEnabled, isAdminEnabled, isSupportPageEnabled } from './lib/featureFlags';
 import { isInstalledPwa } from './lib/deviceBinding';
 
 /**
@@ -182,7 +182,7 @@ export default function App() {
                   </ProtectedRoute>
                 }
               />
-              {isBillingAdminEnabled ? (
+              {isBillingEnabled ? (
                 <Route
                   path="/billing"
                   element={
@@ -192,7 +192,7 @@ export default function App() {
                   }
                 />
               ) : null}
-              {isBillingAdminEnabled ? (
+              {isAdminEnabled ? (
                 <Route
                   path="/admin/users"
                   element={

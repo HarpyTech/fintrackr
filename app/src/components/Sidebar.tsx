@@ -15,7 +15,7 @@ import {
   Menu,
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
-import { isBillingAdminEnabled, isSupportPageEnabled } from '../lib/featureFlags';
+import { isBillingEnabled, isAdminEnabled, isSupportPageEnabled } from '../lib/featureFlags';
 import { resolveDisplayName, resolveInitials } from '../lib/userDisplay';
 
 const PLAN_BADGE_LABELS: Record<string, string> = { go: 'Go', max: 'Max' };
@@ -43,9 +43,9 @@ export default function Sidebar() {
     { to: '/report', icon: FileText, label: 'Report' },
     { to: '/add-expense', icon: PlusCircle, label: 'Add Expense' },
     { to: '/settings', icon: Settings, label: 'Settings' },
-    ...(isBillingAdminEnabled && plan !== 'max' ? [{ to: '/billing', icon: CreditCard, label: 'Billing' }] : []),
+    ...(isBillingEnabled && plan !== 'max' ? [{ to: '/billing', icon: CreditCard, label: 'Billing' }] : []),
     ...(isSupportPageEnabled ? [{ to: '/support', icon: HelpCircle, label: 'Support' }] : []),
-    ...(isBillingAdminEnabled && isAdmin ? [{ to: '/admin/users', icon: Users, label: 'Admin' }] : []),
+    ...(isAdminEnabled && isAdmin ? [{ to: '/admin/users', icon: Users, label: 'Admin' }] : []),
   ];
 
   const PRIMARY_PATHS = ['/dashboard', '/insights', '/add-expense', '/report'];
