@@ -73,7 +73,47 @@ def test_oauth_login_allowed_domains(monkeypatch, mock_users_repo):
     assert "Sign-in not allowed for @disallowed.com" in str(exc_info.value)
 
 
-def test_google_auth_endpoint_unconfigured(monkeypatch):
+@pytest.fixture
+def google_signin_enabled(monkeypatch):
+    monkeypatch.setattr(settings, "FEATURE_GOOGLE_SIGNIN_ENABLED", True)
+
+
+def test_google_auth_endpoint_disabled_redirects_to_login(monkeypatch):
+    """With the flag off, /google never redirects to Google."""
+    monkeypatch.setattr(settings, "FEATURE_GOOGLE_SIGNIN_ENABLED", False)
+    monkeypatch.setattr(settings, "GOOGLE_CLIENT_ID", "mock-client-id")
+    monkeypatch.setattr(settings, "GOOGLE_CLIENT_SECRET", "mock-client-secret")
+
+    response = TestClient(app).get("/api/v1/auth/google", follow_redirects=False)
+
+    assert response.status_code == 302
+    assert response.headers["location"] == "/login?error=oauth_unavailable"
+    assert "oauth_state" not in response.cookies
+
+
+def test_google_auth_callback_disabled_creates_no_session(monkeypatch):
+    """With the flag off, the callback rejects the request before any code exchange."""
+    monkeypatch.setattr(settings, "FEATURE_GOOGLE_SIGNIN_ENABLED", False)
+
+    def _fail(*_args, **_kwargs):
+        raise AssertionError("code exchange must not run when the flag is off")
+
+    import app.api.routes.auth as auth_routes
+
+    monkeypatch.setattr(auth_routes, "exchange_google_code", _fail)
+
+    client = TestClient(app)
+    client.cookies.set("oauth_state", "s1")
+    response = client.get(
+        "/api/v1/auth/google/callback?code=abc&state=s1", follow_redirects=False
+    )
+
+    assert response.status_code == 302
+    assert response.headers["location"] == "/login?error=oauth_unavailable"
+    assert "access_token" not in response.cookies
+
+
+def test_google_auth_endpoint_unconfigured(monkeypatch, google_signin_enabled):
     """Verify /api/v1/auth/google returns 503 when credentials are not set."""
     monkeypatch.setattr(settings, "GOOGLE_CLIENT_ID", None)
     monkeypatch.setattr(settings, "GOOGLE_CLIENT_SECRET", None)
@@ -84,7 +124,7 @@ def test_google_auth_endpoint_unconfigured(monkeypatch):
     assert response.json()["message"] == "Google OAuth is not configured"
 
 
-def test_google_auth_endpoint_redirect(monkeypatch):
+def test_google_auth_endpoint_redirect(monkeypatch, google_signin_enabled):
     """Verify /api/v1/auth/google sets state cookie and redirects to Google consent page."""
     monkeypatch.setattr(settings, "GOOGLE_CLIENT_ID", "mock-client-id")
     monkeypatch.setattr(settings, "GOOGLE_CLIENT_SECRET", "mock-client-secret")
@@ -96,7 +136,7 @@ def test_google_auth_endpoint_redirect(monkeypatch):
     assert "oauth_state" in response.cookies
 
 
-def test_google_auth_callback_error_query():
+def test_google_auth_callback_error_query(google_signin_enabled):
     """Verify OAuth error response redirects to /login?error=oauth_denied."""
     client = TestClient(app)
     response = client.get(

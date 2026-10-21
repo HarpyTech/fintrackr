@@ -169,6 +169,7 @@ Copy `.env.example` to `.env`. Key variables:
 | `FEATURE_SUPPORT_PAGE_ENABLED` | Runtime flag: show support page (default `true`) |
 | `FEATURE_BILLING_ENABLED` | Runtime flag: show Billing UI/routes |
 | `FEATURE_ADMIN_ENABLED` | Runtime flag: show Admin UI/routes |
+| `FEATURE_GOOGLE_SIGNIN_ENABLED` | Runtime flag: offer Google sign-in and enable `/auth/google*` (default `false`; needs `GOOGLE_*` credentials) |
 | `SUPPORT_EMAIL` | Support page contact email |
 | `ENVIRONMENT` | `development` or `production` |
 | `COOKIE_SECURE` | Set `true` in production (HTTPS only) |

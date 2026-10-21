@@ -2,6 +2,7 @@ export interface AppRuntimeConfig {
   featureSupportPageEnabled: boolean;
   featureBillingEnabled: boolean;
   featureAdminEnabled: boolean;
+  featureGoogleSigninEnabled: boolean;
   supportEmail: string;
 }
 
@@ -16,6 +17,7 @@ const DEFAULTS: AppRuntimeConfig = {
   featureSupportPageEnabled: true,
   featureBillingEnabled: false,
   featureAdminEnabled: false,
+  featureGoogleSigninEnabled: false,
   supportEmail: '',
 };
 

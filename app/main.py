@@ -273,6 +273,7 @@ def runtime_config() -> Response:
         "featureSupportPageEnabled": settings.FEATURE_SUPPORT_PAGE_ENABLED,
         "featureBillingEnabled": settings.FEATURE_BILLING_ENABLED,
         "featureAdminEnabled": settings.FEATURE_ADMIN_ENABLED,
+        "featureGoogleSigninEnabled": settings.FEATURE_GOOGLE_SIGNIN_ENABLED,
         "supportEmail": settings.SUPPORT_EMAIL,
     }
     return Response(

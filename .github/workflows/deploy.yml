@@ -23,6 +23,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # ── Dependency vulnerability scan ──────────────────────────────────
+      # Python packages are covered by the image scan below (Trivy reads the
+      # image's site-packages); npm packages never reach the final image, so
+      # they are audited here.
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Scan npm dependencies for vulnerabilities
+        run: npm audit --omit=dev --audit-level=high
+
       - name: Authenticate to Google Cloud (Service Account Key)
         uses: google-github-actions/auth@v2
         with:
@@ -33,25 +49,46 @@ jobs:
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
+      # ── Runtime environment ────────────────────────────────────────────
+      # The env block below is the single allow-list of settings that reach
+      # the container. Every non-empty APP_<NAME> becomes <NAME> in the Cloud
+      # Run env file; unset secrets fall back to defaults in app/core/config.py.
+      # ENVIRONMENT and COOKIE_SECURE are intentionally absent — both are
+      # derived from K_SERVICE at runtime.
       - name: Build Cloud Run env file
         shell: bash
         env:
+          # Core
           APP_PROJECT_NAME: ${{ secrets.APP_PROJECT_NAME }}
           APP_API_V1_STR: ${{ secrets.APP_API_V1_STR }}
+          APP_LOG_LEVEL: ${{ secrets.APP_LOG_LEVEL }}
+          # Auth
           APP_SECRET_KEY: ${{ secrets.APP_SECRET_KEY }}
-          APP_ACCESS_TOKEN_EXPIRE_MINUTES: ${{ secrets.APP_ACCESS_TOKEN_EXPIRE_MINUTES }}
           APP_ALGORITHM: ${{ secrets.APP_ALGORITHM }}
+          APP_ACCESS_TOKEN_EXPIRE_MINUTES: ${{ secrets.APP_ACCESS_TOKEN_EXPIRE_MINUTES }}
+          APP_REFRESH_TOKEN_EXPIRE_DAYS: ${{ secrets.APP_REFRESH_TOKEN_EXPIRE_DAYS }}
           APP_CORS_ORIGINS: ${{ secrets.APP_CORS_ORIGINS }}
+          # WebAuthn
           APP_WEBAUTHN_RP_ID: ${{ secrets.APP_WEBAUTHN_RP_ID }}
           APP_WEBAUTHN_RP_NAME: ${{ secrets.APP_WEBAUTHN_RP_NAME }}
           APP_WEBAUTHN_ORIGIN: ${{ secrets.APP_WEBAUTHN_ORIGIN }}
+          # Google OAuth
+          APP_GOOGLE_CLIENT_ID: ${{ secrets.APP_GOOGLE_CLIENT_ID }}
+          APP_GOOGLE_CLIENT_SECRET: ${{ secrets.APP_GOOGLE_CLIENT_SECRET }}
+          APP_GOOGLE_REDIRECT_URI: ${{ secrets.APP_GOOGLE_REDIRECT_URI }}
+          APP_GOOGLE_ALLOWED_DOMAINS: ${{ secrets.APP_GOOGLE_ALLOWED_DOMAINS }}
+          # MongoDB
           APP_MONGODB_URI: ${{ secrets.APP_MONGODB_URI }}
           APP_MONGODB_DB: ${{ secrets.APP_MONGODB_DB }}
+          # Gemini
           APP_GEMINI_API_KEY: ${{ secrets.APP_GEMINI_API_KEY }}
           APP_GEMINI_MODEL: ${{ secrets.APP_GEMINI_MODEL }}
-          APP_DEFAULT_LOGIN_PASSWORD: ${{ secrets.APP_DEFAULT_LOGIN_PASSWORD }}
+          # OTP
           APP_SIGNUP_OTP_EXPIRY_MINUTES: ${{ secrets.APP_SIGNUP_OTP_EXPIRY_MINUTES }}
           APP_SIGNUP_OTP_LENGTH: ${{ secrets.APP_SIGNUP_OTP_LENGTH }}
+          APP_SIGNUP_OTP_MAX_ATTEMPTS: ${{ secrets.APP_SIGNUP_OTP_MAX_ATTEMPTS }}
+          APP_SIGNUP_OTP_WINDOW_MINUTES: ${{ secrets.APP_SIGNUP_OTP_WINDOW_MINUTES }}
+          # SMTP
           APP_SMTP_HOST: ${{ secrets.APP_SMTP_HOST }}
           APP_SMTP_PORT: ${{ secrets.APP_SMTP_PORT }}
           APP_SMTP_USERNAME: ${{ secrets.APP_SMTP_USERNAME }}
@@ -61,70 +98,55 @@ jobs:
           APP_SMTP_TIMEOUT_SECONDS: ${{ secrets.APP_SMTP_TIMEOUT_SECONDS }}
           APP_SMTP_FROM_EMAIL: ${{ secrets.APP_SMTP_FROM_EMAIL }}
           APP_SMTP_BCC_EMAILS: ${{ secrets.APP_SMTP_BCC_EMAILS }}
-          APP_BILLING_CONTACT_EMAIL: ${{ secrets.APP_BILLING_CONTACT_EMAIL }}
-          GITHUB_SHA: ${{ github.sha }}
+          # Frontend runtime config (served at /runtime-config.js)
+          APP_FEATURE_SUPPORT_PAGE_ENABLED: ${{ secrets.APP_FEATURE_SUPPORT_PAGE_ENABLED }}
+          APP_FEATURE_BILLING_ENABLED: ${{ secrets.APP_FEATURE_BILLING_ENABLED }}
+          APP_FEATURE_ADMIN_ENABLED: ${{ secrets.APP_FEATURE_ADMIN_ENABLED }}
+          APP_FEATURE_GOOGLE_SIGNIN_ENABLED: ${{ secrets.APP_FEATURE_GOOGLE_SIGNIN_ENABLED }}
+          APP_SUPPORT_EMAIL: ${{ secrets.APP_SUPPORT_EMAIL }}
+          BUILD_SHA: ${{ github.sha }}
         run: |
           python - << 'PY'
           import os
           import sys
           import yaml
 
-          # Validate required secrets are present and meet minimum requirements
-          required = {
-              "APP_SECRET_KEY": os.getenv("APP_SECRET_KEY", ""),
-              "APP_DEFAULT_LOGIN_PASSWORD": os.getenv("APP_DEFAULT_LOGIN_PASSWORD", ""),
-              "APP_MONGODB_URI": os.getenv("APP_MONGODB_URI", ""),
+          data = {
+              key[len("APP_"):]: value
+              for key, value in sorted(os.environ.items())
+              if key.startswith("APP_") and value
           }
-          missing = [k for k, v in required.items() if not v]
-          if missing:
-              print(f"ERROR: Required secrets are not set: {', '.join(missing)}", file=sys.stderr)
+          data["BUILD_VERSION"] = os.environ["BUILD_SHA"]
+
+          errors = []
+          for required in ("SECRET_KEY", "MONGODB_URI"):
+              if required not in data:
+                  errors.append(f"Required secret APP_{required} is not set.")
+          if "SECRET_KEY" in data and len(data["SECRET_KEY"]) < 32:
+              errors.append("APP_SECRET_KEY must be at least 32 characters long.")
+          if "GOOGLE_CLIENT_ID" in data:
+              for dependent in ("GOOGLE_CLIENT_SECRET", "GOOGLE_REDIRECT_URI"):
+                  if dependent not in data:
+                      errors.append(f"APP_GOOGLE_CLIENT_ID is set but APP_{dependent} is not.")
+          google_flag = data.get("FEATURE_GOOGLE_SIGNIN_ENABLED", "").strip().lower()
+          if google_flag in {"1", "true", "yes", "on", "y", "t"}:
+              for credential in ("GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_REDIRECT_URI"):
+                  if credential not in data:
+                      errors.append(
+                          f"APP_FEATURE_GOOGLE_SIGNIN_ENABLED is on but APP_{credential} is not set."
+                      )
+
+          if errors:
+              for message in errors:
+                  print(f"::error::{message}")
               sys.exit(1)
-          if len(required["APP_SECRET_KEY"]) < 32:
-              print("ERROR: APP_SECRET_KEY must be at least 32 characters long.", file=sys.stderr)
-              sys.exit(1)
-
-          data = {}
-
-          def add_env(yaml_key, env_var):
-              value = os.getenv(env_var)
-              if value:
-                  data[yaml_key] = value
-
-          # Add required secrets
-          add_env("SECRET_KEY", "APP_SECRET_KEY")
-          add_env("DEFAULT_LOGIN_PASSWORD", "APP_DEFAULT_LOGIN_PASSWORD")
-          add_env("MONGODB_URI", "APP_MONGODB_URI")
-
-          # Add BUILD_VERSION from GitHub SHA
-          data["BUILD_VERSION"] = os.getenv("GITHUB_SHA", "")
-
-          # Add optional secrets
-          add_env("PROJECT_NAME", "APP_PROJECT_NAME")
-          add_env("API_V1_STR", "APP_API_V1_STR")
-          add_env("ACCESS_TOKEN_EXPIRE_MINUTES", "APP_ACCESS_TOKEN_EXPIRE_MINUTES")
-          add_env("ALGORITHM", "APP_ALGORITHM")
-          add_env("CORS_ORIGINS", "APP_CORS_ORIGINS")
-          add_env("WEBAUTHN_RP_ID", "APP_WEBAUTHN_RP_ID")
-          add_env("WEBAUTHN_RP_NAME", "APP_WEBAUTHN_RP_NAME")
-          add_env("WEBAUTHN_ORIGIN", "APP_WEBAUTHN_ORIGIN")
-          add_env("MONGODB_DB", "APP_MONGODB_DB")
-          add_env("GEMINI_API_KEY", "APP_GEMINI_API_KEY")
-          add_env("GEMINI_MODEL", "APP_GEMINI_MODEL")
-          add_env("SIGNUP_OTP_EXPIRY_MINUTES", "APP_SIGNUP_OTP_EXPIRY_MINUTES")
-          add_env("SIGNUP_OTP_LENGTH", "APP_SIGNUP_OTP_LENGTH")
-          add_env("SMTP_HOST", "APP_SMTP_HOST")
-          add_env("SMTP_PORT", "APP_SMTP_PORT")
-          add_env("SMTP_USERNAME", "APP_SMTP_USERNAME")
-          add_env("SMTP_PASSWORD", "APP_SMTP_PASSWORD")
-          add_env("SMTP_USE_TLS", "APP_SMTP_USE_TLS")
-          add_env("SMTP_USE_SSL", "APP_SMTP_USE_SSL")
-          add_env("SMTP_TIMEOUT_SECONDS", "APP_SMTP_TIMEOUT_SECONDS")
-          add_env("SMTP_FROM_EMAIL", "APP_SMTP_FROM_EMAIL")
-          add_env("SMTP_BCC_EMAILS", "APP_SMTP_BCC_EMAILS")
-          add_env("BILLING_CONTACT_EMAIL", "APP_BILLING_CONTACT_EMAIL")
 
           with open(".cloudrun.env.yaml", "w", encoding="utf-8") as f:
               yaml.safe_dump(data, f)
+
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
+              summary.write("### Cloud Run environment keys set\n\n")
+              summary.write("\n".join(f"- `{key}`" for key in data) + "\n")
           PY
 
       - name: Resolve deploy parameters
@@ -180,18 +202,24 @@ jobs:
         run: |
           gcloud auth configure-docker "${AR_HOST}" --quiet
 
+      # The image carries no environment or secret values — they are injected
+      # by `gcloud run deploy --env-vars-file` below.
       - name: Build Docker image
         run: |
           docker build -t "${IMAGE_URI}" --build-arg INSTALL_MODE=ci .
 
-      # - name: Scan container image for vulnerabilities
-      #   uses: aquasecurity/trivy-action@v0.36.0
-      #   with:
-      #     image-ref: ${{ env.IMAGE_URI }}
-      #     format: table
-      #     severity: CRITICAL,HIGH
-      #     exit-code: 1
-      #     ignore-unfixed: true
+      # Blocks the push on fixable CRITICAL/HIGH findings. Accept a specific
+      # finding by adding its ID to a repo-root .trivyignore.
+      - name: Scan container image for vulnerabilities
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: ${{ env.IMAGE_URI }}
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          format: table
+          exit-code: "1"
 
       - name: Push image to Artifact Registry
         run: |
@@ -222,3 +250,7 @@ jobs:
             exit 1
           fi
           echo "Smoke test passed: ${URL}/health"
+
+      - name: Remove env file from runner
+        if: always()
+        run: rm -f .cloudrun.env.yaml

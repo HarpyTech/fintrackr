@@ -2,6 +2,7 @@ import { useState, FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { notifySuccess } from '../lib/notify';
+import { isGoogleSigninEnabled } from '../lib/featureFlags';
 import PasswordInput from '../components/PasswordInput';
 
 export default function RegisterPage() {
@@ -144,7 +145,7 @@ export default function RegisterPage() {
             </form>
           )}
 
-          {!otpStep && (
+          {!otpStep && isGoogleSigninEnabled && (
             <>
               <div className="auth-divider">
                 <span>or</span>
