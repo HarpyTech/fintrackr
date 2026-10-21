@@ -98,6 +98,14 @@ class Settings(BaseSettings):
     SMTP_FROM_EMAIL: str = "no-reply@my-finance.local"
     SMTP_BCC_EMAILS: list[str] = []
 
+    # --- Frontend runtime config ------------------------------------------
+    # Public, non-secret values served to the SPA at /runtime-config.js so a
+    # flag change needs only a redeploy, not an image rebuild.
+    FEATURE_SUPPORT_PAGE_ENABLED: bool = True
+    FEATURE_BILLING_ENABLED: bool = False
+    FEATURE_ADMIN_ENABLED: bool = False
+    SUPPORT_EMAIL: str = ""
+
     # --- Google OAuth2 ---------------------------------------------------
     GOOGLE_CLIENT_ID: str | None = None
     GOOGLE_CLIENT_SECRET: str | None = None

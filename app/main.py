@@ -1,3 +1,4 @@
+import json
 import logging
 import traceback
 from contextlib import asynccontextmanager
@@ -6,7 +7,7 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import admin, analytics, auth, expenses, health, users, webauthn
@@ -263,6 +264,22 @@ def browserconfig() -> FileResponse:
 def offline_page() -> FileResponse:
     """Serve the offline fallback shell."""
     return _serve_static_file(OFFLINE_FILE, media_type="text/html")
+
+
+@app.get("/runtime-config.js", include_in_schema=False)
+def runtime_config() -> Response:
+    """Expose public, non-secret frontend settings from the container env."""
+    public_config = {
+        "featureSupportPageEnabled": settings.FEATURE_SUPPORT_PAGE_ENABLED,
+        "featureBillingEnabled": settings.FEATURE_BILLING_ENABLED,
+        "featureAdminEnabled": settings.FEATURE_ADMIN_ENABLED,
+        "supportEmail": settings.SUPPORT_EMAIL,
+    }
+    return Response(
+        content=f"window.__APP_CONFIG__ = {json.dumps(public_config)};\n",
+        media_type="application/javascript",
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 @app.get("/{full_path:path}")
