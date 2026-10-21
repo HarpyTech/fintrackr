@@ -58,11 +58,21 @@ const BillingPage = lazyWithRetry(() => import('./pages/BillingPage'));
 const NotFoundPage = lazyWithRetry(() => import('./pages/NotFoundPage'));
 
 function HomeRoute() {
-  if (!isInstalledPwa()) {
-    return <LandingPage />;
+  const { session, loading } = useAuth();
+
+  if (loading) {
+    return <AppLoader label="Restoring your session…" full />;
   }
 
-  return <Navigate to="/login" replace />;
+  if (session.authenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  if (isInstalledPwa()) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <LandingPage />;
 }
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
