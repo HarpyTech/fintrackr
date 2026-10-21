@@ -78,6 +78,10 @@ export default defineConfig({
       "/api": {
         target: process.env.VITE_API_TARGET || "http://localhost:8000",
         changeOrigin: true
+      },
+      "/runtime-config.js": {
+        target: process.env.VITE_API_TARGET || "http://localhost:8000",
+        changeOrigin: true
       }
     }
   }

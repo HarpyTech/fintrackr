@@ -5,7 +5,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { useAuth } from '../auth/AuthContext';
 import { apiRequest } from '../lib/api';
 import { useToast } from '../components/ToastProvider';
-import { isBillingAdminEnabled } from '../lib/featureFlags';
+import { isBillingEnabled } from '../lib/featureFlags';
 import type { Expense, ExpenseLimitStatus, ExtractAndCreateResponse } from '../types';
 
 const CATEGORIES = ['Food', 'Travel', 'Utilities', 'Shopping', 'Health', 'Other'];
@@ -222,7 +222,7 @@ export default function AddExpensePage() {
               <p className="add-expense-proto-limit-title">Expense Limit Reached</p>
               <p className="add-expense-proto-limit-text">
                 You have reached the maximum of {expenseLimit} expenses on your plan.{' '}
-                {isBillingAdminEnabled ? (
+                {isBillingEnabled ? (
                   <><Link to="/billing">Upgrade your plan</Link> to continue tracking expenses.</>
                 ) : (
                   'Contact support to continue tracking expenses.'
@@ -241,7 +241,7 @@ export default function AddExpensePage() {
 
             <form onSubmit={addExpenseFromAi} className="add-expense-proto-fields">
               <label className="add-expense-proto-label">
-                Describe Expense
+                Describe Expense <span aria-hidden="true">*</span>
                 <textarea
                   rows={3}
                   placeholder="E.g., Lunch at Restaurant ABC for ₹1250…"
@@ -320,7 +320,11 @@ export default function AddExpensePage() {
               <button
                 type="submit"
                 className="add-expense-proto-submit"
-                disabled={extracting || sessionLimitReached}
+                disabled={
+                  extracting ||
+                  sessionLimitReached ||
+                  (!aiInputText.trim() && !aiImageFile && !cameraImageFile)
+                }
               >
                 {extracting ? (
                   <><CircularProgress size={16} color="inherit" style={{ marginRight: 8, verticalAlign: 'middle' }} /> Extracting…</>
@@ -348,7 +352,7 @@ export default function AddExpensePage() {
                   step="0.01"
                   required
                   aria-required="true"
-                  placeholder="0.00"
+                  placeholder="e.g. 250.00"
                   value={expenseForm.amount}
                   disabled={sessionLimitReached}
                   onChange={(e) =>

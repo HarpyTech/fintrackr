@@ -79,6 +79,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Feature flags change per deploy; never serve a stale copy while online.
+  if (url.pathname === '/runtime-config.js') {
+    event.respondWith(networkFirst(request, RUNTIME_CACHE));
+    return;
+  }
+
   if (request.destination === 'style' || request.destination === 'script' || request.destination === 'worker') {
     event.respondWith(staleWhileRevalidate(request, RUNTIME_CACHE));
     return;

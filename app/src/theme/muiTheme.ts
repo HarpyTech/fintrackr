@@ -35,6 +35,14 @@ const sharedOptions: ThemeOptions = {
     MuiTooltip: {
       defaultProps: { arrow: true },
     },
+    MuiIconButton: {
+      styleOverrides: {
+        // Global button rule in base.css sets background: linear-gradient(navy...)
+        // which MUI's own background-color:transparent reset cannot clear
+        // (background-image is a different sub-property). This override resets both.
+        root: { background: 'transparent' },
+      },
+    },
     // Let base.css own the body background/color so the existing gradient
     // and CSS variable transitions remain active.
     MuiCssBaseline: {

@@ -15,6 +15,7 @@ from app.db.mongo import (
     get_expense_line_items_collection,
     get_expenses_collection,
 )
+from app.services.analytics_narrative import format_inr
 
 logger = logging.getLogger(__name__)
 
@@ -371,10 +372,10 @@ def _run_item_ranking(
     message_lines = [f"Top {len(ranked_items)} items by spend for {window.label}:"]
     for index, row in enumerate(ranked_items, start=1):
         message_lines.append(
-            f"{index}. {row['name']} - ${row['total']:.2f} "
+            f"{index}. {row['name']} - {format_inr(row['total'])} "
             f"across {row['entries']} logged item(s)"
         )
-    message_lines.append(f"Tracked spend across those items: ${total_spend:.2f}.")
+    message_lines.append(f"Tracked spend across those items: {format_inr(total_spend)}.")
 
     return {
         "mode": "analysis",
@@ -448,10 +449,10 @@ def _run_expense_ranking(
     message_lines = [f"Top {len(ranked_rows)} {subject}s by spend for {window.label}:"]
     for index, row in enumerate(ranked_rows, start=1):
         message_lines.append(
-            f"{index}. {row[label_name]} - ${row['total']:.2f} "
+            f"{index}. {row[label_name]} - {format_inr(row['total'])} "
             f"across {row['expenses_count']} expense(s)"
         )
-    message_lines.append(f"Tracked spend across those {subject}s: ${total_spend:.2f}.")
+    message_lines.append(f"Tracked spend across those {subject}s: {format_inr(total_spend)}.")
 
     return {
         "mode": "analysis",
@@ -514,17 +515,17 @@ def _run_overview(
 
     message_lines = [f"Expense summary for {window.label}:"]
     message_lines.append(
-        f"Total spend: ${float(overview['total']):.2f} across "
+        f"Total spend: {format_inr(float(overview['total']))} across "
         f"{int(overview['expenses_count'])} expense(s)."
     )
-    message_lines.append(f"Average expense: ${float(overview['average']):.2f}.")
+    message_lines.append(f"Average expense: {format_inr(float(overview['average']))}.")
     if top_category:
         message_lines.append(
-            f"Top category: {top_category['name']} " f"(${top_category['total']:.2f})."
+            f"Top category: {top_category['name']} ({format_inr(top_category['total'])})."
         )
     if top_vendor:
         message_lines.append(
-            f"Top vendor: {top_vendor['name']} " f"(${top_vendor['total']:.2f})."
+            f"Top vendor: {top_vendor['name']} ({format_inr(top_vendor['total'])})."
         )
 
     return {

@@ -64,7 +64,7 @@ my-finance-develop/
 │       ├── lib/
 │       │   ├── api.js            # Fetch wrapper: CSRF injection, offline queue
 │       │   ├── deviceBinding.js  # IndexedDB: device ID + WebAuthn credential binding
-│       │   └── featureFlags.js   # VITE_FEATURE_* env var flags
+│       │   └── featureFlags.ts   # Runtime flags from /runtime-config.js
 │       ├── pages/                # Route-level components (Dashboard, Report, AddExpense …)
 │       ├── components/           # Shared UI (charts, modals, sidebar, nav)
 │       ├── hooks/useWebAuthn.js  # WebAuthn browser API wrapper
@@ -129,12 +129,23 @@ the SPA, Python serves it) and runs `gcloud run deploy`.
 | `main` | `finance-prod` | `us-central1` |
 | `develop` | `finance-dev` | `us-east1` |
 
-The workflow generates `.cloudrun.env.yaml` from an **explicit allow-list** of
-`APP_*` GitHub secrets. A setting that is not on that list cannot reach the
-container — `ENVIRONMENT` and `COOKIE_SECURE` are both absent, so both are
-derived at runtime from the `K_SERVICE` variable Cloud Run injects
-(see `app/core/config.py`). Adding a new setting means adding it to that
-allow-list, or deriving it the same way.
+Before pushing, the workflow runs `npm audit --omit=dev --audit-level=high` and
+a Trivy image scan; fixable CRITICAL/HIGH findings fail the job. Accept a
+specific finding by adding its ID to a repo-root `.trivyignore`.
+
+The image carries no environment values. The workflow generates
+`.cloudrun.env.yaml` from the `env:` block of its "Build Cloud Run env file"
+step — that block is the **single allow-list**: each non-empty `APP_<NAME>`
+GitHub secret becomes `<NAME>` in the container. A setting not on that list
+cannot reach the container — `ENVIRONMENT` and `COOKIE_SECURE` are both absent,
+so both are derived at runtime from the `K_SERVICE` variable Cloud Run injects
+(see `app/core/config.py`). Adding a new setting means adding one
+`APP_<NAME>` line to that block, or deriving it the same way.
+
+Frontend flags are runtime config too: FastAPI serves `/runtime-config.js`
+(`window.__APP_CONFIG__`) from the `FEATURE_*` / `SUPPORT_EMAIL` settings, and
+`app/src/lib/runtimeConfig.ts` reads it, so a flag change needs a redeploy,
+not a rebuild.
 
 The `k8s/` directory holds GKE manifests that no workflow references. Treat
 them as legacy unless that changes.
@@ -145,18 +156,20 @@ Copy `.env.example` to `.env`. Key variables:
 
 | Variable | Purpose |
 |---|---|
-| `SECRET_KEY` / `JWT_SECRET` | JWT signing (min 32 chars) |
+| `SECRET_KEY` | JWT signing (min 32 chars) |
 | `MONGODB_URI` | MongoDB connection string |
 | `MONGODB_DB` | Database name (default: `my_finance`) |
 | `GEMINI_API_KEY` | Google Gemini AI (expense extraction + chat) |
 | `GEMINI_MODEL` | Model ID (default: `gemini-2.5-flash`) |
 | `WEBAUTHN_RP_ID` / `WEBAUTHN_ORIGIN` | FIDO2 relying party (must match frontend origin) |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth2 |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_REDIRECT_URI` / `GOOGLE_ALLOWED_DOMAINS` | Google OAuth2 |
 | `SMTP_HOST` / `SMTP_*` | Email delivery for OTPs (empty = console log) |
-| `VITE_API_BASE_URL` | Frontend API base (default: `/api/v1`) |
-| `VITE_FEATURE_SUPPORT_PAGE_ENABLED` | Feature flag: show support page |
-| `VITE_FEATURE_BILLING_ADMIN_ENABLED` | Feature flag: show Billing and Admin UI/routes |
-| `VITE_SUPPORT_EMAIL` | Support page contact email (default: `contact@harpytechco.in`) |
+| `LOG_LEVEL` | Log verbosity (default `INFO`) |
+| `VITE_API_BASE_URL` | Frontend API base, build-time (default: `/api/v1`) |
+| `FEATURE_SUPPORT_PAGE_ENABLED` | Runtime flag: show support page (default `true`) |
+| `FEATURE_BILLING_ENABLED` | Runtime flag: show Billing UI/routes |
+| `FEATURE_ADMIN_ENABLED` | Runtime flag: show Admin UI/routes |
+| `SUPPORT_EMAIL` | Support page contact email |
 | `ENVIRONMENT` | `development` or `production` |
 | `COOKIE_SECURE` | Set `true` in production (HTTPS only) |
 
@@ -190,7 +203,7 @@ FastAPI auto-generates OpenAPI docs at `/docs` (Swagger) and `/redoc`.
 - **State**: React Context only (`AuthContext`, `ThemeContext`, `PwaContext`). No Redux or Zustand.
 - **API calls**: All go through `app/src/lib/api.js` which handles CSRF injection and offline queuing.
 - **Offline support**: Service worker + IndexedDB queue (`pwa/offlineQueue.js`) replays mutations when back online.
-- **Feature flags**: `app/src/lib/featureFlags.js` reads `VITE_FEATURE_*` env vars at build time.
+- **Feature flags**: `app/src/lib/featureFlags.ts` reads `window.__APP_CONFIG__` (served by `/runtime-config.js`) at page load.
 - **Charts**: Recharts — bar, donut, and daily expense line charts on Dashboard and Report pages.
 
 ## MongoDB Collections

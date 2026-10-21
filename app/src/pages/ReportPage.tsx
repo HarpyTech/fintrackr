@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import clsx from 'clsx';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
@@ -23,7 +24,12 @@ const DATAGRID_SX = {
     background: 'var(--surface-soft)',
     borderRadius: 'var(--radius-sm)',
   },
-  '& .MuiDataGrid-cell': { borderColor: 'var(--line)' },
+  '& .MuiDataGrid-cell': {
+    borderColor: 'var(--line)',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
   '& .MuiDataGrid-footerContainer': { borderColor: 'var(--line)' },
   '& .MuiDataGrid-toolbarContainer': { padding: '8px 4px' },
 };
@@ -49,6 +55,7 @@ interface LineItemRow {
 
 export default function ReportPage() {
   const queryClient = useQueryClient();
+  const isMobile = useMediaQuery('(max-width: 768px)');
 
   const [historyView, setHistoryView] = useState<'expense' | 'line_items'>('expense');
   const [historyFilters, setHistoryFilters] = useState<HistoryFilters>({
@@ -400,9 +407,11 @@ export default function ReportPage() {
                   pagination: { paginationModel: { pageSize: 25 } },
                   sorting: { sortModel: [{ field: 'expense_date', sort: 'desc' }] },
                 }}
+                columnVisibilityModel={isMobile ? { input_type: false, invoice_number: false, description: false } : {}}
                 pageSizeOptions={[10, 25, 50]}
                 disableRowSelectionOnClick
                 autoHeight
+                rowHeight={48}
                 density="compact"
                 slots={{ toolbar: GridToolbar }}
                 slotProps={{ toolbar: { csvOptions: { fileName: 'fintrackr-expenses' } } }}
@@ -419,9 +428,11 @@ export default function ReportPage() {
                   pagination: { paginationModel: { pageSize: 25 } },
                   sorting: { sortModel: [{ field: 'expenseDate', sort: 'desc' }] },
                 }}
+                columnVisibilityModel={isMobile ? { inputType: false, itemName: false } : {}}
                 pageSizeOptions={[10, 25, 50]}
                 disableRowSelectionOnClick
                 autoHeight
+                rowHeight={48}
                 density="compact"
                 slots={{ toolbar: GridToolbar }}
                 slotProps={{ toolbar: { csvOptions: { fileName: 'fintrackr-line-items' } } }}

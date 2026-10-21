@@ -82,7 +82,6 @@ Update the `.env` file with your actual configuration. See [SECRET-MANAGEMENT.md
 **Required Variables:**
 - `SECRET_KEY` - JWT signing key (generate with `openssl rand -hex 32`)
 - `MONGODB_URI` - MongoDB connection string
-- `DEFAULT_LOGIN_PASSWORD` - Default user password
 - `ACCESS_TOKEN_EXPIRE_MINUTES` - JWT token expiration time
 - `DEFAULT_USER_EMAIL` - Default user email
 - `DEFAULT_USER_NAME` - Default user name
@@ -196,7 +195,6 @@ The workflows no longer read application runtime values from GitHub secrets. Clo
 
 **Required Secret Manager secrets**
 - `SECRET_KEY`
-- `DEFAULT_LOGIN_PASSWORD`
 - `MONGODB_URI`
 
 **Optional Secret Manager secrets**
@@ -227,9 +225,7 @@ Example:
 
 ```bash
 echo -n "mongodb+srv://user:pass@cluster.example.mongodb.net/" | gcloud secrets create MONGODB_URI --data-file=-
-echo -n "replace-with-a-long-random-secret" | gcloud secrets create SECRET_KEY --data-file=-
-echo -n "replace-default-password" | gcloud secrets create DEFAULT_LOGIN_PASSWORD --data-file=-
-```
+echo -n "replace-with-a-long-random-secret" | gcloud secrets create SECRET_KEY --data-file=-```
 
 If a secret already exists, add a new version instead:
 

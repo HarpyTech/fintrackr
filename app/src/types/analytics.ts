@@ -73,6 +73,7 @@ export interface AnalyticsAnswer {
   narrative?: AnalyticsNarrative;
   datasets: AnalyticsDataset[];
   visuals: AnalyticsVisual[];
+  followups?: string[];
 }
 
 export interface AnalyticsHistoryResponse {

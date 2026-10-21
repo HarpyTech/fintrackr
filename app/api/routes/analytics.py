@@ -64,6 +64,7 @@ def _to_public(answer: dict) -> dict:
         "narrative": answer.get("narrative"),
         "datasets": answer.get("datasets") or [],
         "visuals": answer.get("visuals") or [],
+        "followups": answer.get("followups") or [],
     }
 
 

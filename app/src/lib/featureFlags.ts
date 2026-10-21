@@ -1,22 +1,9 @@
 import { useAuth } from '../auth/AuthContext';
+import { runtimeConfig } from './runtimeConfig';
 
-function parseBooleanFlag(value: string | undefined, defaultValue = false): boolean {
-  if (value == null || value === '') {
-    return defaultValue;
-  }
-  const normalized = String(value).trim().toLowerCase();
-  return ['1', 'true', 'yes', 'on', 'enabled'].includes(normalized);
-}
-
-export const isSupportPageEnabled: boolean = parseBooleanFlag(
-  import.meta.env.VITE_FEATURE_SUPPORT_PAGE_ENABLED,
-  true,
-);
-
-export const isBillingAdminEnabled: boolean = parseBooleanFlag(
-  import.meta.env.VITE_FEATURE_BILLING_ADMIN_ENABLED,
-  false,
-);
+export const isSupportPageEnabled: boolean = runtimeConfig.featureSupportPageEnabled;
+export const isBillingEnabled: boolean = runtimeConfig.featureBillingEnabled;
+export const isAdminEnabled: boolean = runtimeConfig.featureAdminEnabled;
 
 export interface PlanInfo {
   plan: string;

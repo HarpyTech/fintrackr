@@ -102,7 +102,7 @@
   }
 
   .theme-toggle-floating {
-    top: calc(10px + env(safe-area-inset-top, 0px));
+    bottom: calc(20px + env(safe-area-inset-bottom, 0px));
     right: calc(10px + env(safe-area-inset-right, 0px));
   }
 
@@ -146,6 +146,10 @@
 
   .expense-chat-panel {
     width: min(100vw - 24px, 437px);
+  }
+
+  .add-expense-proto-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -526,7 +530,7 @@
     padding-right: 16px;
   }
 
-  button,
+  button:not(.MuiButtonBase-root),
   .auth-link-button {
     min-height: 44px;
   }

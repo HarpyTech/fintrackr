@@ -19,7 +19,8 @@ interface AgentQueryError extends Error {
  * navigation and page refreshes (90-day TTL on the backend).
  */
 export function useAgentQuery() {
-  const [answers, setAnswers] = useState<AnalyticsAnswer[]>([]);
+  const [historyAnswers, setHistoryAnswers] = useState<AnalyticsAnswer[]>([]);
+  const [sessionAnswers, setSessionAnswers] = useState<AnalyticsAnswer[]>([]);
   const [streaming, setStreaming] = useState(false);
   const [phase, setPhase] = useState<AgentPhase>('');
   const [phaseLabel, setPhaseLabel] = useState('');
@@ -39,17 +40,13 @@ export function useAgentQuery() {
     };
   }, []);
 
-  // Load the last 20 answers from the server on mount.
+  // Load the last 20 answers from the server on mount (prior sessions only).
   useEffect(() => {
     let active = true;
     apiRequest<AnalyticsHistoryResponse>('/insights/history')
       .then((data) => {
         if (active && data?.items?.length) {
-          setAnswers((prev) => {
-            const existingIds = new Set(prev.map((a) => a.answer_id));
-            const fresh = data.items.filter((item) => !existingIds.has(item.answer_id));
-            return fresh.length ? [...prev, ...fresh] : prev;
-          });
+          setHistoryAnswers(data.items);
         }
       })
       .catch(() => {
@@ -72,7 +69,7 @@ export function useAgentQuery() {
 
   const receive = useCallback((answer: AnalyticsAnswer | null) => {
     if (!mountedRef.current || !answer) return;
-    setAnswers((prev) =>
+    setSessionAnswers((prev) =>
       prev.some((a) => a.answer_id === answer.answer_id) ? prev : [...prev, answer],
     );
   }, []);
@@ -133,11 +130,13 @@ export function useAgentQuery() {
   }, [receive]);
 
   const clear = useCallback(() => {
-    setAnswers([]);
+    setSessionAnswers([]);
+    setHistoryAnswers([]);
   }, []);
 
   return {
-    answers,
+    historyAnswers,
+    sessionAnswers,
     ask: askQuestion,
     cancel,
     clear,

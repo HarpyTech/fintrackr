@@ -8,7 +8,7 @@ import AppLoader from './components/AppLoader';
 import ErrorBoundary from './components/ErrorBoundary';
 import RouteMeta from './components/RouteMeta';
 import LoginPage from './pages/LoginPage';
-import { isBillingAdminEnabled, isSupportPageEnabled } from './lib/featureFlags';
+import { isBillingEnabled, isAdminEnabled, isSupportPageEnabled } from './lib/featureFlags';
 import { isInstalledPwa } from './lib/deviceBinding';
 
 /**
@@ -58,11 +58,21 @@ const BillingPage = lazyWithRetry(() => import('./pages/BillingPage'));
 const NotFoundPage = lazyWithRetry(() => import('./pages/NotFoundPage'));
 
 function HomeRoute() {
-  if (!isInstalledPwa()) {
-    return <LandingPage />;
+  const { session, loading } = useAuth();
+
+  if (loading) {
+    return <AppLoader label="Restoring your session…" full />;
   }
 
-  return <Navigate to="/login" replace />;
+  if (session.authenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  if (isInstalledPwa()) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <LandingPage />;
 }
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -182,7 +192,7 @@ export default function App() {
                   </ProtectedRoute>
                 }
               />
-              {isBillingAdminEnabled ? (
+              {isBillingEnabled ? (
                 <Route
                   path="/billing"
                   element={
@@ -192,7 +202,7 @@ export default function App() {
                   }
                 />
               ) : null}
-              {isBillingAdminEnabled ? (
+              {isAdminEnabled ? (
                 <Route
                   path="/admin/users"
                   element={
