@@ -17,7 +17,7 @@ import ErrorBoundary from '../components/ErrorBoundary';
 import { useAgentQuery } from '../hooks/useAgentQuery';
 import { formatInr } from '../lib/chartColors';
 import { queryKeys } from '../lib/queryClient';
-import { isBillingAdminEnabled, usePlan } from '../lib/featureFlags';
+import { isBillingEnabled, usePlan } from '../lib/featureFlags';
 import { Link } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
 import type { InsightsOverview } from '../types';
@@ -127,7 +127,7 @@ export default function InsightsPage() {
           <Sparkles size={16} aria-hidden="true" />
           <span>
             AI Insights works best with the <strong>Go</strong> plan — unlimited history, deeper analysis.{' '}
-            {isBillingAdminEnabled ? (
+            {isBillingEnabled ? (
               <Link to="/billing" className="insights-proto-upgrade-link">Upgrade now</Link>
             ) : null}
           </span>

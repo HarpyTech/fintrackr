@@ -128,7 +128,7 @@
 
 .theme-toggle-floating {
   position: fixed;
-  top: calc(12px + env(safe-area-inset-top, 0px));
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
   right: calc(12px + env(safe-area-inset-right, 0px));
   z-index: 80;
   box-shadow: var(--panel-shadow);
