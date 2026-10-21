@@ -253,6 +253,17 @@ def _table(visual_id, dataset_id, title) -> dict:
     return _spec(visual_id, dataset_id, title, "table", {}, "md")
 
 
+def _sanitize_row(row: dict) -> dict:
+    """Flatten any dict values (e.g. compound MongoDB _id objects) to scalars."""
+    out = {}
+    for key, value in row.items():
+        if isinstance(value, dict):
+            out[key] = ", ".join(str(v) for v in value.values() if v is not None) or "—"
+        else:
+            out[key] = value
+    return out
+
+
 def build_dataset(
     rows: list[dict],
     *,
@@ -261,11 +272,12 @@ def build_dataset(
     truncated: bool = False,
 ) -> dict:
     """Package rows plus column metadata for the client."""
+    clean_rows = [_sanitize_row(row) for row in rows]
     return {
         "id": dataset_id,
         "title": title,
-        "columns": describe_columns(rows),
-        "rows": rows,
-        "row_count": len(rows),
+        "columns": describe_columns(clean_rows),
+        "rows": clean_rows,
+        "row_count": len(clean_rows),
         "truncated": truncated,
     }
