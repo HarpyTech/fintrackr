@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
 import SiteFooter from '../components/SiteFooter';
+import PublicHeader from '../components/PublicHeader';
 import type { LucideIcon } from 'lucide-react';
 import {
   Camera,
@@ -97,17 +99,12 @@ const STORY_ITEMS: StoryItem[] = [
 ];
 
 export default function FeaturesPage() {
+  const { session, loading } = useAuth();
+  const authenticated = !loading && session.authenticated;
+
   return (
     <div className="features-proto">
-      {/* Header */}
-      <header className="features-proto-header">
-        <div className="features-proto-header-inner">
-          <Link to="/" className="features-proto-brand">
-            <img src="/assets/name_logo.svg" alt="FinTrackr" className="features-proto-brand-logo" />
-          </Link>
-          <Link to="/login" className="features-proto-signin">Sign In</Link>
-        </div>
-      </header>
+      <PublicHeader />
 
       {/* Hero */}
       <section className="features-proto-hero">
@@ -205,10 +202,20 @@ export default function FeaturesPage() {
             Simplify your expense tracking with AI-powered receipt scanning
           </p>
           <div className="features-proto-cta-row">
-            <Link to="/register" className="features-proto-cta-primary">
-              Get Started Free <ArrowRight size={18} className="features-proto-cta-arrow" />
-            </Link>
-            <Link to="/login" className="features-proto-cta-secondary">Sign In</Link>
+            {authenticated ? (
+              <Link to="/dashboard" className="features-proto-cta-primary">
+                Go to Dashboard <ArrowRight size={18} className="features-proto-cta-arrow" />
+              </Link>
+            ) : (
+              <>
+                <Link to="/register" className="features-proto-cta-primary">
+                  Get Started Free <ArrowRight size={18} className="features-proto-cta-arrow" />
+                </Link>
+                {loading ? null : (
+                  <Link to="/login" className="features-proto-cta-secondary">Sign In</Link>
+                )}
+              </>
+            )}
           </div>
         </div>
       </section>

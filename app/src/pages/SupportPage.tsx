@@ -1,9 +1,9 @@
 import { useState, FormEvent } from 'react';
-import { Link } from 'react-router-dom';
 import { isBillingEnabled } from '../lib/featureFlags';
 import { Mail, MessageCircle, FileText, Phone, Clock, Send } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import SiteFooter from '../components/SiteFooter';
+import PublicHeader from '../components/PublicHeader';
 
 import { SUPPORT_EMAIL } from '../lib/supportEmail';
 
@@ -75,15 +75,7 @@ export default function SupportPage() {
 
   return (
     <div className="support-proto">
-      {/* Reuse features-proto header styles — same public page pattern */}
-      <header className="features-proto-header">
-        <div className="features-proto-header-inner">
-          <Link to="/" className="features-proto-brand">
-            <img src="/assets/name_logo.svg" alt="FinTrackr" className="features-proto-brand-logo" />
-          </Link>
-          <Link to="/login" className="features-proto-signin">Sign In</Link>
-        </div>
-      </header>
+      <PublicHeader />
 
       <div className="support-proto-container">
         {/* Page header */}
