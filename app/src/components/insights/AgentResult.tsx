@@ -26,9 +26,11 @@ function Markdownish({ text }: { text?: string }) {
 export default function AgentResult({
   answer,
   onRetry,
+  onFollowup,
 }: {
   answer: AnalyticsAnswer;
   onRetry?: (question: string) => void;
+  onFollowup?: (question: string) => void;
 }) {
   if (!answer) return null;
 
@@ -81,6 +83,24 @@ export default function AgentResult({
       ))}
 
       <Markdownish text={narrative?.body_md} />
+
+      {answer.followups?.length && onFollowup ? (
+        <div className="insights-result-followups">
+          <span className="insights-result-followups-label">Try asking</span>
+          <div className="insights-result-followup-pills">
+            {answer.followups.map((q) => (
+              <button
+                key={q}
+                type="button"
+                className="insights-result-followup-pill"
+                onClick={() => onFollowup(q)}
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </article>
   );
 }

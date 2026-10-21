@@ -77,7 +77,7 @@ export default function InsightsPage() {
   const { isFree } = usePlan();
 
   const {
-    answers, ask, cancel, streaming, phase, phaseLabel, pendingQuestion,
+    historyAnswers, sessionAnswers, ask, cancel, streaming, phase, phaseLabel, pendingQuestion,
   } = useAgentQuery();
 
   const overviewQuery = useQuery<InsightsOverview>({
@@ -96,7 +96,7 @@ export default function InsightsPage() {
   // Scroll chat to bottom whenever a new answer lands or streaming starts.
   useEffect(() => {
     chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: 'smooth' });
-  }, [answers.length, streaming]);
+  }, [sessionAnswers.length, historyAnswers.length, streaming]);
 
   function submit(question?: string) {
     const trimmed = (question ?? input).trim();
@@ -118,7 +118,7 @@ export default function InsightsPage() {
   }
 
   const monthDelta = overview?.month_delta_pct;
-  const hasHistory = answers.length > 0 || streaming;
+  const hasHistory = sessionAnswers.length > 0 || streaming;
 
   return (
     <div className="insights-proto">
@@ -186,7 +186,7 @@ export default function InsightsPage() {
 
         {/* ── Chat transcript (scrollable middle) ── */}
         <div className="insights-chat" ref={chatRef}>
-          {!hasHistory ? (
+          {!hasHistory && historyAnswers.length === 0 ? (
             <EmptyState
               icon={Sparkles}
               title="Ask your first question"
@@ -194,8 +194,33 @@ export default function InsightsPage() {
             />
           ) : null}
 
-          {/* Completed turns — oldest first */}
-          {answers.map((answer) => (
+          {/* Prior-session turns — dimmed, separated from current session */}
+          {historyAnswers.length > 0 ? (
+            <>
+              <div className="insights-chat-history-divider">
+                <span>Earlier conversations</span>
+              </div>
+              {historyAnswers.map((answer) => (
+                <div key={answer.answer_id} className="insights-chat-turn insights-chat-turn--history">
+                  <div className="insights-chat-bubble">
+                    <p>{answer.question}</p>
+                  </div>
+                  <div className="insights-chat-response">
+                    <ErrorBoundary
+                      label={`answer ${answer.answer_id}`}
+                      title="This answer could not be displayed"
+                      body="Try asking the question again."
+                    >
+                      <AgentResult answer={answer} onRetry={retry} onFollowup={submit} />
+                    </ErrorBoundary>
+                  </div>
+                </div>
+              ))}
+            </>
+          ) : null}
+
+          {/* Current-session turns — oldest first */}
+          {sessionAnswers.map((answer) => (
             <div key={answer.answer_id} className="insights-chat-turn">
               <div className="insights-chat-bubble">
                 <p>{answer.question}</p>
@@ -206,7 +231,7 @@ export default function InsightsPage() {
                   title="This answer could not be displayed"
                   body="Try asking the question again."
                 >
-                  <AgentResult answer={answer} onRetry={retry} />
+                  <AgentResult answer={answer} onRetry={retry} onFollowup={submit} />
                 </ErrorBoundary>
               </div>
             </div>

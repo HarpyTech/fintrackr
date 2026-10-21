@@ -16,6 +16,9 @@ function formatCell(value: string | number | null | undefined, type: AnalyticsFo
   if (value === null || value === undefined || value === '') {
     return '—';
   }
+  if (typeof value === 'object') {
+    return Object.values(value as Record<string, unknown>).join(', ') || '—';
+  }
   if (type === 'currency') {
     return formatInr(value);
   }
