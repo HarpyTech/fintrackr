@@ -348,8 +348,8 @@ export default function AddExpensePage() {
                 Amount <span aria-hidden="true">*</span>
                 <input
                   type="number"
-                  min="1.00"
-                  step="1"
+                  min="0.01"
+                  step="0.01"
                   required
                   aria-required="true"
                   placeholder="e.g. 250.00"

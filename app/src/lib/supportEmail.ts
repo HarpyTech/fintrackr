@@ -1,1 +1,3 @@
-export const SUPPORT_EMAIL = import.meta.env.VITE_SUPPORT_EMAIL || 'support@fintrackr.app';
+import { runtimeConfig } from './runtimeConfig';
+
+export const SUPPORT_EMAIL = runtimeConfig.supportEmail || 'support@harpytechco.in';
