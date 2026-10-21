@@ -4,6 +4,7 @@ import { runtimeConfig } from './runtimeConfig';
 export const isSupportPageEnabled: boolean = runtimeConfig.featureSupportPageEnabled;
 export const isBillingEnabled: boolean = runtimeConfig.featureBillingEnabled;
 export const isAdminEnabled: boolean = runtimeConfig.featureAdminEnabled;
+export const isGoogleSigninEnabled: boolean = runtimeConfig.featureGoogleSigninEnabled;
 
 export interface PlanInfo {
   plan: string;
