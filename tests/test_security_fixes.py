@@ -7,7 +7,7 @@ import mongomock
 import pytest
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.testclient import TestClient
-from jose import jwt
+import jwt
 
 from app.api.routes import users as users_routes
 from app.core.config import settings
@@ -48,7 +48,8 @@ def client():
 
 def test_refresh_token_rejected_as_bearer(client):
     resp = client.get(
-        "/api/v1/expenses", headers={"Authorization": f"Bearer {_token(type='refresh')}"}
+        "/api/v1/expenses",
+        headers={"Authorization": f"Bearer {_token(type='refresh')}"},
     )
     assert resp.status_code == 401
 
@@ -134,7 +135,9 @@ def _reset_user(col, otp="123456"):
 def test_reset_otp_is_burned_after_attempt_budget(users_col):
     _reset_user(users_col)
     for _ in range(settings.SIGNUP_OTP_MAX_ATTEMPTS):
-        result = auth_service.reset_password_with_otp("u@b.com", "000000", "new-password-1")
+        result = auth_service.reset_password_with_otp(
+            "u@b.com", "000000", "new-password-1"
+        )
         assert result == {"error": "Invalid OTP"}
 
     # Even the correct code no longer works once the budget is spent.
@@ -202,7 +205,9 @@ def test_otp_console_fallback_still_works_locally(monkeypatch, caplog):
 def test_plan_endpoint_hidden_when_billing_disabled(monkeypatch):
     monkeypatch.setattr(settings, "FEATURE_BILLING_ENABLED", False)
     with pytest.raises(HTTPException) as exc:
-        users_routes.update_plan(users_routes.PlanUpdateRequest(plan="max"), user="u@b.com")
+        users_routes.update_plan(
+            users_routes.PlanUpdateRequest(plan="max"), user="u@b.com"
+        )
     assert exc.value.status_code == 404
 
 
@@ -210,5 +215,7 @@ def test_plan_endpoint_hidden_when_billing_disabled(monkeypatch):
 def test_paid_plans_require_payment(monkeypatch, plan):
     monkeypatch.setattr(settings, "FEATURE_BILLING_ENABLED", True)
     with pytest.raises(HTTPException) as exc:
-        users_routes.update_plan(users_routes.PlanUpdateRequest(plan=plan), user="u@b.com")
+        users_routes.update_plan(
+            users_routes.PlanUpdateRequest(plan=plan), user="u@b.com"
+        )
     assert exc.value.status_code == 402

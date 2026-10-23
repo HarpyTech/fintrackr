@@ -3,7 +3,7 @@ import logging
 import secrets
 from datetime import UTC, datetime, timedelta
 
-from jose import jwt
+import jwt
 from passlib.context import CryptContext
 
 from app.core.config import settings
@@ -26,9 +26,10 @@ def create_access_token(data: dict):
     """Create a JWT access token"""
     try:
         to_encode = data.copy()
-        expire = datetime.now(UTC) + timedelta(
-            minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
-        )
+        now = datetime.now(UTC)
+        expire = now + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        # auth_time marks the original sign-in; renewals carry it forward.
+        to_encode.setdefault("auth_time", int(now.timestamp()))
         to_encode.update({"exp": expire, "type": "access"})
         token = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
         logger.debug(

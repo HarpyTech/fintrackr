@@ -3,7 +3,7 @@
 import pytest
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
-from jose import jwt
+import jwt
 
 from app.core.config import settings
 from app.middleware.auth import AuthenticationMiddleware
@@ -88,7 +88,10 @@ def test_cache_control_set_on_api_path(sec_client):
 
 def test_no_cache_control_on_non_api_path(sec_client):
     resp = sec_client.get("/page")
-    assert "cache-control" not in resp.headers or resp.headers.get("cache-control") != "no-store"
+    assert (
+        "cache-control" not in resp.headers
+        or resp.headers.get("cache-control") != "no-store"
+    )
 
 
 # ── CSRFProtectionMiddleware ──────────────────────────────────────────────────
