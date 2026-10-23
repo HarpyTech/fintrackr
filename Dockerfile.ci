@@ -10,11 +10,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /code
 
-# Install runtime + dev deps first for layer caching; add pip-audit explicitly
-# (CI installs it separately, so it is not pinned in requirements-dev.txt).
+# Install runtime + dev deps first for layer caching, including the pinned pip-audit.
 COPY requirements.txt requirements-dev.txt ./
-RUN pip install --no-cache-dir -r requirements.txt -r requirements-dev.txt \
-    && pip install --no-cache-dir pip-audit
+RUN python -m pip install --no-cache-dir --only-binary=:all: --upgrade pip==26.2.2 \
+    && pip install --no-cache-dir --only-binary=:all: -r requirements.txt -r requirements-dev.txt
 
 # Copy the project so the image runs standalone; docker-compose.ci.yml also
 # bind-mounts the source for live edits without rebuilding.
