@@ -3,11 +3,11 @@
 import time
 from datetime import UTC, datetime, timedelta
 
+import jwt
 import mongomock
 import pytest
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.testclient import TestClient
-import jwt
 
 from app.api.routes import users as users_routes
 from app.core.config import settings

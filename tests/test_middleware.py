@@ -1,9 +1,9 @@
 """Tests for all four middleware classes using starlette TestClient."""
 
+import jwt
 import pytest
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
-import jwt
 
 from app.core.config import settings
 from app.middleware.auth import AuthenticationMiddleware

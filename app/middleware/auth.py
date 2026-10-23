@@ -1,9 +1,9 @@
 import logging
 import time
 
+import jwt
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
-import jwt
 from jwt.exceptions import InvalidTokenError
 from starlette.middleware.base import BaseHTTPMiddleware
 
