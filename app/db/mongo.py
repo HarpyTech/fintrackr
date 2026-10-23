@@ -343,10 +343,16 @@ def bootstrap_indexes() -> None:
 
         # Rate-limit collections — TTL cleans up old attempt records automatically.
         # These are created here rather than per-request inside ratelimit.py.
-        _rate_limit_window = 600  # 10 minutes in seconds
-        for rl_col in ("signup_otp_attempts", "webauthn_attempts", "llm_call_attempts", "login_attempts"):
+        # Each TTL must cover the longest window that reads the collection.
+        rate_limit_ttls = {
+            "signup_otp_attempts": 600,
+            "webauthn_attempts": 600,
+            "llm_call_attempts": 600,
+            "login_attempts": 900,
+        }
+        for rl_col, ttl in rate_limit_ttls.items():
             try:
-                db[rl_col].create_index("created_at", expireAfterSeconds=_rate_limit_window)
+                db[rl_col].create_index("created_at", expireAfterSeconds=ttl)
             except Exception:
                 pass
 

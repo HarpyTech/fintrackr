@@ -17,7 +17,9 @@ from fastapi import (
 from starlette.concurrency import run_in_threadpool
 
 from app.api.deps import get_current_tenant, get_current_user
+from app.core.config import settings
 from app.core.idempotency import get_idempotency_response, store_idempotency_response
+from app.core.ratelimit import LlmRateLimitError, check_and_record_llm_call
 from app.models.expense import (
     ExpenseChatCreateRequest,
     ExpenseCreate,
@@ -52,6 +54,24 @@ from app.services.expense_service import (
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+def _charge_llm_call(user: str) -> None:
+    """Count one Gemini extraction against the user's AI allowance."""
+    check_and_record_llm_call(
+        user,
+        "extraction",
+        max_calls=settings.ANALYTICS_LLM_CALLS_PER_WINDOW,
+        window_minutes=settings.ANALYTICS_LLM_WINDOW_MINUTES,
+    )
+
+
+def _llm_limited(exc: LlmRateLimitError) -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        detail=str(exc),
+        headers={"Retry-After": str(exc.retry_after_seconds)},
+    )
 
 
 @router.post("", status_code=201)
@@ -115,7 +135,7 @@ def create_expense(
 
 @router.post("/extract-and-create", status_code=201)
 async def extract_and_create_expense(
-    text_input: str | None = Form(default=None),
+    text_input: str | None = Form(default=None, max_length=4000),
     image: UploadFile | None = File(default=None),
     input_type: ExpenseInputType | None = Form(default=None),
     user: str = Depends(get_current_user),
@@ -134,10 +154,17 @@ async def extract_and_create_expense(
     try:
         # Enforce limit before reading image bytes or calling Gemini.
         check_session_expense_limit(user, tenant_id=tenant_id)
+        _charge_llm_call(user)
         raw_image_bytes: bytes | None = None
         if image is not None:
-            # Keep upload untouched: read and forward original bytes as-is.
-            raw_image_bytes = await image.read()
+            max_bytes = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
+            # Read one byte past the cap so oversize uploads are detected
+            # without buffering the whole file.
+            raw_image_bytes = await image.read(max_bytes + 1)
+            if len(raw_image_bytes) > max_bytes:
+                raise ValueError(
+                    f"Image must be {settings.MAX_UPLOAD_SIZE_MB} MB or smaller"
+                )
 
         mime_type = image.content_type if image else None
         extracted, used_llm_model = await run_in_threadpool(
@@ -189,6 +216,8 @@ async def extract_and_create_expense(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=str(exc),
         ) from exc
+    except LlmRateLimitError as exc:
+        raise _llm_limited(exc) from exc
     except RuntimeError as exc:
         logger.error(f"Service error in extract-and-create: {str(exc)}")
         raise HTTPException(
@@ -233,6 +262,7 @@ async def create_expense_from_chat(
             )
 
         check_session_expense_limit(user, tenant_id=tenant_id)
+        _charge_llm_call(user)
         extracted, used_llm_model = await run_in_threadpool(
             extract_text_chat_expense_payload,
             payload.message,
@@ -305,6 +335,8 @@ async def create_expense_from_chat(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=str(exc),
         ) from exc
+    except LlmRateLimitError as exc:
+        raise _llm_limited(exc) from exc
     except RuntimeError as exc:
         logger.error("Service error in chat expense create: %s", str(exc))
         raise HTTPException(

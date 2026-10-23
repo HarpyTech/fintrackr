@@ -30,7 +30,9 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = ""
 
     SECRET_KEY: str
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 5
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    # Active cookie sessions slide, but never past this long after sign-in.
+    SESSION_MAX_HOURS: int = 12
     ALGORITHM: str = "HS256"
 
     CORS_ORIGINS: list[str] = [
