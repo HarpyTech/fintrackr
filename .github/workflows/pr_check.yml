@@ -5,9 +5,10 @@ on:
     branches:
       - develop
       - main
+  workflow_call:
 
 concurrency:
-  group: pr-check-${{ github.event.pull_request.number }}
+  group: pr-check-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
 permissions:
@@ -31,10 +32,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-dev.txt
 
-      # - name: Scan dependencies for vulnerabilities
-      #   run: |
-      #     pip install pip-audit
-      #     pip-audit -r requirements.txt
+      - name: Scan dependencies for vulnerabilities
+        run: |
+          pip install pip-audit
+          pip-audit -r requirements.txt
 
       - name: Lint (ruff)
         run: ruff check app/ tests/
@@ -63,9 +64,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+          cache: npm
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Type check (tsc)
         run: npm run typecheck
