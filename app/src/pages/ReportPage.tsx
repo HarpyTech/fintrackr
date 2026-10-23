@@ -79,7 +79,8 @@ export default function ReportPage() {
     error: queryError,
     refetch,
   } = useQuery({
-    queryKey: ['expenses'],
+    // Distinct key: Dashboard caches the {items} envelope under ['expenses'].
+    queryKey: ['expenses', 'report', { limit: 200 }],
     queryFn: () => apiRequest<ExpenseListResponse>('/expenses?limit=200').then((r) => r.items || []),
   });
 

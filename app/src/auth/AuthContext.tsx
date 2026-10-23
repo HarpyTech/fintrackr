@@ -10,7 +10,9 @@ import {
   useState,
   ReactNode,
 } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '../lib/api';
+import { clearOfflineQueue, requestBackgroundSync } from '../pwa/offlineQueue';
 import { UNAUTHORIZED_EVENT, notifyWarning } from '../lib/notify';
 import { useWebAuthn } from '../hooks/useWebAuthn';
 import {
@@ -57,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [sessionExpired, setSessionExpired] = useState(false);
 
   const authenticatedRef = useRef(false);
+  const queryClient = useQueryClient();
 
   const { authenticateBiometric } = useWebAuthn();
 
@@ -137,6 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     function handleUnauthorized() {
       if (!authenticatedRef.current) return;
       authenticatedRef.current = false;
+      queryClient.clear();
       setSession({ authenticated: false, user: null, role: null });
       setProfile(null);
       setShowBiometricPrompt(false);
@@ -148,7 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       window.removeEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
     };
-  }, []);
+  }, [queryClient]);
 
   const login = async (username: string, password: string): Promise<void> => {
     await apiRequest('/auth/login', {
@@ -157,6 +161,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     setSessionExpired(false);
     await refreshSession();
+    // Replay anything queued while signed out or offline.
+    requestBackgroundSync().catch(() => {});
 
     const currentDeviceId = await getOrCreateDeviceId().catch(() => null);
     if (!currentDeviceId) return;
@@ -220,9 +226,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async (): Promise<void> => {
     await clearDeviceBinding().catch(() => {});
-    await apiRequest('/auth/logout', { method: 'POST' });
-    setSession({ authenticated: false, user: null, role: null });
-    setProfile(null);
+    try {
+      await apiRequest('/auth/logout', { method: 'POST' });
+    } finally {
+      // Drop everything the previous user loaded, even if the server call failed.
+      queryClient.clear();
+      await clearOfflineQueue().catch(() => {});
+      setSession({ authenticated: false, user: null, role: null });
+      setProfile(null);
+    }
   };
 
   const updateProfile = async (payload: Partial<Profile>): Promise<Profile> => {

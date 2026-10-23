@@ -62,6 +62,15 @@ export async function queueOfflineRequest({ url, method, headers, body }: QueueO
   await requestBackgroundSync();
 }
 
+export async function clearOfflineQueue(): Promise<void> {
+  const database = await openQueueDatabase();
+  await new Promise<void>((resolve, reject) => {
+    const request = database.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).clear();
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve();
+  });
+}
+
 export async function requestBackgroundSync(): Promise<void> {
   if (!('serviceWorker' in navigator)) {
     return;

@@ -74,8 +74,9 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // API responses are per-user financial data: never cache them, so nothing
+  // survives logout or is served to the next person on a shared device.
   if (url.pathname.startsWith('/api/')) {
-    event.respondWith(networkFirst(request, API_CACHE));
     return;
   }
 
@@ -279,14 +280,30 @@ async function deleteQueuedRequest(id) {
   });
 }
 
+async function currentCsrfToken() {
+  // The CSRF cookie is readable by the page, not the worker; /auth/csrf echoes
+  // it back. The first call may only set the cookie, so ask twice.
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const response = await fetch(new URL('/api/v1/auth/csrf', self.location.origin), {
+      credentials: 'include',
+    });
+    const { csrf_token: token } = await response.json();
+    if (token) return token;
+  }
+  return '';
+}
+
 async function syncQueuedRequests() {
   const queuedRequests = await getQueuedRequests();
+  if (queuedRequests.length === 0) return;
+  const csrfToken = await currentCsrfToken();
 
   for (const item of queuedRequests.sort((left, right) => left.queuedAt - right.queuedAt)) {
     try {
       const response = await fetch(item.url, {
         method: item.method,
-        headers: item.headers,
+        // The CSRF value captured at queue time may have rotated since.
+        headers: { ...item.headers, 'x-csrf-token': csrfToken },
         body: item.body,
         credentials: 'include',
       });
@@ -300,7 +317,10 @@ async function syncQueuedRequests() {
         continue;
       }
 
-      if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+      // 401/403 mean "signed out" or "stale CSRF", not "bad expense": keep the
+      // item and retry after the user signs in again.
+      const retryable = [401, 403, 429].includes(response.status);
+      if (response.status >= 400 && response.status < 500 && !retryable) {
         await deleteQueuedRequest(item.id);
         await notifyClients({
           type: 'FINTRACKR_OFFLINE_REQUEST_FAILED',
