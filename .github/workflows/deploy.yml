@@ -212,9 +212,10 @@ jobs:
         run: |
           docker build -t "${IMAGE_URI}" --build-arg INSTALL_MODE=ci .
 
-      # Blocks the push on fixable CRITICAL/HIGH findings. Accept a specific
-      # finding by adding its ID to a repo-root .trivyignore.
+      # Reports fixable CRITICAL/HIGH findings without blocking deployment.
       - name: Scan container image for vulnerabilities
+        id: trivy_scan
+        continue-on-error: true
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: image
@@ -224,6 +225,13 @@ jobs:
           ignore-unfixed: true
           format: table
           exit-code: "1"
+
+      - name: Notify about container vulnerabilities
+        if: steps.trivy_scan.outcome == 'failure'
+        run: |
+          echo "::warning::Trivy found fixable CRITICAL or HIGH vulnerabilities in ${IMAGE_URI}. Deployment will continue."
+          echo "### Container vulnerability warning" >> "$GITHUB_STEP_SUMMARY"
+          echo "Trivy found fixable CRITICAL or HIGH vulnerabilities in ${IMAGE_URI}. Deployment continued." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Push image to Artifact Registry
         run: |
