@@ -12,8 +12,15 @@ from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.middleware.tracing import TraceIDMiddleware
 
 
-def _make_jwt(username: str = "u@b.com", role: str = "user") -> str:
-    payload = {"username": username, "role": role, "tenant_id": username}
+def _make_jwt(
+    username: str = "u@b.com", role: str = "user", token_type: str = "access"
+) -> str:
+    payload = {
+        "username": username,
+        "role": role,
+        "tenant_id": username,
+        "type": token_type,
+    }
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
