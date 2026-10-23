@@ -293,7 +293,7 @@ def _parse_json_from_model(raw_text: str) -> dict[str, Any]:
 
     match = _JSON_OBJECT_PATTERN.search(cleaned)
     if not match:
-        logger.warning(f"No JSON object found in model output: {raw_text}")
+        logger.warning("No JSON object found in model output")
         raise RuntimeError("Could not find a JSON object in model output")
 
     return json.loads(match.group(0))

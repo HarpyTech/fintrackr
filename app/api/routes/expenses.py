@@ -86,9 +86,7 @@ def create_expense(
     if idempotency_key:
         cached = get_idempotency_response(idempotency_key, user)
         if cached is not None:
-            logger.info(
-                "Returning cached response for Idempotency-Key=%s", idempotency_key
-            )
+            logger.info("Returning cached expense response")
             return cached
     try:
         check_session_expense_limit(user, tenant_id=tenant_id)
@@ -147,9 +145,7 @@ async def extract_and_create_expense(
     if idempotency_key:
         cached = get_idempotency_response(idempotency_key, user)
         if cached is not None:
-            logger.info(
-                "Returning cached response for Idempotency-Key=%s", idempotency_key
-            )
+            logger.info("Returning cached expense response")
             return cached
     try:
         # Enforce limit before reading image bytes or calling Gemini.
@@ -201,7 +197,7 @@ async def extract_and_create_expense(
             store_idempotency_response(idempotency_key, user, response)
         return response
     except ValueError as exc:
-        logger.warning(f"Invalid extract-and-create request: {str(exc)}")
+        logger.warning("Invalid extract-and-create request")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
@@ -219,16 +215,13 @@ async def extract_and_create_expense(
     except LlmRateLimitError as exc:
         raise _llm_limited(exc) from exc
     except RuntimeError as exc:
-        logger.error(f"Service error in extract-and-create: {str(exc)}")
+        logger.error("Service error in extract-and-create")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(exc),
         ) from exc
     except Exception as exc:
-        logger.error(
-            f"Unexpected error in extract-and-create: {str(exc)}",
-            exc_info=True,
-        )
+        logger.error("Unexpected error in extract-and-create")
         raise
     finally:
         if image is not None:
@@ -247,9 +240,7 @@ async def create_expense_from_chat(
     if idempotency_key:
         cached = get_idempotency_response(idempotency_key, user)
         if cached is not None:
-            logger.info(
-                "Returning cached response for Idempotency-Key=%s", idempotency_key
-            )
+            logger.info("Returning cached expense response")
             return cached
     try:
         if looks_like_expense_analysis_request(payload.message):
