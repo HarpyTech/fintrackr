@@ -220,7 +220,7 @@ async def extract_and_create_expense(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(exc),
         ) from exc
-    except Exception as exc:
+    except Exception:
         logger.error("Unexpected error in extract-and-create")
         raise
     finally:
