@@ -241,12 +241,20 @@ def _generate_and_parse_json_with_retries(
     raise RuntimeError("Could not obtain valid JSON from Gemini after 2 retries")
 
 
+_GEMINI_TIMEOUT_SECONDS = 30
+
+
 def _generate_model_text(
     model: genai.GenerativeModel,
     parts: list[Any],
 ) -> str:
     """Generate raw text from Gemini."""
-    response = model.generate_content(parts)
+    try:
+        response = model.generate_content(
+            parts, request_options={"timeout": _GEMINI_TIMEOUT_SECONDS}
+        )
+    except Exception as exc:  # the SDK raises many transport error types
+        raise RuntimeError("Gemini request failed or timed out") from exc
 
     if response.candidates and response.candidates[0].finish_reason == 2:
         raise ValueError(
@@ -285,7 +293,7 @@ def _parse_json_from_model(raw_text: str) -> dict[str, Any]:
 
     match = _JSON_OBJECT_PATTERN.search(cleaned)
     if not match:
-        logger.warning(f"No JSON object found in model output: {raw_text}")
+        logger.warning("No JSON object found in model output")
         raise RuntimeError("Could not find a JSON object in model output")
 
     return json.loads(match.group(0))

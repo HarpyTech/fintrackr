@@ -1,9 +1,9 @@
 """Tests for all four middleware classes using starlette TestClient."""
 
+import jwt
 import pytest
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
-from jose import jwt
 
 from app.core.config import settings
 from app.middleware.auth import AuthenticationMiddleware
@@ -12,8 +12,15 @@ from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.middleware.tracing import TraceIDMiddleware
 
 
-def _make_jwt(username: str = "u@b.com", role: str = "user") -> str:
-    payload = {"username": username, "role": role, "tenant_id": username}
+def _make_jwt(
+    username: str = "u@b.com", role: str = "user", token_type: str = "access"
+) -> str:
+    payload = {
+        "username": username,
+        "role": role,
+        "tenant_id": username,
+        "type": token_type,
+    }
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
@@ -81,7 +88,10 @@ def test_cache_control_set_on_api_path(sec_client):
 
 def test_no_cache_control_on_non_api_path(sec_client):
     resp = sec_client.get("/page")
-    assert "cache-control" not in resp.headers or resp.headers.get("cache-control") != "no-store"
+    assert (
+        "cache-control" not in resp.headers
+        or resp.headers.get("cache-control") != "no-store"
+    )
 
 
 # ── CSRFProtectionMiddleware ──────────────────────────────────────────────────

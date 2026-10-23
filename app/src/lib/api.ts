@@ -72,6 +72,12 @@ export async function apiRequest<T = unknown>(path: string, options: ApiRequestO
     throw new Error('Offline queueing currently supports JSON requests only.');
   }
 
+  // One key per logical write, reused if the request is queued and replayed,
+  // so a retry after a dropped response cannot create a duplicate expense.
+  if (shouldQueueOffline && MUTATING_METHODS.has(method) && !headers.has('Idempotency-Key')) {
+    headers.set('Idempotency-Key', crypto.randomUUID());
+  }
+
   if (shouldQueueOffline && MUTATING_METHODS.has(method) && !navigator.onLine) {
     await queueOfflineRequest({
       url,

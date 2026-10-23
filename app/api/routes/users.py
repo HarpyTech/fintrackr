@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from app.api.deps import get_current_user
-from app.core.plans import is_valid_plan, plan_user_fields
+from app.core.config import settings
+from app.core.plans import DEFAULT_PLAN, is_valid_plan, plan_user_fields
 from app.db.mongo import get_users_collection
 from app.models.user import UserProfile, UserProfileUpdate
 from app.services.auth_service import get_user_profile, update_user_profile
@@ -50,12 +51,22 @@ def update_plan(
     payload: PlanUpdateRequest,
     user: str = Depends(get_current_user),
 ):
-    """Self-service plan upgrade/downgrade."""
+    """Self-service plan change. Until checkout exists users may only move to
+    the free plan; paid plans are granted by an admin."""
+    if not settings.FEATURE_BILLING_ENABLED:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Not Found"
+        )
     plan_key = payload.plan.strip().lower()
     if not is_valid_plan(plan_key):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Unknown plan '{plan_key}'. Valid plans: free, go, max.",
+        )
+    if plan_key != DEFAULT_PLAN:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Upgrades require payment and are not available yet.",
         )
     fields = plan_user_fields(plan_key)
     get_users_collection().update_one({"username": user}, {"$set": fields})

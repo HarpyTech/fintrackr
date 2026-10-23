@@ -314,7 +314,7 @@ def _jsonable(value: Any) -> Any:
 
 def _answer_envelope(**kwargs) -> dict:
     """Build the response envelope with every key always present."""
-    base: dict[str, Any] = {
+    base = {
         "answer_id": f"ans_{uuid.uuid4().hex[:16]}",
         "session_id": "",
         "question": "",

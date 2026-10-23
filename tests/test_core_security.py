@@ -32,7 +32,7 @@ def test_create_access_token_returns_string():
 
 
 def test_create_access_token_can_be_decoded():
-    from jose import jwt
+    import jwt
 
     from app.core.config import settings
 

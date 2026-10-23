@@ -8,9 +8,10 @@ identifiable information (PII) such as usernames, emails, etc.
 import logging
 import uuid
 from contextvars import ContextVar
+from typing import Optional
 
 # Context variable to store trace ID for the current request
-_trace_id_context: ContextVar[str | None] = ContextVar("trace_id", default=None)
+_trace_id_context: ContextVar[Optional[str]] = ContextVar("trace_id", default=None)
 
 
 def generate_trace_id() -> str:
@@ -23,7 +24,7 @@ def set_trace_id(trace_id: str) -> None:
     _trace_id_context.set(trace_id)
 
 
-def get_trace_id() -> str | None:
+def get_trace_id() -> Optional[str]:
     """Get the trace ID from the current context"""
     return _trace_id_context.get()
 

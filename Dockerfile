@@ -8,7 +8,7 @@ COPY app/src ./app/src
 # Local builds default to npm install. GitHub Actions / CI can pass --build-arg INSTALL_MODE=ci
 ARG INSTALL_MODE=local
 RUN if [ "$INSTALL_MODE" = "ci" ]; then \
-  npm ci; \
+  npm ci --ignore-scripts; \
   else \
   npm install; \
   fi
@@ -23,7 +23,8 @@ FROM python:3.12-slim
 WORKDIR /code
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN python -m pip install --no-cache-dir --only-binary=:all: --upgrade pip==26.2.2 \
+  && pip install --no-cache-dir --only-binary=:all: -r requirements.txt
 
 COPY app ./app
 COPY --from=frontend-builder /frontend/app/static ./app/static

@@ -51,6 +51,19 @@ def _set_session_cookie(response: Response, token: str) -> None:
     )
 
 
+def _client_ip(request: Request) -> str:
+    """Best-effort client address. Cloud Run's front end appends the connecting
+    address to X-Forwarded-For, so only the last hop is not client-supplied."""
+    hops = [
+        h.strip()
+        for h in request.headers.get("x-forwarded-for", "").split(",")
+        if h.strip()
+    ]
+    if hops:
+        return hops[-1]
+    return request.client.host if request.client else ""
+
+
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 def api_register(payload: UserCreate):
     """Start registration by generating OTP and sending it to email"""
@@ -191,9 +204,10 @@ async def api_login(request: Request, response: Response):
             detail="username and password are required",
         )
 
-    ip_address = request.headers.get("x-forwarded-for", request.client.host if request.client else "")
     try:
-        check_and_record_login_attempt(username, ip_address=ip_address)
+        # Lockout is per account, so rotating source addresses cannot reset it.
+        check_and_record_login_attempt(username)
+        check_and_record_login_attempt(f"ip:{_client_ip(request)}", max_attempts=50)
     except LoginRateLimitError as exc:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -217,7 +231,7 @@ async def api_login(request: Request, response: Response):
             detail="Invalid credentials",
         )
 
-    clear_login_attempts(username, ip_address=ip_address)
+    clear_login_attempts(username)
 
     if user.get("requires_verification"):
         logger.warning("Login failed: User email not verified")

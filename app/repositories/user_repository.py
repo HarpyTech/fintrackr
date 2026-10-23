@@ -8,6 +8,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from pymongo import ReturnDocument
+
 from app.db.mongo import get_users_collection
 
 logger = logging.getLogger(__name__)
@@ -55,3 +57,14 @@ def update_by_id(
         update,
     )
     return result.matched_count > 0
+
+
+def increment_by_id(user_id: Any, field: str) -> int:
+    """Atomically ``$inc`` *field* on the user with *user_id*; return the new value."""
+    doc = get_users_collection().find_one_and_update(
+        {"_id": user_id},
+        {"$inc": {field: 1}},
+        projection={field: 1},
+        return_document=ReturnDocument.AFTER,
+    )
+    return int((doc or {}).get(field, 0))

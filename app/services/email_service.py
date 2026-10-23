@@ -350,6 +350,9 @@ def deliver_signup_otp(email: str, otp: str) -> None:
     )
 
     if not settings.SMTP_HOST:
+        if settings.is_cloud_run:
+            # Never write a live credential to shared logs in a deployed env.
+            raise RuntimeError("Email delivery is not configured")
         logger.warning(
             "SMTP is not configured. OTP for %s is %s (development fallback).",
             email,
@@ -396,6 +399,8 @@ def deliver_reset_otp(email: str, otp: str) -> None:
     )
 
     if not settings.SMTP_HOST:
+        if settings.is_cloud_run:
+            raise RuntimeError("Email delivery is not configured")
         logger.warning(
             "SMTP is not configured. Password reset OTP for %s is %s (development fallback).",
             email,

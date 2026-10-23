@@ -25,10 +25,12 @@ from app.core.ratelimit import (
     clear_otp_attempts,
 )
 from app.core.security import hash_password, verify_password
+from app.db.mongo import get_refresh_tokens_collection
 from app.repositories import user_repository
 from app.services.email_service import deliver_reset_otp, deliver_signup_otp
 
 logger = logging.getLogger(__name__)
+OTP_EXPIRED_ERROR = "OTP expired"
 
 
 # ---------------------------------------------------------------------------
@@ -51,6 +53,24 @@ def _is_otp_expired(expires_at: datetime | None) -> bool:
 def _generate_signup_otp() -> str:
     digits = max(4, min(settings.SIGNUP_OTP_LENGTH, 8))
     return "".join(str(secrets.randbelow(10)) for _ in range(digits))
+
+
+def _spend_otp_attempt(user: dict, kind: str) -> bool:
+    """Count one guess against the user's current *kind* OTP ("signup"/"reset").
+
+    Counted atomically before the hash check so parallel guesses cannot race
+    past the budget. Once spent, the code is burned and a new one must be
+    requested (which is itself rate-limited).
+    """
+    attempts = user_repository.increment_by_id(user["_id"], f"{kind}_otp_attempts")
+    if attempts <= settings.SIGNUP_OTP_MAX_ATTEMPTS:
+        return True
+    user_repository.update_by_id(
+        user["_id"],
+        set_fields={"updated_at": _utcnow()},
+        unset_fields={f"{kind}_otp_hash": "", f"{kind}_otp_expires_at": ""},
+    )
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -121,6 +141,7 @@ def register_user(username: str, password: str, role: str = "user"):
             **plan_user_fields(DEFAULT_PLAN),
             "signup_otp_hash": hash_password(otp),
             "signup_otp_expires_at": otp_expires_at,
+            "signup_otp_attempts": 0,
             "updated_at": _utcnow(),
         }
 
@@ -184,6 +205,7 @@ def resend_signup_otp(username: str):
             set_fields={
                 "signup_otp_hash": hash_password(otp),
                 "signup_otp_expires_at": otp_expires_at,
+                "signup_otp_attempts": 0,
                 "updated_at": _utcnow(),
             },
         )
@@ -232,7 +254,11 @@ def verify_user_signup_otp(username: str, otp: str):
         otp_expires_at = user.get("signup_otp_expires_at")
         if not otp_hash or _is_otp_expired(otp_expires_at):
             logger.warning("Signup OTP verification failed: OTP expired or missing")
-            return {"error": "OTP expired"}
+            return {"error": OTP_EXPIRED_ERROR}
+
+        if not _spend_otp_attempt(user, "signup"):
+            logger.warning("Signup OTP verification failed: attempt budget spent")
+            return {"error": OTP_EXPIRED_ERROR}
 
         if not verify_password(otp, otp_hash):
             logger.warning("Signup OTP verification failed: Invalid OTP")
@@ -247,6 +273,7 @@ def verify_user_signup_otp(username: str, otp: str):
             unset_fields={
                 "signup_otp_hash": "",
                 "signup_otp_expires_at": "",
+                "signup_otp_attempts": "",
             },
         )
 
@@ -299,6 +326,7 @@ def request_password_reset(username: str):
             set_fields={
                 "reset_otp_hash": hash_password(otp),
                 "reset_otp_expires_at": otp_expires_at,
+                "reset_otp_attempts": 0,
                 "updated_at": _utcnow(),
             },
         )
@@ -343,7 +371,13 @@ def reset_password_with_otp(username: str, otp: str, new_password: str):
             logger.warning(
                 "Password reset failed: OTP expired or missing for %s", username
             )
-            return {"error": "OTP expired"}
+            return {"error": OTP_EXPIRED_ERROR}
+
+        if not _spend_otp_attempt(user, "reset"):
+            logger.warning(
+                "Password reset failed: attempt budget spent for %s", username
+            )
+            return {"error": OTP_EXPIRED_ERROR}
 
         if not verify_password(otp, otp_hash):
             logger.warning("Password reset failed: invalid OTP for %s", username)
@@ -358,8 +392,12 @@ def reset_password_with_otp(username: str, otp: str, new_password: str):
             unset_fields={
                 "reset_otp_hash": "",
                 "reset_otp_expires_at": "",
+                "reset_otp_attempts": "",
             },
         )
+        # A reset is how users recover a compromised account: end every
+        # long-lived PWA session along with the old password.
+        get_refresh_tokens_collection().delete_many({"username": user["username"]})
 
         clear_otp_attempts(username)
         logger.info("Password reset successful for %s", username)
