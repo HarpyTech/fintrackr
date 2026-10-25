@@ -108,6 +108,9 @@ jobs:
           APP_FEATURE_ADMIN_ENABLED: ${{ secrets.APP_FEATURE_ADMIN_ENABLED }}
           APP_FEATURE_GOOGLE_SIGNIN_ENABLED: ${{ secrets.APP_FEATURE_GOOGLE_SIGNIN_ENABLED }}
           APP_SUPPORT_EMAIL: ${{ secrets.APP_SUPPORT_EMAIL }}
+          # Platform admins and the fallback timezone for "today"
+          APP_ADMIN_EMAILS: ${{ secrets.APP_ADMIN_EMAILS }}
+          APP_DEFAULT_TIMEZONE: ${{ secrets.APP_DEFAULT_TIMEZONE }}
           BUILD_SHA: ${{ github.sha }}
         run: |
           python - << 'PY'
