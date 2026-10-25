@@ -1,4 +1,5 @@
 import { emitUnauthorized, notifyWarning } from './notify';
+import { getUserTimezone } from './timezone';
 import type { AgentPhase, AnalyticsAnswer } from '../types';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '/api/v1').replace(/\/$/, '');
@@ -97,6 +98,7 @@ export async function streamAsk(
   const headers = new Headers({
     'Content-Type': 'application/json',
     Accept: 'text/event-stream',
+    'X-Timezone': getUserTimezone(),
   });
 
   const csrfToken = getCookieValue('csrf_token');

@@ -17,6 +17,8 @@ export interface UserProfile {
   plan: string;
   expense_limit: number;
   disable_rate_limit: boolean;
+  /** IANA zone the user picked; null means follow the browser. */
+  timezone?: string | null;
 }
 
 /** Body for PATCH /users/me (≈ UserProfileUpdate). */
@@ -25,6 +27,8 @@ export interface UserProfileUpdatePayload {
   last_name?: string | null;
   phone?: string | null;
   address?: string | null;
+  /** Empty string clears the saved zone. */
+  timezone?: string | null;
 }
 
 export interface WebAuthnCredentialSummary {
