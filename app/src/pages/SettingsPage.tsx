@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useMemo, useState, FormEvent } from 'react';
-import { LogOut, Smartphone, User } from 'lucide-react';
+import { Download, LogOut, Smartphone, Trash2, User } from 'lucide-react';
+import Button from '@mui/material/Button';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogTitle from '@mui/material/DialogTitle';
+import TextField from '@mui/material/TextField';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import ThemeToggle from '../components/ThemeToggle';
@@ -11,6 +18,7 @@ import ErrorAlert from '../components/ErrorAlert';
 import PageSpinner from '../components/PageSpinner';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { resolveDisplayName, resolveInitials } from '../lib/userDisplay';
+import { browserTimezone, listTimezones } from '../lib/timezone';
 
 const PHONE_PATTERN = /^\+?[0-9]{8,15}$/;
 const ADDRESS_MIN_LENGTH = 10;
@@ -34,11 +42,13 @@ interface ProfileForm {
   last_name: string;
   phone: string;
   address: string;
+  /** '' means follow this device's timezone. */
+  timezone: string;
 }
 
 export default function SettingsPage() {
   const navigate = useNavigate();
-  const { session, profile, updateProfile, logout } = useAuth();
+  const { session, profile, updateProfile, logout, deleteAccount } = useAuth();
   const { isSupported: isWebAuthnSupported } = useWebAuthn();
 
   const [form, setForm] = useState<ProfileForm>({
@@ -46,7 +56,9 @@ export default function SettingsPage() {
     last_name: profile?.last_name || '',
     phone: profile?.phone || '',
     address: profile?.address || '',
+    timezone: profile?.timezone || '',
   });
+  const timezones = useMemo(() => listTimezones(), []);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
   const [saveError, setSaveError] = useState('');
@@ -61,12 +73,21 @@ export default function SettingsPage() {
   const [confirmDevice, setConfirmDevice] = useState<ManagedDevice | null>(null);
   const [currentDeviceId, setCurrentDeviceId] = useState<string | null>(null);
 
+  const [exporting, setExporting] = useState(false);
+  const [accountError, setAccountError] = useState('');
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState('');
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+
   useEffect(() => {
     setForm({
       first_name: profile?.first_name || '',
       last_name: profile?.last_name || '',
       phone: profile?.phone || '',
       address: profile?.address || '',
+      timezone: profile?.timezone || '',
     });
   }, [profile]);
 
@@ -256,6 +277,48 @@ export default function SettingsPage() {
     navigate('/login');
   }
 
+  async function handleExportData() {
+    setExporting(true);
+    setAccountError('');
+    try {
+      const data = await apiRequest<unknown>('/users/me/export');
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'fintrackr-export.json';
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setAccountError(err instanceof Error ? err.message : 'Could not download your data.');
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  function closeDeleteDialog() {
+    if (deleting) return;
+    setDeleteOpen(false);
+    setDeleteConfirm('');
+    setDeletePassword('');
+    setDeleteError('');
+  }
+
+  const deleteConfirmMatches =
+    deleteConfirm.trim().toLowerCase() === (session?.user || '').toLowerCase();
+
+  async function handleDeleteAccount() {
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      await deleteAccount(deleteConfirm.trim(), deletePassword);
+      navigate('/', { replace: true });
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Could not delete your account.');
+      setDeleting(false);
+    }
+  }
+
   return (
     <div className="settings-page">
       <h2 className="settings-page-title">Settings</h2>
@@ -318,6 +381,21 @@ export default function SettingsPage() {
                 />
                 <span className={addressValidationError ? 'error-text' : 'help-text'}>
                   {addressValidationError || `${addressLength}/${ADDRESS_MAX_LENGTH} characters`}
+                </span>
+              </label>
+              <label>
+                Timezone
+                <select
+                  value={form.timezone}
+                  onChange={(e) => setForm((p) => ({ ...p, timezone: e.target.value }))}
+                >
+                  <option value="">Use this device&apos;s timezone ({browserTimezone()})</option>
+                  {timezones.map((zone) => (
+                    <option key={zone} value={zone}>{zone}</option>
+                  ))}
+                </select>
+                <span className="help-text">
+                  Decides which day counts as &quot;today&quot; for your expenses and monthly totals.
                 </span>
               </label>
 
@@ -429,6 +507,26 @@ export default function SettingsPage() {
               <LogOut size={16} aria-hidden="true" />
               Sign Out
             </button>
+
+            <p className="settings-section-label">Your data</p>
+            {accountError ? <ErrorAlert message={accountError} /> : null}
+            <button
+              type="button"
+              className="settings-logout-button settings-secondary-button"
+              onClick={handleExportData}
+              disabled={exporting}
+            >
+              <Download size={16} aria-hidden="true" />
+              {exporting ? 'Preparing…' : 'Download my data'}
+            </button>
+            <button
+              type="button"
+              className="settings-logout-button"
+              onClick={() => setDeleteOpen(true)}
+            >
+              <Trash2 size={16} aria-hidden="true" />
+              Delete account
+            </button>
           </div>
         </section>
       </div>
@@ -474,6 +572,47 @@ export default function SettingsPage() {
         onConfirm={doRemoveOtherDevices}
         onCancel={() => setConfirmRemoveOpen(false)}
       />
+
+      <Dialog open={deleteOpen} onClose={closeDeleteDialog} aria-labelledby="delete-account-title">
+        <DialogTitle id="delete-account-title">Delete your account?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            This permanently deletes your account, every expense, receipt line item, insight
+            history and saved device. It cannot be undone. Download your data first if you want a copy.
+          </DialogContentText>
+          <TextField
+            autoFocus
+            fullWidth
+            margin="normal"
+            label={`Type ${session?.user || 'your email'} to confirm`}
+            value={deleteConfirm}
+            onChange={(e) => setDeleteConfirm(e.target.value)}
+            autoComplete="off"
+          />
+          <TextField
+            fullWidth
+            margin="normal"
+            type="password"
+            label="Password"
+            helperText="Leave blank if you only sign in with Google."
+            value={deletePassword}
+            onChange={(e) => setDeletePassword(e.target.value)}
+            autoComplete="current-password"
+          />
+          {deleteError ? <ErrorAlert message={deleteError} /> : null}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeDeleteDialog} disabled={deleting}>Cancel</Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={handleDeleteAccount}
+            disabled={!deleteConfirmMatches || deleting}
+          >
+            {deleting ? 'Deleting…' : 'Delete permanently'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 }
