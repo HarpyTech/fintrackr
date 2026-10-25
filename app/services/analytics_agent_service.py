@@ -39,6 +39,7 @@ from pydantic import ValidationError
 
 from app.core.config import settings
 from app.core.ratelimit import LlmRateLimitError
+from app.core.timeutil import local_today
 from app.db.mongo import (
     get_expense_line_items_collection,
     get_expenses_collection,
@@ -194,7 +195,7 @@ Set confidence honestly: below 0.5 means you are guessing.
 
 
 def _author_prompt(message: str, context: dict, repair: str = "") -> str:
-    today = date.today().isoformat()
+    today = local_today().isoformat()
     categories = ", ".join(context.get("categories") or []) or "(none recorded)"
     vendors = ", ".join(context.get("vendors") or []) or "(none recorded)"
     bounds = context.get("date_bounds") or {}
@@ -314,7 +315,7 @@ def _jsonable(value: Any) -> Any:
 
 def _answer_envelope(**kwargs) -> dict:
     """Build the response envelope with every key always present."""
-    base = {
+    base: dict[str, Any] = {
         "answer_id": f"ans_{uuid.uuid4().hex[:16]}",
         "session_id": "",
         "question": "",
@@ -620,7 +621,7 @@ def build_overview(username: str) -> dict:
     and recomputed this in the browser.
     """
     collection = get_expenses_collection()
-    today = date.today()
+    today = local_today()
     month_start = datetime(today.year, today.month, 1)
     prev_year, prev_month = (
         (today.year - 1, 12) if today.month == 1 else (today.year, today.month - 1)

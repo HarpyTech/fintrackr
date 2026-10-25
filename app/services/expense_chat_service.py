@@ -11,6 +11,7 @@ from datetime import date, datetime, time, timedelta
 
 from pymongo.errors import PyMongoError
 
+from app.core.timeutil import local_today
 from app.db.mongo import (
     get_expense_line_items_collection,
     get_expenses_collection,
@@ -187,7 +188,7 @@ def _parse_analysis_request(message: str) -> dict:
 
 
 def _resolve_time_window(message: str) -> TimeWindow:
-    today = date.today()
+    today = local_today()
 
     if "today" in message:
         start_date = today

@@ -13,6 +13,7 @@ import logging
 from pymongo.errors import PyMongoError
 
 from app.core.plans import DEFAULT_PLAN
+from app.core.timeutil import resolve_zone
 from app.repositories import user_repository
 
 logger = logging.getLogger(__name__)
@@ -66,6 +67,7 @@ def get_user_profile(username: str):
             "plan": user.get("plan", DEFAULT_PLAN),
             "expense_limit": user.get("expense_limit", 10),
             "disable_rate_limit": user.get("disable_rate_limit", False),
+            "timezone": user.get("timezone"),
         }
     except PyMongoError as exc:
         logger.error(
@@ -89,8 +91,13 @@ def update_user_profile(
     last_name: str | None = None,
     phone: str | None = None,
     address: str | None = None,
+    timezone: str | None = None,
 ):
-    """Update editable user PII profile fields."""
+    """Update editable user PII profile fields.
+
+    ``timezone`` is optional: an empty string clears it (follow the browser),
+    None leaves it unchanged, and an unknown zone raises ValueError.
+    """
     logger.info(f"Updating user profile: {username}")
 
     def _clean(value: str | None):
@@ -106,6 +113,11 @@ def update_user_profile(
             "phone": _clean(phone),
             "address": _clean(address),
         }
+        if timezone is not None:
+            zone_name = timezone.strip()
+            if zone_name and resolve_zone(zone_name) is None:
+                raise ValueError(f"Unknown timezone '{zone_name}'")
+            update_doc["timezone"] = zone_name or None
 
         matched = user_repository.update_by_username(username, update_doc)
         if not matched:
