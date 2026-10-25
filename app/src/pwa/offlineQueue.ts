@@ -34,6 +34,8 @@ export interface QueueOfflineRequestInput {
   method: string;
   headers: Headers;
   body: string;
+  /** Username that queued the write; the worker only replays it for them. */
+  owner?: string | null;
 }
 
 /** Extends the sync manager registration, which TS's DOM lib does not model yet. */
@@ -41,7 +43,13 @@ interface SyncManagerRegistration extends ServiceWorkerRegistration {
   sync: { register: (tag: string) => Promise<void> };
 }
 
-export async function queueOfflineRequest({ url, method, headers, body }: QueueOfflineRequestInput): Promise<void> {
+export async function queueOfflineRequest({
+  url,
+  method,
+  headers,
+  body,
+  owner = null,
+}: QueueOfflineRequestInput): Promise<void> {
   const database = await openQueueDatabase();
 
   await new Promise<void>((resolve, reject) => {
@@ -52,6 +60,7 @@ export async function queueOfflineRequest({ url, method, headers, body }: QueueO
       method,
       headers: headersToObject(headers),
       body,
+      owner,
       queuedAt: Date.now(),
     });
 

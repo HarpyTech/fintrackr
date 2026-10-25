@@ -1,5 +1,6 @@
 import { queueOfflineRequest } from '../pwa/offlineQueue';
 import { emitUnauthorized, notifyInfo, notifyWarning } from './notify';
+import { getUserTimezone } from './timezone';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '/api/v1').replace(/\/$/, '');
 
@@ -18,6 +19,8 @@ const ANONYMOUS_401_PATHS = [
 export interface ApiRequestOptions extends Omit<RequestInit, 'headers'> {
   headers?: Record<string, string> | Headers;
   offlineQueue?: boolean;
+  /** Signed-in user who owns a queued write; replay is skipped for anyone else. */
+  offlineOwner?: string | null;
 }
 
 interface ApiError extends Error {
@@ -61,6 +64,10 @@ export async function apiRequest<T = unknown>(path: string, options: ApiRequestO
     headers.set('Content-Type', 'application/json');
   }
 
+  if (!headers.has('X-Timezone')) {
+    headers.set('X-Timezone', getUserTimezone());
+  }
+
   if (MUTATING_METHODS.has(method)) {
     const csrfToken = getCookieValue('csrf_token');
     if (csrfToken && !headers.has('X-CSRF-Token')) {
@@ -83,6 +90,7 @@ export async function apiRequest<T = unknown>(path: string, options: ApiRequestO
       url,
       method,
       headers,
+      owner: options.offlineOwner ?? null,
       body:
         typeof options.body === 'string'
           ? options.body
@@ -108,6 +116,7 @@ export async function apiRequest<T = unknown>(path: string, options: ApiRequestO
         url,
         method,
         headers,
+        owner: options.offlineOwner ?? null,
         body:
           typeof options.body === 'string'
             ? options.body

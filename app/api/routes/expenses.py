@@ -18,8 +18,9 @@ from starlette.concurrency import run_in_threadpool
 
 from app.api.deps import get_current_tenant, get_current_user
 from app.core.config import settings
-from app.core.idempotency import get_idempotency_response, store_idempotency_response
+from app.core.idempotency import IdempotencyInProgressError, complete, release, reserve
 from app.core.ratelimit import LlmRateLimitError, check_and_record_llm_call
+from app.core.timeutil import local_today
 from app.models.expense import (
     ExpenseChatCreateRequest,
     ExpenseCreate,
@@ -74,6 +75,22 @@ def _llm_limited(exc: LlmRateLimitError) -> HTTPException:
     )
 
 
+def _reserve_or_replay(idempotency_key: str | None, user: str) -> dict | None:
+    """Claim the Idempotency-Key, or return the response of an earlier success."""
+    if not idempotency_key:
+        return None
+    try:
+        cached = reserve(idempotency_key, user)
+    except IdempotencyInProgressError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A request with this Idempotency-Key is still in progress.",
+        ) from exc
+    if cached is not None:
+        logger.info("Returning cached response for Idempotency-Key=%s", idempotency_key)
+    return cached
+
+
 @router.post("", status_code=201)
 def create_expense(
     payload: ExpenseCreate,
@@ -83,11 +100,10 @@ def create_expense(
 ):
     """Create a new expense"""
     logger.info("Create expense request received")
-    if idempotency_key:
-        cached = get_idempotency_response(idempotency_key, user)
-        if cached is not None:
-            logger.info("Returning cached expense response")
-            return cached
+    cached = _reserve_or_replay(idempotency_key, user)
+    if cached is not None:
+        return cached
+    completed = False
     try:
         check_session_expense_limit(user, tenant_id=tenant_id)
         result = add_expense(
@@ -104,7 +120,8 @@ def create_expense(
             tenant_id=tenant_id,
         )
         if idempotency_key:
-            store_idempotency_response(idempotency_key, user, result)
+            complete(idempotency_key, user, result)
+            completed = True
         logger.info("Expense created successfully")
         return result
     except SessionExpenseLimitError as exc:
@@ -129,6 +146,9 @@ def create_expense(
             exc_info=True,
         )
         raise
+    finally:
+        if idempotency_key and not completed:
+            release(idempotency_key, user)
 
 
 @router.post("/extract-and-create", status_code=201)
@@ -142,11 +162,10 @@ async def extract_and_create_expense(
 ):
     """Extract expense details with Gemini and insert into DB."""
     logger.info("Extract-and-create expense request received")
-    if idempotency_key:
-        cached = get_idempotency_response(idempotency_key, user)
-        if cached is not None:
-            logger.info("Returning cached expense response")
-            return cached
+    cached = _reserve_or_replay(idempotency_key, user)
+    if cached is not None:
+        return cached
+    completed = False
     try:
         # Enforce limit before reading image bytes or calling Gemini.
         check_session_expense_limit(user, tenant_id=tenant_id)
@@ -194,10 +213,11 @@ async def extract_and_create_expense(
             "llm_model": used_llm_model,
         }
         if idempotency_key:
-            store_idempotency_response(idempotency_key, user, response)
+            complete(idempotency_key, user, response)
+            completed = True
         return response
     except ValueError as exc:
-        logger.warning("Invalid extract-and-create request")
+        logger.warning(f"Invalid extract-and-create request: {str(exc)}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
@@ -215,17 +235,22 @@ async def extract_and_create_expense(
     except LlmRateLimitError as exc:
         raise _llm_limited(exc) from exc
     except RuntimeError as exc:
-        logger.error("Service error in extract-and-create")
+        logger.error(f"Service error in extract-and-create: {str(exc)}")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(exc),
         ) from exc
-    except Exception:
-        logger.error("Unexpected error in extract-and-create")
+    except Exception as exc:
+        logger.error(
+            f"Unexpected error in extract-and-create: {str(exc)}",
+            exc_info=True,
+        )
         raise
     finally:
         if image is not None:
             await image.close()
+        if idempotency_key and not completed:
+            release(idempotency_key, user)
 
 
 @router.post("/chat-create", status_code=201)
@@ -237,11 +262,10 @@ async def create_expense_from_chat(
 ):
     """Extract expense fields from free-form text and create the expense."""
     logger.info("Chat expense create request received")
-    if idempotency_key:
-        cached = get_idempotency_response(idempotency_key, user)
-        if cached is not None:
-            logger.info("Returning cached expense response")
-            return cached
+    cached = _reserve_or_replay(idempotency_key, user)
+    if cached is not None:
+        return cached
+    completed = False
     try:
         if looks_like_expense_analysis_request(payload.message):
             logger.info("Handling chat request as expense analysis query")
@@ -298,7 +322,8 @@ async def create_expense_from_chat(
             ),
         }
         if idempotency_key:
-            store_idempotency_response(idempotency_key, user, chat_response)
+            complete(idempotency_key, user, chat_response)
+            completed = True
         return chat_response
     except ExpenseExtractionValidationError as exc:
         logger.warning(
@@ -341,6 +366,11 @@ async def create_expense_from_chat(
             exc_info=True,
         )
         raise
+    finally:
+        # Analysis answers and vendor prompts create nothing, so they release
+        # the key too; only a saved expense is replayed.
+        if idempotency_key and not completed:
+            release(idempotency_key, user)
 
 
 def _infer_input_type(
@@ -424,11 +454,12 @@ def get_expense_limit_status_route(
 
 @router.get("/summary/monthly")
 def get_monthly_summary(
-    year: int = Query(default=date.today().year, ge=2000, le=2100),
+    year: int | None = Query(default=None, ge=2000, le=2100),
     user: str = Depends(get_current_user),
     tenant_id: str = Depends(get_current_tenant),
 ):
-    """Get monthly expense summary"""
+    """Get monthly expense summary (defaults to the caller's current year)."""
+    year = year or local_today().year
     logger.info(f"Monthly summary request for year: {year}")
     try:
         result = {"items": monthly_summary(user, year, tenant_id=tenant_id)}
