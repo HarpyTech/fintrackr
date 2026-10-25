@@ -4,6 +4,7 @@ import secrets
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
 
+from app.core.admins import resolve_role
 from app.core.config import settings
 from app.core.ratelimit import (
     LoginRateLimitError,
@@ -462,7 +463,7 @@ def google_auth_callback(
     token = create_access_token(
         {
             "username": user["username"],
-            "role": user.get("role", "user"),
+            "role": resolve_role(user["username"], user.get("role")),
             "tenant_id": user.get("tenant_id", user["username"]),
         }
     )
