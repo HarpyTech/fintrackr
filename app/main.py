@@ -15,10 +15,11 @@ from app.core.config import settings
 from app.core.errors import AppError, http_code
 from app.core.telemetry import setup_telemetry
 from app.core.tracing import get_trace_id, setup_trace_logging
-from app.db.mongo import backfill_tenant_ids, bootstrap_indexes
+from app.db.mongo import backfill_tenant_ids, bootstrap_admin_roles, bootstrap_indexes
 from app.middleware.auth import AuthenticationMiddleware
 from app.middleware.csrf import CSRFProtectionMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
+from app.middleware.timezone import TimezoneMiddleware
 from app.middleware.tracing import TraceIDMiddleware
 
 # Configure logging with trace ID support
@@ -40,6 +41,7 @@ async def lifespan(app: FastAPI):
     backfill_tenant_ids()
     logger.info("Startup tenant ID migration finished")
     bootstrap_indexes()
+    bootstrap_admin_roles()
     yield
     logger.info(f"Shutting down {settings.PROJECT_NAME}")
 
@@ -107,6 +109,8 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
 app.add_middleware(TraceIDMiddleware)
 logger.info("Trace ID middleware registered")
 
+app.add_middleware(TimezoneMiddleware)
+
 # CSRF Protection middleware (must be before authentication)
 app.add_middleware(CSRFProtectionMiddleware)
 logger.info("CSRF Protection middleware registered")
@@ -120,7 +124,13 @@ app.add_middleware(
     allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-CSRF-Token", "Idempotency-Key"],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "X-CSRF-Token",
+        "Idempotency-Key",
+        "X-Timezone",
+    ],
 )
 logger.info("CORS middleware registered")
 

@@ -74,6 +74,25 @@ def _safe_create_indexes(
             )
 
 
+def _ensure_unique_idempotency_index(collection: Collection) -> None:
+    """(key, user_id) must be unique: the insert is the idempotency gate.
+
+    Older deployments created the same index without `unique`, and MongoDB
+    refuses a second index on the same keys, so drop that one first.
+    """
+    keys = [("key", 1), ("user_id", 1)]
+    try:
+        for name, info in collection.index_information().items():
+            if list(info.get("key", [])) == keys and not info.get("unique"):
+                collection.drop_index(name)
+                logger.info("Dropped non-unique idempotency index %s", name)
+        collection.create_index(keys, unique=True)
+    except PyMongoError as exc:
+        logger.warning(
+            "Could not ensure unique idempotency index: %s", _summarize_db_error(exc)
+        )
+
+
 def get_mongo_client() -> MongoClient:
     """Get or create MongoDB client connection"""
     global _client
@@ -310,12 +329,7 @@ def bootstrap_indexes() -> None:
         except Exception:
             pass
 
-        _safe_create_indexes(
-            db["idempotency_keys"],
-            [
-                {"kind": "compound", "fields": [("key", 1), ("user_id", 1)]},
-            ],
-        )
+        _ensure_unique_idempotency_index(db["idempotency_keys"])
         try:
             db["idempotency_keys"].create_index(
                 "created_at",
@@ -360,6 +374,28 @@ def bootstrap_indexes() -> None:
     except Exception:
         logger.warning(
             "Could not bootstrap indexes — will retry on next startup", exc_info=True
+        )
+
+
+def bootstrap_admin_roles(db: Database | None = None) -> None:
+    """Persist the admin role for ADMIN_EMAILS so the admin list shows it.
+
+    Tokens already get the role via app.core.admins.resolve_role; this keeps
+    the stored documents in step.
+    """
+    if not settings.ADMIN_EMAILS:
+        return
+    try:
+        if db is None:
+            db = get_database()
+        result = db["users"].update_many(
+            {"username": {"$in": settings.ADMIN_EMAILS}, "role": {"$ne": "admin"}},
+            {"$set": {"role": "admin"}},
+        )
+        logger.info("Bootstrap admins promoted: %d", result.modified_count)
+    except Exception:
+        logger.warning(
+            "Could not bootstrap admin roles — will retry on next startup", exc_info=True
         )
 
 
