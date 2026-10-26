@@ -96,7 +96,7 @@ function getDeviceLabel(): string {
   }
 
   const uaData = (navigator as Navigator & { userAgentData?: NavigatorUAData }).userAgentData;
-  const platform = uaData?.platform || navigator.platform || 'Unknown platform';
+  const platform = !!uaData ? (uaData?.platform || navigator.platform) : 'Unknown platform';
   const browserBrand = uaData?.brands?.find((brand) => brand.brand !== 'Not A;Brand')?.brand;
   const browser = browserBrand || 'Browser';
 
@@ -144,6 +144,27 @@ interface AuthenticationOptionsJSON extends Omit<PublicKeyCredentialRequestOptio
 export interface WebAuthnRegisterResult {
   success: true;
   deviceId: string;
+}
+
+const WEBAUTHN_ERROR_MESSAGES: Record<string, string> = {
+  NotAllowedError:
+    'Biometric setup was cancelled or timed out. Please try again.',
+  InvalidStateError:
+    'This device is already registered for biometric login.',
+  NotSupportedError:
+    'Your browser or device does not support biometric login.',
+  SecurityError:
+    'Biometric login could not be set up due to a security configuration issue. Contact support.',
+  AbortError:
+    'Biometric setup was interrupted. Please try again.',
+};
+
+function friendlyWebAuthnError(err: unknown): string {
+  const name = err instanceof Error ? (err as DOMException).name : '';
+  return (
+    WEBAUTHN_ERROR_MESSAGES[name] ??
+    'Something went wrong during biometric setup. Please try again or contact support.'
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -213,7 +234,7 @@ export function useWebAuthn() {
 
       return { success: true, deviceId };
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Biometric registration failed.';
+      const msg = friendlyWebAuthnError(err);
       setError(msg);
       throw new Error(msg);
     } finally {
@@ -267,7 +288,7 @@ export function useWebAuthn() {
 
       return result;
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Biometric authentication failed.';
+      const msg = friendlyWebAuthnError(err);
       setError(msg);
       throw new Error(msg);
     } finally {
