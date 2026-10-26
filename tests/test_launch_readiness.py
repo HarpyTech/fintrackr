@@ -5,12 +5,12 @@ import re
 import time
 from datetime import UTC, datetime, timedelta, timezone
 
+import jwt
 import mongomock
 import pytest
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
-import jwt
 
 from app.api import deps
 from app.api.routes import admin as admin_routes
