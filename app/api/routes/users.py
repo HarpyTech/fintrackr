@@ -28,7 +28,10 @@ class DeleteAccountRequest(BaseModel):
 @router.get("/me/export")
 def export_me(user: str = Depends(get_current_user)):
     """Download everything FinTrackr stores about the caller, as JSON."""
-    data = export_account(user)
+    try:
+        data = export_account(user)
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
     if not data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return Response(

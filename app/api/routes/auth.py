@@ -71,6 +71,16 @@ def api_register(payload: UserCreate):
     logger.info("Registration OTP request received")
     try:
         user = register_user(payload.username, payload.password)
+    except ValueError as exc:
+        if str(exc) == "ACCOUNT_DELETED":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "An account with this email was recently deleted. "
+                    "Check your email for a reactivation link, or contact support."
+                ),
+            ) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except OtpRateLimitError as exc:
         logger.warning(f"Rate limit exceeded for registration: {payload.username}")
         response = Response(status_code=429)

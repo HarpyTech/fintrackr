@@ -125,6 +125,9 @@ def register_user(username: str, password: str, role: str = "user"):
     try:
         check_and_record_otp_request(username)
         existing_user = user_repository.find_by_username(username)
+        if existing_user and existing_user.get("is_deleted"):
+            logger.warning("Registration blocked: email belongs to a soft-deleted account")
+            raise ValueError("ACCOUNT_DELETED")
         if existing_user and existing_user.get("email_verified", False):
             logger.warning("Registration failed: User already exists and is verified")
             return None
