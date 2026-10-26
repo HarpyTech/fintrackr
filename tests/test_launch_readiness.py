@@ -274,11 +274,15 @@ def account_db(monkeypatch):
     db = mongomock.MongoClient()["testdb"]
     monkeypatch.setattr(account_service, "get_database", lambda: db)
     monkeypatch.setattr(user_repository, "get_users_collection", lambda: db["users"])
+    all_data_collections = (
+        *account_service._SOFT_DELETE_COLLECTIONS,
+        *account_service._HARD_DELETE_COLLECTIONS,
+    )
     for user in ("u@b.com", "other@b.com"):
         db["users"].insert_one(
             {"username": user, "password_hash": hash_password("pw-123456"), "role": "user"}
         )
-        for name in account_service._OWNED_COLLECTIONS:
+        for name in all_data_collections:
             db[name].insert_one({"username": user, "marker": name})
         db["idempotency_keys"].insert_one({"user_id": user, "key": "k"})
         db["login_attempts"].insert_one({"key": user})
@@ -294,11 +298,31 @@ def test_export_contains_data_but_no_credentials(account_db):
     assert all("public_key" not in p for p in data["passkeys"])
 
 
-def test_delete_removes_only_the_callers_data(account_db):
+def test_delete_soft_deletes_user_and_cascades(account_db):
     account_service.delete_account("u@b.com")
-    for name in (*account_service._OWNED_COLLECTIONS, "users"):
+
+    # User document is retained but flagged.
+    user_doc = account_db["users"].find_one({"username": "u@b.com"})
+    assert user_doc is not None
+    assert user_doc["is_deleted"] is True
+    assert "deleted_at" in user_doc
+
+    # Soft-deleted collections retain rows but mark them deleted.
+    for name in account_service._SOFT_DELETE_COLLECTIONS:
+        doc = account_db[name].find_one({"username": "u@b.com"})
+        assert doc is not None, f"{name} row should still exist"
+        assert doc["is_deleted"] is True
+
+    # Hard-deleted collections are gone entirely.
+    for name in account_service._HARD_DELETE_COLLECTIONS:
         assert account_db[name].count_documents({"username": "u@b.com"}) == 0
-        assert account_db[name].count_documents({"username": "other@b.com"}) == 1
+
+    # Other user's data is untouched.
+    assert account_db["users"].find_one({"username": "other@b.com"}).get("is_deleted") is None
+    for name in account_service._SOFT_DELETE_COLLECTIONS:
+        assert account_db[name].find_one({"username": "other@b.com"}).get("is_deleted") is None
+
+    # Rate-limit and idempotency records are hard-deleted.
     assert account_db["idempotency_keys"].count_documents({"user_id": "u@b.com"}) == 0
     assert account_db["llm_call_attempts"].count_documents({}) == 1
     assert account_db["login_attempts"].count_documents({}) == 1
@@ -323,7 +347,10 @@ def test_delete_endpoint_requires_confirmation_and_password(users_client, accoun
     resp = users_client.post(url, json={"confirm_username": "U@b.com", "password": "pw-123456"})
     assert resp.status_code == 204
     assert "access_token" in resp.headers.get("set-cookie", "")
-    assert account_db["users"].count_documents({"username": "u@b.com"}) == 0
+    # Soft-delete: document retained, flagged.
+    user_doc = account_db["users"].find_one({"username": "u@b.com"})
+    assert user_doc is not None
+    assert user_doc.get("is_deleted") is True
 
 
 def test_export_endpoint_is_a_json_download(users_client):
