@@ -75,19 +75,24 @@ def _llm_limited(exc: LlmRateLimitError) -> HTTPException:
     )
 
 
-def _reserve_or_replay(idempotency_key: str | None, user: str) -> dict | None:
-    """Claim the Idempotency-Key, or return the response of an earlier success."""
-    if not idempotency_key:
-        return None
+def get_idempotency_response(key: str, user: str) -> dict | None:
+    """Claim a key or return its previously successful response."""
     try:
-        cached = reserve(idempotency_key, user)
+        return reserve(key, user)
     except IdempotencyInProgressError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="A request with this Idempotency-Key is still in progress.",
         ) from exc
+
+
+def _reserve_or_replay(idempotency_key: str | None, user: str) -> dict | None:
+    """Claim the key or return its previously successful response."""
+    if not idempotency_key:
+        return None
+    cached = get_idempotency_response(idempotency_key, user)
     if cached is not None:
-        logger.info("Returning cached response for Idempotency-Key=%s", idempotency_key)
+        logger.info("Returning cached expense response")
     return cached
 
 

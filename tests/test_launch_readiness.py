@@ -9,7 +9,6 @@ import jwt
 import mongomock
 import pytest
 from fastapi import FastAPI
-from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
 from app.api import deps
@@ -52,19 +51,19 @@ def test_every_protected_route_rejects_anonymous_requests():
 
     client = TestClient(app, raise_server_exceptions=False)
     checked = 0
-    for route in app.routes:
-        if not isinstance(route, APIRoute) or not route.path.startswith(
-            settings.API_V1_STR
-        ):
+    for path, operations in app.openapi()["paths"].items():
+        if not path.startswith(settings.API_V1_STR):
             continue
-        if route.path in PUBLIC_PATHS:
+        if path in PUBLIC_PATHS:
             continue
-        path = re.sub(r"\{[^}]+\}", "x", route.path)
-        for method in route.methods - {"HEAD", "OPTIONS"}:
-            resp = client.request(method, path)
+        request_path = re.sub(r"\{[^}]+\}", "x", path)
+        for method in operations:
+            if method not in {"get", "post", "put", "patch", "delete"}:
+                continue
+            resp = client.request(method.upper(), request_path)
             assert (
                 resp.status_code == 401
-            ), f"{method} {route.path} -> {resp.status_code}"
+            ), f"{method.upper()} {path} -> {resp.status_code}"
             checked += 1
     assert checked > 20
 
