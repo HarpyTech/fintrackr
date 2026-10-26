@@ -1,12 +1,10 @@
-import re
 from datetime import UTC, datetime
 
+import bcrypt
 import mongomock
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
-import bcrypt
 
 from app.repositories import user_repository
 from app.services import account_service
@@ -196,7 +194,7 @@ def test_is_deleted_account_returns_true_after_delete(monkeypatch):
 
 
 def test_is_deleted_account_returns_false_for_unknown_email(monkeypatch):
-    db = _make_db(monkeypatch)
+    _make_db(monkeypatch)
     assert account_service.is_deleted_account("nobody@b.com") is False
 
 
@@ -304,7 +302,7 @@ def test_reactivate_returns_false_for_active_account(monkeypatch):
 
 
 def test_reactivate_returns_false_for_unknown_email(monkeypatch):
-    db = _make_db(monkeypatch)
+    _make_db(monkeypatch)
 
     result = account_service.reactivate_account("nobody@b.com")
     assert result is False
