@@ -10,7 +10,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
-from jose import jwt
+import jwt
 
 from app.api import deps
 from app.api.routes import admin as admin_routes
@@ -53,14 +53,18 @@ def test_every_protected_route_rejects_anonymous_requests():
     client = TestClient(app, raise_server_exceptions=False)
     checked = 0
     for route in app.routes:
-        if not isinstance(route, APIRoute) or not route.path.startswith(settings.API_V1_STR):
+        if not isinstance(route, APIRoute) or not route.path.startswith(
+            settings.API_V1_STR
+        ):
             continue
         if route.path in PUBLIC_PATHS:
             continue
         path = re.sub(r"\{[^}]+\}", "x", route.path)
         for method in route.methods - {"HEAD", "OPTIONS"}:
             resp = client.request(method, path)
-            assert resp.status_code == 401, f"{method} {route.path} -> {resp.status_code}"
+            assert (
+                resp.status_code == 401
+            ), f"{method} {route.path} -> {resp.status_code}"
             checked += 1
     assert checked > 20
 
@@ -84,7 +88,9 @@ def test_passkey_enrolment_requires_session_and_own_account():
     assert resp.status_code == 403
 
     verify_body = {**body, "credential": {}}
-    resp = client.post("/api/v1/webauthn/register/verify", json=verify_body, headers=headers)
+    resp = client.post(
+        "/api/v1/webauthn/register/verify", json=verify_body, headers=headers
+    )
     assert resp.status_code == 403
 
 
@@ -103,7 +109,9 @@ def test_login_lockout_survives_rotating_forwarded_for(monkeypatch):
 
     for attempt in range(10):
         resp = client.post(
-            "/api/v1/auth/login", json=body, headers={"X-Forwarded-For": f"10.0.0.{attempt}"}
+            "/api/v1/auth/login",
+            json=body,
+            headers={"X-Forwarded-For": f"10.0.0.{attempt}"},
         )
         assert resp.status_code == 401
 
@@ -148,7 +156,10 @@ def tz_client(monkeypatch):
 def test_header_timezone_decides_today(tz_client):
     for name, zone in (("Pacific/Kiritimati", _EAST), ("Etc/GMT+12", _WEST)):
         resp = tz_client.get("/today", headers={"X-Timezone": name})
-        assert resp.json()["today"] == datetime.now(UTC).astimezone(zone).date().isoformat()
+        assert (
+            resp.json()["today"]
+            == datetime.now(UTC).astimezone(zone).date().isoformat()
+        )
 
 
 def test_unknown_header_falls_back_to_default(tz_client):
@@ -172,7 +183,9 @@ def test_profile_timezone_is_validated_and_clearable(monkeypatch):
     assert profile["timezone"] == "UTC"
     with pytest.raises(ValueError):
         profile_service.update_user_profile("u@b.com", timezone="Mars/Olympus")
-    assert profile_service.update_user_profile("u@b.com", timezone="")["timezone"] is None
+    assert (
+        profile_service.update_user_profile("u@b.com", timezone="")["timezone"] is None
+    )
 
 
 # ── Atomic idempotency ────────────────────────────────────────────────────────
@@ -225,7 +238,9 @@ def expense_client(monkeypatch, idem_col):
         return {"id": f"e{len(calls)}", "amount": kwargs["amount"]}
 
     monkeypatch.setattr(expense_routes, "add_expense", fake_add_expense)
-    monkeypatch.setattr(expense_routes, "check_session_expense_limit", lambda *a, **k: None)
+    monkeypatch.setattr(
+        expense_routes, "check_session_expense_limit", lambda *a, **k: None
+    )
     app = FastAPI()
     app.include_router(expense_routes.router, prefix="/api/v1/expenses")
     app.dependency_overrides[deps.get_current_user] = lambda: "u@b.com"
@@ -250,9 +265,13 @@ def test_retried_create_with_same_key_saves_once(expense_client):
 
 def test_failed_create_releases_key_for_retry(expense_client):
     headers = {"Idempotency-Key": "retry-me"}
-    failed = expense_client.post("/api/v1/expenses", json=_expense("fail-once"), headers=headers)
+    failed = expense_client.post(
+        "/api/v1/expenses", json=_expense("fail-once"), headers=headers
+    )
     assert failed.status_code == 503
-    retried = expense_client.post("/api/v1/expenses", json=_expense("fail-once"), headers=headers)
+    retried = expense_client.post(
+        "/api/v1/expenses", json=_expense("fail-once"), headers=headers
+    )
     assert retried.status_code == 201
     assert len(expense_client.calls) == 2
 
@@ -280,7 +299,11 @@ def account_db(monkeypatch):
     )
     for user in ("u@b.com", "other@b.com"):
         db["users"].insert_one(
-            {"username": user, "password_hash": hash_password("pw-123456"), "role": "user"}
+            {
+                "username": user,
+                "password_hash": hash_password("pw-123456"),
+                "role": "user",
+            }
         )
         for name in all_data_collections:
             db[name].insert_one({"username": user, "marker": name})
@@ -318,9 +341,15 @@ def test_delete_soft_deletes_user_and_cascades(account_db):
         assert account_db[name].count_documents({"username": "u@b.com"}) == 0
 
     # Other user's data is untouched.
-    assert account_db["users"].find_one({"username": "other@b.com"}).get("is_deleted") is None
+    assert (
+        account_db["users"].find_one({"username": "other@b.com"}).get("is_deleted")
+        is None
+    )
     for name in account_service._SOFT_DELETE_COLLECTIONS:
-        assert account_db[name].find_one({"username": "other@b.com"}).get("is_deleted") is None
+        assert (
+            account_db[name].find_one({"username": "other@b.com"}).get("is_deleted")
+            is None
+        )
 
     # Rate-limit and idempotency records are hard-deleted.
     assert account_db["idempotency_keys"].count_documents({"user_id": "u@b.com"}) == 0
@@ -344,7 +373,9 @@ def test_delete_endpoint_requires_confirmation_and_password(users_client, accoun
     assert users_client.post(url, json=wrong_pw).status_code == 403
     assert account_db["users"].count_documents({"username": "u@b.com"}) == 1
 
-    resp = users_client.post(url, json={"confirm_username": "U@b.com", "password": "pw-123456"})
+    resp = users_client.post(
+        url, json={"confirm_username": "U@b.com", "password": "pw-123456"}
+    )
     assert resp.status_code == 204
     assert "access_token" in resp.headers.get("set-cookie", "")
     # Soft-delete: document retained, flagged.
@@ -373,7 +404,9 @@ def test_bootstrap_admin_role(monkeypatch):
 
 def test_bootstrap_admin_roles_persists(monkeypatch):
     db = mongomock.MongoClient()["testdb"]
-    db["users"].insert_many([{"username": "boss@b.com", "role": "user"}, {"username": "u@b.com"}])
+    db["users"].insert_many(
+        [{"username": "boss@b.com", "role": "user"}, {"username": "u@b.com"}]
+    )
     monkeypatch.setattr(settings, "ADMIN_EMAILS", ["boss@b.com"])
     mongo_module.bootstrap_admin_roles(db)
     assert db["users"].find_one({"username": "boss@b.com"})["role"] == "admin"
@@ -399,13 +432,20 @@ def admin_client(mongo):
 def test_admin_lists_users_across_tenants(admin_client):
     resp = admin_client.get("/api/v1/admin/users")
     assert resp.status_code == 200
-    assert {u["username"] for u in resp.json()["items"]} == {"boss@b.com", "a@b.com", "c@b.com"}
+    assert {u["username"] for u in resp.json()["items"]} == {
+        "boss@b.com",
+        "a@b.com",
+        "c@b.com",
+    }
 
 
 def test_admin_search_is_literal(admin_client):
     resp = admin_client.get("/api/v1/admin/users", params={"search": "a@b.com"})
     assert {u["username"] for u in resp.json()["items"]} == {"a@b.com"}
-    assert admin_client.get("/api/v1/admin/users", params={"search": "(.*"}).status_code == 200
+    assert (
+        admin_client.get("/api/v1/admin/users", params={"search": "(.*"}).status_code
+        == 200
+    )
 
 
 def test_admin_cannot_change_own_role(admin_client):
