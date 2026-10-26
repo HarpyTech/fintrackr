@@ -74,7 +74,7 @@ my-finance-develop/
 │       │   └── register.js       # Service worker registration
 │       ├── theme/ThemeContext.jsx
 │       └── styles/               # Per-feature CSS modules
-├── k8s/                          # GKE manifests — NOT used by any workflow (legacy)
+├── RUNBOOK.md                    # Backups/restore, migrations, manual checks, go-live list
 ├── .github/workflows/deploy.yml  # Cloud Run deploy (main → prod, develop → dev)
 ├── Dockerfile
 ├── docker-compose.yml
@@ -147,8 +147,11 @@ Frontend flags are runtime config too: FastAPI serves `/runtime-config.js`
 `app/src/lib/runtimeConfig.ts` reads it, so a flag change needs a redeploy,
 not a rebuild.
 
-The `k8s/` directory holds GKE manifests that no workflow references. Treat
-them as legacy unless that changes.
+There is no `k8s/` directory; Cloud Run is the only deployment target.
+
+This workspace's git root is the parent `SLDC/` folder, which GitHub would not
+read workflows from. FinTrackr deploys from its own repository; copy changes
+there (with `my-finance-develop/` as the repo root) for CI/CD to run.
 
 ## Environment Variables
 
@@ -163,7 +166,7 @@ Copy `.env.example` to `.env`. Key variables:
 | `GEMINI_MODEL` | Model ID (default: `gemini-2.5-flash`) |
 | `WEBAUTHN_RP_ID` / `WEBAUTHN_ORIGIN` | FIDO2 relying party (must match frontend origin) |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_REDIRECT_URI` / `GOOGLE_ALLOWED_DOMAINS` | Google OAuth2 |
-| `SMTP_HOST` / `SMTP_*` | Email delivery for OTPs (empty = console log) |
+| `SMTP_HOST` / `SMTP_*` | Email delivery for OTPs. Empty logs the OTP locally; on Cloud Run it fails closed (503) |
 | `LOG_LEVEL` | Log verbosity (default `INFO`) |
 | `VITE_API_BASE_URL` | Frontend API base, build-time (default: `/api/v1`) |
 | `FEATURE_SUPPORT_PAGE_ENABLED` | Runtime flag: show support page (default `true`) |
@@ -171,53 +174,69 @@ Copy `.env.example` to `.env`. Key variables:
 | `FEATURE_ADMIN_ENABLED` | Runtime flag: show Admin UI/routes |
 | `FEATURE_GOOGLE_SIGNIN_ENABLED` | Runtime flag: offer Google sign-in and enable `/auth/google*` (default `false`; needs `GOOGLE_*` credentials) |
 | `SUPPORT_EMAIL` | Support page contact email |
-| `ENVIRONMENT` | `development` or `production` |
-| `COOKIE_SECURE` | Set `true` in production (HTTPS only) |
+| `ENVIRONMENT` | `development` or `production` (auto-detected from `K_SERVICE` on Cloud Run) |
+| `COOKIE_SECURE` | Set `true` in production (forced on Cloud Run) |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` / `SESSION_MAX_HOURS` | Sliding cookie session: renewed while active, hard cap after sign-in (defaults 15 min / 12 h) |
+| `ADMIN_EMAILS` | Comma-separated platform admins, promoted on sign-in and at startup |
+| `DEFAULT_TIMEZONE` | Fallback for "today" when the browser sends no `X-Timezone` (default `Asia/Kolkata`) |
+| `MAX_UPLOAD_SIZE_MB` | Receipt image size cap (default 10) |
 
 Special chars in MongoDB credentials must be URL-encoded (see `.env.example` for details).
 
 ## API Routes
 
-All API routes under `/api/v1`. Middleware order: TraceID → CSRF → Auth → CORS.
+All API routes under `/api/v1`. Middleware runs outermost first:
+SecurityHeaders → CORS → Auth → CSRF → Timezone → TraceID → route
+(Starlette runs the last `add_middleware` call first).
 
 | Prefix | Module | Notes |
 |---|---|---|
 | `/api/v1/auth` | `api/routes/auth.py` | login, register, OTP verify, refresh, Google OAuth |
-| `/api/v1/users` | `api/routes/users.py` | `GET /me` — current user profile |
-| `/api/v1/expenses` | `api/routes/expenses.py` | CRUD, AI extraction, AI chat |
-| `/api/v1/webauthn` | `api/routes/webauthn.py` | FIDO2 passkey registration + auth |
+| `/api/v1/users` | `api/routes/users.py` | `/me` profile (incl. timezone), `/me/export`, `/me/delete`, `/me/plan` |
+| `/api/v1/expenses` | `api/routes/expenses.py` | CRUD, AI extraction, AI chat; creates honour `Idempotency-Key` |
+| `/api/v1/webauthn` | `api/routes/webauthn.py` | Passkeys: enrolment needs a session; sign-in is public |
+| `/api/v1/insights` | `api/routes/analytics.py` | AI analytics agent (SSE stream), overview, history |
+| `/api/v1/admin` | `api/routes/admin.py` | Platform admin: all users, plans, limits |
 | `/health` | `api/routes/health.py` | health check (no auth) |
 
-FastAPI auto-generates OpenAPI docs at `/docs` (Swagger) and `/redoc`.
+Docs at `/docs` and `/redoc` are disabled in production.
 
 ## Security Model
 
-- **Auth**: JWT stored as HTTP-only cookie. Bearer token also accepted for API clients.
+- **Auth**: JWT (`type: access`) in an HTTP-only cookie, slid while active. Bearer also accepted; refresh tokens (PWA only) are never valid as access tokens.
+- **Lockout**: 10 failed logins per account per 15 min, independent of client IP; OTPs burn after `SIGNUP_OTP_MAX_ATTEMPTS` guesses.
 - **CSRF**: Double-submit cookie pattern. Frontend reads `csrf_token` cookie and sends it as `X-CSRF-Token` header on all mutating requests.
-- **WebAuthn**: FIDO2 passkey support via `webauthn==2.1.0`. Device credentials stored in IndexedDB (`app/src/lib/deviceBinding.js`).
+- **WebAuthn**: FIDO2 passkey support via `webauthn==2.1.0`. Device credentials stored in IndexedDB (`app/src/lib/deviceBinding.ts`).
 - **OTP**: 6-digit OTP sent via SMTP for signup and password reset. Configurable expiry (`SIGNUP_OTP_EXPIRY_MINUTES`).
 - **Google OAuth2**: Authorization Code Flow with optional domain restriction (`GOOGLE_ALLOWED_DOMAINS`).
 
 ## Frontend Architecture
 
-- **No TypeScript** — plain JSX throughout.
-- **State**: React Context only (`AuthContext`, `ThemeContext`, `PwaContext`). No Redux or Zustand.
-- **API calls**: All go through `app/src/lib/api.js` which handles CSRF injection and offline queuing.
-- **Offline support**: Service worker + IndexedDB queue (`pwa/offlineQueue.js`) replays mutations when back online.
-- **Feature flags**: `app/src/lib/featureFlags.ts` reads `window.__APP_CONFIG__` (served by `/runtime-config.js`) at page load.
+- **TypeScript** (`.ts`/`.tsx`, `strict`), MUI components, React Query for server state.
+- **State**: React Context (`AuthContext`, `ThemeContext`, `PwaContext`) plus React Query. Logout clears the query cache and offline queue.
+- **API calls**: All go through `app/src/lib/api.ts` (CSRF header, `X-Timezone`, offline queuing with an `Idempotency-Key`). `insightsStream.ts` is the one SSE exception.
+- **Offline support**: Service worker + IndexedDB queue (`pwa/offlineQueue.ts`). The worker never caches `/api` responses and replays queued writes only for the user who queued them.
+- **Feature flags**: `app/src/lib/runtimeConfig.ts` reads `window.__APP_CONFIG__` (served by `/runtime-config.js`); `featureFlags.ts` re-exports it.
+- **Dates**: `app/src/lib/timezone.ts` (`todayIso`, `getUserTimezone`); never use `toISOString()` for a calendar date.
 - **Charts**: Recharts — bar, donut, and daily expense line charts on Dashboard and Report pages.
 
 ## MongoDB Collections
 
 | Collection | Purpose |
 |---|---|
-| `users` | User accounts, hashed passwords, OTP state, WebAuthn credentials |
-| `expenses` | Expense records with category, amount, date, receipt metadata |
+| `users` | Accounts, password hash, OTP state, plan, role, timezone |
+| `expenses` / `expense_line_items` | Expenses (soft-deleted via `is_deleted`) and receipt line items |
+| `webauthn_credentials` / `webauthn_challenges` | Passkeys and pending challenges (TTL) |
+| `refresh_tokens` | PWA refresh tokens (TTL) |
+| `insight_history` | Insights answers (90-day TTL) |
+| `idempotency_keys` | Unique `(key, user_id)` reservations for create requests (24 h TTL) |
+| `*_attempts` | Rate-limit counters for login, OTP, WebAuthn, LLM (TTL) |
 
 ## Key Conventions
 
 - Pydantic v2 models for all request/response I/O (`app/models/`).
 - Services are plain Python classes/functions; routes are thin and delegate to services.
 - All log lines include a `X-Trace-ID` propagated from `TraceIDMiddleware`.
+- Server-side "today" is always `app.core.timeutil.local_today()`, never `date.today()`.
 - `deps.py` is the single source of FastAPI dependency injection (current user, DB handle).
 - Frontend `fetch` calls always use `credentials: 'include'` to send cookies cross-origin in dev.

@@ -40,6 +40,7 @@ from webauthn.helpers.structs import (
     UserVerificationRequirement,
 )
 
+from app.core.admins import resolve_role
 from app.core.config import settings
 from app.core.security import (
     create_access_token,
@@ -415,7 +416,7 @@ def verify_authentication(
     # Fetch user role and tenant
     users = get_users_collection()
     user_doc = users.find_one({"username": username}, {"role": 1, "tenant_id": 1})
-    role = user_doc.get("role", "user") if user_doc else "user"
+    role = resolve_role(username, (user_doc or {}).get("role"))
     tenant_id = (user_doc or {}).get("tenant_id", username)
 
     # Issue access token
@@ -499,7 +500,7 @@ def exchange_refresh_token(token: str, response_obj) -> dict:
     # Fetch role and tenant
     users = get_users_collection()
     user_doc = users.find_one({"username": username}, {"role": 1, "tenant_id": 1})
-    role = user_doc.get("role", "user") if user_doc else "user"
+    role = resolve_role(username, (user_doc or {}).get("role"))
     tenant_id = (user_doc or {}).get("tenant_id", username)
 
     token_data = {"username": username, "role": role, "tenant_id": tenant_id}

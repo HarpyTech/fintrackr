@@ -293,12 +293,29 @@ async function currentCsrfToken() {
   return '';
 }
 
+async function currentSessionUser() {
+  const response = await fetch(new URL('/api/v1/auth/session', self.location.origin), {
+    credentials: 'include',
+  });
+  if (!response.ok) return null;
+  const { user } = await response.json();
+  return user || null;
+}
+
 async function syncQueuedRequests() {
   const queuedRequests = await getQueuedRequests();
   if (queuedRequests.length === 0) return;
-  const csrfToken = await currentCsrfToken();
 
-  for (const item of queuedRequests.sort((left, right) => left.queuedAt - right.queuedAt)) {
+  // Replay only for the person who queued each write, so an expense never
+  // lands in whichever account happens to be signed in later.
+  const sessionUser = await currentSessionUser();
+  if (!sessionUser) {
+    throw new Error('Not signed in; queued expenses will sync after sign-in.');
+  }
+  const csrfToken = await currentCsrfToken();
+  const ownedRequests = queuedRequests.filter((item) => !item.owner || item.owner === sessionUser);
+
+  for (const item of ownedRequests.sort((left, right) => left.queuedAt - right.queuedAt)) {
     try {
       const response = await fetch(item.url, {
         method: item.method,
@@ -319,7 +336,8 @@ async function syncQueuedRequests() {
 
       // 401/403 mean "signed out" or "stale CSRF", not "bad expense": keep the
       // item and retry after the user signs in again.
-      const retryable = [401, 403, 429].includes(response.status);
+      // 409 means the same Idempotency-Key is still being processed.
+      const retryable = [401, 403, 409, 429].includes(response.status);
       if (response.status >= 400 && response.status < 500 && !retryable) {
         await deleteQueuedRequest(item.id);
         await notifyClients({

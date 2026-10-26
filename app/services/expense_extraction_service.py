@@ -16,6 +16,7 @@ from PIL import Image, UnidentifiedImageError
 from pydantic import ValidationError
 
 from app.core.config import settings
+from app.core.timeutil import local_today
 from app.models.expense import ExpenseCreate
 
 logger = logging.getLogger(__name__)
@@ -50,8 +51,8 @@ _NO_VENDOR_PHRASES = frozenset(
 
 def _build_prompt() -> str:
     """Build the extraction prompt with today's date injected."""
-    today = date.today().isoformat()
-    today_year = date.today().year
+    today = local_today().isoformat()
+    today_year = local_today().year
     return f"""
                 Help me organize this purchase info.
                 I need it in JSON format so I can track my spending.
@@ -335,7 +336,7 @@ def _normalize_payload(
     )
 
     expense_date = _normalize_date(raw.get("expense_date") or raw.get("date"))
-    expense_date = expense_date or date.today()
+    expense_date = expense_date or local_today()
 
     payload = {
         "amount": round(amount, 2),
@@ -404,7 +405,7 @@ def _normalize_text_chat_payload(
         ),
         "vendor": vendor,
         "description": description,
-        "expense_date": (expense_date or date.today()).isoformat(),
+        "expense_date": (expense_date or local_today()).isoformat(),
         "line_items": [],
     }
 
@@ -467,11 +468,11 @@ def _normalize_line_items(raw_items: Any) -> list[dict[str, Any]]:
 
 def _normalize_date(value: Any, default_to_today: bool = True) -> date | None:
     if not value:
-        return date.today() if default_to_today else None
+        return local_today() if default_to_today else None
 
     raw = str(value).strip()
     if not raw:
-        return date.today() if default_to_today else None
+        return local_today() if default_to_today else None
 
     try:
         return date.fromisoformat(raw[:10])
@@ -479,7 +480,7 @@ def _normalize_date(value: Any, default_to_today: bool = True) -> date | None:
         try:
             return datetime.fromisoformat(raw).date()
         except ValueError:
-            return date.today() if default_to_today else None
+            return local_today() if default_to_today else None
 
 
 def _to_float(value: Any) -> float | None:

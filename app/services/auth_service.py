@@ -17,6 +17,7 @@ from datetime import UTC, datetime, timedelta
 
 from pymongo.errors import PyMongoError
 
+from app.core.admins import resolve_role
 from app.core.config import settings
 from app.core.plans import DEFAULT_PLAN, plan_user_fields
 from app.core.ratelimit import (
@@ -30,7 +31,6 @@ from app.repositories import user_repository
 from app.services.email_service import deliver_reset_otp, deliver_signup_otp
 
 logger = logging.getLogger(__name__)
-OTP_EXPIRED_ERROR = "OTP expired"
 
 
 # ---------------------------------------------------------------------------
@@ -103,7 +103,7 @@ def authenticate_user(username: str, password: str):
         logger.info("User authenticated successfully")
         return {
             "username": user["username"],
-            "role": user.get("role", "user"),
+            "role": resolve_role(user["username"], user.get("role")),
         }
     except PyMongoError as exc:
         logger.error(
@@ -125,6 +125,9 @@ def register_user(username: str, password: str, role: str = "user"):
     try:
         check_and_record_otp_request(username)
         existing_user = user_repository.find_by_username(username)
+        if existing_user and existing_user.get("is_deleted"):
+            logger.warning("Registration blocked: email belongs to a soft-deleted account")
+            raise ValueError("ACCOUNT_DELETED")
         if existing_user and existing_user.get("email_verified", False):
             logger.warning("Registration failed: User already exists and is verified")
             return None
@@ -254,11 +257,11 @@ def verify_user_signup_otp(username: str, otp: str):
         otp_expires_at = user.get("signup_otp_expires_at")
         if not otp_hash or _is_otp_expired(otp_expires_at):
             logger.warning("Signup OTP verification failed: OTP expired or missing")
-            return {"error": OTP_EXPIRED_ERROR}
+            return {"error": "OTP expired"}
 
         if not _spend_otp_attempt(user, "signup"):
             logger.warning("Signup OTP verification failed: attempt budget spent")
-            return {"error": OTP_EXPIRED_ERROR}
+            return {"error": "OTP expired"}
 
         if not verify_password(otp, otp_hash):
             logger.warning("Signup OTP verification failed: Invalid OTP")
@@ -371,13 +374,13 @@ def reset_password_with_otp(username: str, otp: str, new_password: str):
             logger.warning(
                 "Password reset failed: OTP expired or missing for %s", username
             )
-            return {"error": OTP_EXPIRED_ERROR}
+            return {"error": "OTP expired"}
 
         if not _spend_otp_attempt(user, "reset"):
             logger.warning(
                 "Password reset failed: attempt budget spent for %s", username
             )
-            return {"error": OTP_EXPIRED_ERROR}
+            return {"error": "OTP expired"}
 
         if not verify_password(otp, otp_hash):
             logger.warning("Password reset failed: invalid OTP for %s", username)

@@ -1,6 +1,7 @@
 """Admin-only user management: listing users and managing plans / limits."""
 
 import logging
+import re
 from datetime import UTC, datetime
 
 from pymongo.errors import PyMongoError
@@ -56,7 +57,7 @@ def list_users(
         if tenant_id:
             match_stage["tenant_id"] = tenant_id
         if search:
-            match_stage["username"] = {"$regex": search.strip(), "$options": "i"}
+            match_stage["username"] = {"$regex": re.escape(search.strip()), "$options": "i"}
 
         pipeline = [
             *([ {"$match": match_stage} ] if match_stage else []),

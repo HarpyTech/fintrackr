@@ -314,6 +314,26 @@
   background: rgba(180, 35, 57, 0.25);
 }
 
+/* Neutral variant for non-destructive account actions (data export). */
+.settings-secondary-button,
+:root[data-theme='dark'] .settings-secondary-button {
+  border-color: var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
+  margin-right: 8px;
+}
+
+.settings-secondary-button:hover,
+:root[data-theme='dark'] .settings-secondary-button:hover {
+  background: var(--surface-soft);
+  border-color: var(--line-strong);
+}
+
+.settings-secondary-button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
 /* ── Responsive ── */
 @media (max-width: 540px) {
   .settings-page {

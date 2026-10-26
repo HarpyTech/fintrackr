@@ -13,6 +13,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '../lib/api';
 import { clearOfflineQueue, requestBackgroundSync } from '../pwa/offlineQueue';
+import { setPreferredTimezone } from '../lib/timezone';
 import { UNAUTHORIZED_EVENT, notifyWarning } from '../lib/notify';
 import { useWebAuthn } from '../hooks/useWebAuthn';
 import {
@@ -40,6 +41,7 @@ interface AuthContextValue {
   requestPasswordReset: (username: string) => Promise<void>;
   resetPassword: (username: string, otp: string, new_password: string) => Promise<void>;
   logout: () => Promise<void>;
+  deleteAccount: (confirmUsername: string, password?: string) => Promise<void>;
   refreshSession: () => Promise<void>;
   refreshProfile: () => Promise<Profile | null>;
   updateProfile: (payload: Partial<Profile>) => Promise<Profile>;
@@ -136,6 +138,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     authenticatedRef.current = session.authenticated;
   }, [session.authenticated]);
 
+  // Every API call sends X-Timezone; keep it in step with the saved choice.
+  useEffect(() => {
+    setPreferredTimezone(profile?.timezone);
+  }, [profile?.timezone]);
+
+  // The session slides only when a request reaches the server. Someone filling
+  // in a long form makes no requests, so ping /auth/session (at most every
+  // five minutes) while they are interacting to keep the cookie fresh.
+  useEffect(() => {
+    if (!session.authenticated) return undefined;
+    const KEEPALIVE_MS = 5 * 60 * 1000;
+    let lastPing = Date.now();
+
+    function onActivity() {
+      if (Date.now() - lastPing < KEEPALIVE_MS) return;
+      lastPing = Date.now();
+      apiRequest('/auth/session').catch(() => {});
+    }
+
+    window.addEventListener('pointerdown', onActivity);
+    window.addEventListener('keydown', onActivity);
+    return () => {
+      window.removeEventListener('pointerdown', onActivity);
+      window.removeEventListener('keydown', onActivity);
+    };
+  }, [session.authenticated]);
+
   useEffect(() => {
     function handleUnauthorized() {
       if (!authenticatedRef.current) return;
@@ -224,17 +253,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  /** Drop everything the previous user loaded from this device. */
+  const clearLocalUserState = async (): Promise<void> => {
+    queryClient.clear();
+    await clearOfflineQueue().catch(() => {});
+    setPreferredTimezone(null);
+    setSession({ authenticated: false, user: null, role: null });
+    setProfile(null);
+  };
+
   const logout = async (): Promise<void> => {
     await clearDeviceBinding().catch(() => {});
     try {
       await apiRequest('/auth/logout', { method: 'POST' });
     } finally {
-      // Drop everything the previous user loaded, even if the server call failed.
-      queryClient.clear();
-      await clearOfflineQueue().catch(() => {});
-      setSession({ authenticated: false, user: null, role: null });
-      setProfile(null);
+      // Clear even if the server call failed.
+      await clearLocalUserState();
     }
+  };
+
+  const deleteAccount = async (confirmUsername: string, password?: string): Promise<void> => {
+    await apiRequest('/users/me/delete', {
+      method: 'POST',
+      body: JSON.stringify({ confirm_username: confirmUsername, password: password || null }),
+    });
+    await clearDeviceBinding().catch(() => {});
+    await clearLocalUserState();
   };
 
   const updateProfile = async (payload: Partial<Profile>): Promise<Profile> => {
@@ -259,6 +303,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       requestPasswordReset,
       resetPassword,
       logout,
+      deleteAccount,
       refreshSession,
       refreshProfile,
       updateProfile,

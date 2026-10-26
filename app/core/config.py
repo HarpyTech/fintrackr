@@ -33,6 +33,12 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     # Active cookie sessions slide, but never past this long after sign-in.
     SESSION_MAX_HOURS: int = 12
+
+    # Used for "today" when the browser sends no valid X-Timezone header.
+    DEFAULT_TIMEZONE: str = "Asia/Kolkata"
+
+    # Emails that always get the platform admin role (comma-separated).
+    ADMIN_EMAILS: list[str] = []
     ALGORITHM: str = "HS256"
 
     CORS_ORIGINS: list[str] = [
@@ -118,7 +124,7 @@ class Settings(BaseSettings):
     # Restrict sign-in to these domains (comma-separated). Empty = any account.
     GOOGLE_ALLOWED_DOMAINS: list[str] = []
 
-    @field_validator("GOOGLE_ALLOWED_DOMAINS", mode="before")
+    @field_validator("GOOGLE_ALLOWED_DOMAINS", "ADMIN_EMAILS", mode="before")
     @classmethod
     def parse_google_allowed_domains(cls, value: Any) -> Any:
         if not value:

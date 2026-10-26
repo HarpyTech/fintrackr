@@ -6,6 +6,7 @@ import { useAuth } from '../auth/AuthContext';
 import { apiRequest } from '../lib/api';
 import { useToast } from '../components/ToastProvider';
 import { isBillingEnabled } from '../lib/featureFlags';
+import { todayIso } from '../lib/timezone';
 import type { Expense, ExpenseLimitStatus, ExtractAndCreateResponse } from '../types';
 
 const CATEGORIES = ['Food', 'Travel', 'Utilities', 'Shopping', 'Health', 'Other'];
@@ -30,7 +31,7 @@ interface ApiError extends Error {
 type InputType = 'manual' | 'text' | 'image' | 'camera' | 'mixed';
 
 export default function AddExpensePage() {
-  const { logout } = useAuth();
+  const { logout, session } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
 
@@ -38,7 +39,7 @@ export default function AddExpensePage() {
     amount: '',
     category: CATEGORIES[0],
     description: '',
-    expense_date: new Date().toISOString().slice(0, 10),
+    expense_date: todayIso(),
   });
   const [aiInputText, setAiInputText] = useState('');
   const [aiImageFile, setAiImageFile] = useState<File | null>(null);
@@ -104,6 +105,7 @@ export default function AddExpensePage() {
       const response = await apiRequest<Expense | QueuedResponse>('/expenses', {
         method: 'POST',
         offlineQueue: true,
+        offlineOwner: session.user,
         body: JSON.stringify({
           amount: Number(expenseForm.amount),
           category: expenseForm.category,
