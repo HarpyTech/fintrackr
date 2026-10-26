@@ -577,8 +577,10 @@ export default function SettingsPage() {
         <DialogTitle id="delete-account-title">Delete your account?</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            This permanently deletes your account, every expense, receipt line item, insight
-            history and saved device. It cannot be undone. Download your data first if you want a copy.
+            Your account and all associated data will be scheduled for deletion. You have{' '}
+            <strong>30 days</strong> to reactivate — check your email for a reactivation link after
+            confirming. After 30 days your data cannot be recovered. Download your data now if you
+            want a permanent copy before proceeding.
           </DialogContentText>
           <TextField
             autoFocus
