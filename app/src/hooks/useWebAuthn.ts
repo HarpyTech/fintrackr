@@ -96,7 +96,7 @@ function getDeviceLabel(): string {
   }
 
   const uaData = (navigator as Navigator & { userAgentData?: NavigatorUAData }).userAgentData;
-  const platform = !!uaData ? (uaData?.platform || navigator.platform) : 'Unknown platform';
+  const platform = uaData ? (uaData.platform || navigator.platform) : 'Unknown platform';
   const browserBrand = uaData?.brands?.find((brand) => brand.brand !== 'Not A;Brand')?.brand;
   const browser = browserBrand || 'Browser';
 
