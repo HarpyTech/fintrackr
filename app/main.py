@@ -1,17 +1,26 @@
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from pathlib import Path
+import json
 import logging
 import traceback
+from contextlib import asynccontextmanager
+from pathlib import Path
 
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.staticfiles import StaticFiles
+
+from app.api.routes import admin, analytics, auth, expenses, health, users, webauthn
 from app.core.config import settings
-from app.core.tracing import setup_trace_logging
-from app.api.routes import auth, users, health, expenses, webauthn
-from app.middleware.tracing import TraceIDMiddleware
+from app.core.errors import AppError, http_code
+from app.core.telemetry import setup_telemetry
+from app.core.tracing import get_trace_id, setup_trace_logging
+from app.db.mongo import backfill_tenant_ids, bootstrap_admin_roles, bootstrap_indexes
 from app.middleware.auth import AuthenticationMiddleware
 from app.middleware.csrf import CSRFProtectionMiddleware
+from app.middleware.security_headers import SecurityHeadersMiddleware
+from app.middleware.timezone import TimezoneMiddleware
+from app.middleware.tracing import TraceIDMiddleware
 
 # Configure logging with trace ID support
 logging.basicConfig(
@@ -21,46 +30,76 @@ logging.basicConfig(
 setup_trace_logging()
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title=settings.PROJECT_NAME)
 
-
-# --------------------
-# Event Handlers
-# --------------------
-@app.on_event("startup")
-async def startup_event():
-    """Log application startup"""
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     logger.info(f"Starting {settings.PROJECT_NAME}")
     logger.info(f"Build version: {settings.BUILD_VERSION}")
     logger.info(f"API prefix: {settings.API_V1_STR}")
-    logger.info("MongoDB connection configured")
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Log application shutdown"""
+    setup_telemetry(app)
+    logger.info("Running startup tenant ID migration")
+    backfill_tenant_ids()
+    logger.info("Startup tenant ID migration finished")
+    bootstrap_indexes()
+    bootstrap_admin_roles()
+    yield
     logger.info(f"Shutting down {settings.PROJECT_NAME}")
+
+
+# Interactive docs expose the full auth, WebAuthn and expense surface.
+# They stay available outside production and are disabled in it.
+_docs_enabled = not settings.is_production
+
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    docs_url="/docs" if _docs_enabled else None,
+    redoc_url="/redoc" if _docs_enabled else None,
+    openapi_url="/openapi.json" if _docs_enabled else None,
+    lifespan=lifespan,
+)
 
 
 # --------------------
 # Exception Handlers
 # --------------------
+def _error_envelope(code: str, message: str, status: int) -> JSONResponse:
+    return JSONResponse(
+        status_code=status,
+        content={"code": code, "message": message, "trace_id": get_trace_id() or ""},
+    )
+
+
+@app.exception_handler(AppError)
+async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
+    return _error_envelope(exc.code, exc.message, exc.status_code)
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+    return _error_envelope(http_code(exc.status_code), str(exc.detail), exc.status_code)
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
+    first = exc.errors()[0] if exc.errors() else {}
+    message = (
+        first.get("msg", "Validation error")
+        if isinstance(first, dict)
+        else "Validation error"
+    )
+    return _error_envelope("VALIDATION_ERROR", message, 422)
+
+
 @app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    """
-    Global exception handler to catch all unhandled exceptions
-    and log them with full traceback
-    """
+async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     logger.error(
         f"Unhandled exception on {request.method} {request.url.path}: "
         f"{type(exc).__name__}: {str(exc)}"
     )
     logger.error(f"Traceback:\n{traceback.format_exc()}")
-
-    return JSONResponse(
-        status_code=500,
-        content={"detail": "Internal server error"},
-    )
+    return _error_envelope("INTERNAL_SERVER_ERROR", "Internal server error", 500)
 
 
 # --------------------
@@ -69,6 +108,8 @@ async def global_exception_handler(request: Request, exc: Exception):
 # Trace ID middleware (must be first to track all requests)
 app.add_middleware(TraceIDMiddleware)
 logger.info("Trace ID middleware registered")
+
+app.add_middleware(TimezoneMiddleware)
 
 # CSRF Protection middleware (must be before authentication)
 app.add_middleware(CSRFProtectionMiddleware)
@@ -83,9 +124,31 @@ app.add_middleware(
     allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-CSRF-Token"],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "X-CSRF-Token",
+        "Idempotency-Key",
+        "X-Timezone",
+    ],
 )
 logger.info("CORS middleware registered")
+
+# Registered last so it is the outermost layer — this guarantees the headers
+# are attached to every response, including error responses produced by the
+# inner middleware and the SPA catch-all.
+app.add_middleware(SecurityHeadersMiddleware)
+logger.info("Security headers middleware registered")
+
+_env_source = (
+    f"ENVIRONMENT={settings.ENVIRONMENT}"
+    if settings.ENVIRONMENT
+    else f"inferred from K_SERVICE={settings.cloud_run_service or '<none>'}"
+)
+if _docs_enabled:
+    logger.info(f"API docs enabled at /docs and /redoc ({_env_source})")
+else:
+    logger.info(f"API docs disabled — production deployment ({_env_source})")
 
 # --------------------
 # API Routes
@@ -120,6 +183,20 @@ app.include_router(
     tags=["WebAuthn"],
 )
 logger.info("WebAuthn routes registered")
+
+app.include_router(
+    analytics.router,
+    prefix=f"{settings.API_V1_STR}/insights",
+    tags=["Insights"],
+)
+logger.info("Insights analytics routes registered")
+
+app.include_router(
+    admin.router,
+    prefix=f"{settings.API_V1_STR}/admin",
+    tags=["Admin"],
+)
+logger.info("Admin routes registered")
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -199,10 +276,28 @@ def offline_page() -> FileResponse:
     return _serve_static_file(OFFLINE_FILE, media_type="text/html")
 
 
+@app.get("/runtime-config.js", include_in_schema=False)
+def runtime_config() -> Response:
+    """Expose public, non-secret frontend settings from the container env."""
+    public_config = {
+        "featureSupportPageEnabled": settings.FEATURE_SUPPORT_PAGE_ENABLED,
+        "featureBillingEnabled": settings.FEATURE_BILLING_ENABLED,
+        "featureAdminEnabled": settings.FEATURE_ADMIN_ENABLED,
+        "featureGoogleSigninEnabled": settings.FEATURE_GOOGLE_SIGNIN_ENABLED,
+        "supportEmail": settings.SUPPORT_EMAIL,
+    }
+    return Response(
+        content=f"window.__APP_CONFIG__ = {json.dumps(public_config)};\n",
+        media_type="application/javascript",
+        headers={"Cache-Control": "no-store"},
+    )
+
+
 @app.get("/{full_path:path}")
 def serve_spa(full_path: str):
     """Serve the React SPA for all non-API routes"""
     if full_path.startswith("api/") or full_path in {
+        "api",
         "docs",
         "redoc",
         "openapi.json",

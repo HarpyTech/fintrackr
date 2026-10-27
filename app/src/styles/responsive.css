@@ -48,10 +48,6 @@
     width: min(1120px, 100% - 24px);
   }
 
-  .report-proto-title {
-    font-size: 1.65rem;
-  }
-
   .report-proto-filters {
     grid-template-columns: 1fr;
   }
@@ -68,12 +64,6 @@
     gap: 12px;
   }
 
-  .dashboard-header {
-    gap: 12px;
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
   .dashboard-page-heading {
     flex-direction: column;
     align-items: flex-start;
@@ -81,42 +71,6 @@
 
   .dashboard-page-actions {
     width: 100%;
-  }
-
-  .header-actions {
-    width: 100%;
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .top-menu {
-    align-items: stretch;
-    width: 100%;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .top-menu-links {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-    width: 100%;
-  }
-
-  .top-menu-link {
-    justify-content: center;
-    padding: 10px 8px;
-  }
-
-  .top-menu-label {
-    font-size: 12px;
-  }
-
-  .profile-menu {
-    margin-left: 0;
-    align-self: flex-end;
-    width: 100%;
-    justify-content: space-between;
   }
 
   .theme-toggle {
@@ -148,7 +102,7 @@
   }
 
   .theme-toggle-floating {
-    top: calc(10px + env(safe-area-inset-top, 0px));
+    bottom: calc(20px + env(safe-area-inset-bottom, 0px));
     right: calc(10px + env(safe-area-inset-right, 0px));
   }
 
@@ -193,6 +147,10 @@
   .expense-chat-panel {
     width: min(100vw - 24px, 437px);
   }
+
+  .add-expense-proto-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* --- ≤ 767px: dashboard prototype responsive --- */
@@ -200,11 +158,6 @@
   .dashboard-proto-container {
     width: min(1120px, 100% - 24px);
     padding-top: 20px;
-  }
-
-  .dashboard-proto-title {
-    font-size: 1.65rem;
-    margin-bottom: 16px;
   }
 
   .dashboard-proto-stats {
@@ -274,6 +227,15 @@
     flex: 1;
   }
 
+  .dashboard-proto-stat-body {
+    text-align: right;
+  }
+
+  .dashboard-proto-stat-sub {
+    margin-top: 2px;
+    text-align: right;
+  }
+
   .dashboard-proto-stat-value {
     font-size: 1.25rem;
     margin-top: 0;
@@ -284,9 +246,15 @@
     margin-bottom: 10px;
   }
 
-  /* Limit chart height on mobile */
-  .chart-box {
-    height: 200px;
+  /* Reduce chart heights on mobile.
+     Retargeting the tokens is enough: .chart-frame reads them and the
+     ResponsiveContainer inside is height:100%, so nothing can clip. This
+     breakpoint must stay in sync with MOBILE_QUERY in
+     app/src/hooks/useChartLayout.js. */
+  .dashboard-proto {
+    --chart-h-sm: 170px;
+    --chart-h-md: 220px;
+    --chart-h-lg: 260px;
   }
 }
 
@@ -302,11 +270,6 @@
   .add-expense-proto-container {
     width: min(1120px, 100% - 24px);
     padding-top: 20px;
-  }
-
-  .add-expense-proto-title {
-    font-size: 1.65rem;
-    margin-bottom: 16px;
   }
 
   .add-expense-proto-grid {
@@ -356,34 +319,6 @@
 
 /* --- ≤ 767px: insights page responsive --- */
 @media (max-width: 767px) {
-  /* Header hidden on mobile — TopNavigation already shows “Insights” */
-  .insights-proto-header {
-    display: none;
-  }
-
-  .insights-proto-header-inner {
-    width: calc(100% - 32px);
-  }
-
-  .insights-proto-header-brand {
-    gap: 8px;
-    margin-bottom: 3px;
-  }
-
-  .insights-proto-brand-icon {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-  }
-
-  .insights-proto-title {
-    font-size: 1.05rem;
-  }
-
-  .insights-proto-subtitle {
-    display: none;
-  }
-
   /* Stats — single-row horizontal scroll */
   .insights-proto-stats-bar {
     padding: 10px 0;
@@ -414,10 +349,10 @@
     box-shadow: 0 1px 3px rgba(0,0,0,0.04);
   }
 
-  .insights-proto-stat-icon-blue   { color: #2563eb; }
-  .insights-proto-stat-icon-green  { color: #16a34a; }
-  .insights-proto-stat-icon-purple { color: #9333ea; }
-  .insights-proto-stat-icon-orange { color: #ea580c; }
+  .insights-proto-stat-icon-blue   { color: var(--brand); }
+  .insights-proto-stat-icon-green  { color: var(--teal); }
+  .insights-proto-stat-icon-purple { color: var(--violet); }
+  .insights-proto-stat-icon-orange { color: var(--warm); }
 
   .insights-proto-stat-label {
     font-size: 10px;
@@ -425,30 +360,6 @@
 
   .insights-proto-stat-value {
     font-size: 13px;
-  }
-
-  /* Chat area */
-  .insights-proto-chat-area {
-    padding: 12px 12px;
-  }
-
-  .insights-proto-bubble {
-    max-width: 95%;
-    padding: 12px 14px;
-  }
-
-  .insights-proto-bubble-text {
-    font-size: 13px;
-  }
-
-  /* Quick pills — single horizontal scroll row */
-  .insights-proto-quick-bar {
-    padding: 8px 12px;
-  }
-
-  .insights-proto-quick-label {
-    font-size: 10px;
-    margin-bottom: 6px;
   }
 
   .insights-proto-quick-pills {
@@ -483,16 +394,6 @@
     border-color: rgba(99,102,241,0.3);
   }
 
-  /* Input area */
-  .insights-proto-input-area {
-    padding: 10px 12px;
-    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
-  }
-
-  .insights-proto-input-inner {
-    gap: 8px;
-  }
-
   .insights-proto-textarea {
     font-size: 14px;
     padding: 10px 14px;
@@ -501,22 +402,6 @@
     min-height: 44px;
     max-height: 120px;
     overflow-y: auto;
-  }
-
-  .insights-proto-send {
-    padding: 10px 16px;
-    border-radius: 22px;
-    height: 44px;
-  }
-
-  /* Cards strip — compact on mobile */
-  .insights-proto-cards-strip {
-    padding: 10px 0;
-  }
-
-  .insights-proto-cards-inner {
-    width: calc(100% - 24px);
-    gap: 8px;
   }
 
   .insights-proto-card {
@@ -529,22 +414,6 @@
     font-size: 13px;
   }
 
-  /* Rich message formatting on mobile */
-  .insights-proto-bubble-rich {
-    font-size: 13px;
-  }
-
-  .insights-rich-head {
-    font-size: 12px;
-  }
-
-  .insights-rich-kv-value {
-    font-size: 12px;
-  }
-
-  .insights-rich-line {
-    font-size: 13px;
-  }
 }
 
 /* --- ≤ 767px: report prototype responsive --- */
@@ -553,11 +422,7 @@
     padding-top: 20px;
   }
 
-  .report-proto-title {
-    margin-bottom: 16px;
-  }
-
-  .report-proto-card {
+.report-proto-card {
     padding: 16px;
   }
 
@@ -616,29 +481,62 @@
   }
 }
 
-/* --- ≤ 767px: TopNavigation compact --- */
-@media (max-width: 767px) {
-  .dashboard-header {
-    padding: 12px 14px;
-    margin-bottom: 16px;
-  }
-
-  .dashboard-logo {
-    height: 28px;
-  }
-}
-
-/* --- ≤ 767px: mobile bottom nav — icons only, no labels --- */
+/* --- ≤ 767px: mobile bottom nav --- */
 @media (max-width: 767px) {
   .sidebar-proto-mobile-link,
-  .sidebar-proto-mobile-logout {
-    padding: 10px 8px;
+  .sidebar-proto-mobile-more {
+    padding: 8px 4px;
     min-width: 0;
     flex: 1;
   }
+}
 
-  .sidebar-proto-mobile-link span,
-  .sidebar-proto-mobile-logout span {
-    display: none;
+/* --- ≤ 767px: per-page mobile polish (auth, landing, features, settings, dashboard) --- */
+@media (max-width: 767px) {
+  .auth-card {
+    width: 100%;
+    padding: 20px 16px;
   }
+
+  .landing-layout {
+    width: calc(100% - 32px);
+  }
+
+  .landing-cta-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .landing-cta-row > a,
+  .features-proto-cta-row > a {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  .features-proto-cta-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .settings-page {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .dashboard-proto-container {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  button:not(.MuiButtonBase-root),
+  .auth-link-button {
+    min-height: 44px;
+  }
+}
+
+/* --- Wordmark stays legible on dark surfaces (SVG has a fixed dark fill) --- */
+:root[data-theme='dark'] img[src$='name_logo.svg'] {
+  filter: brightness(0) invert(0.92);
 }

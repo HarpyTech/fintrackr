@@ -1,35 +1,31 @@
+# ruff: noqa: I001
+
+import logging
 from datetime import date
+
 from fastapi import (
     APIRouter,
     Depends,
     File,
     Form,
+    Header,
     HTTPException,
     Query,
     UploadFile,
     status,
 )
-import logging
 from starlette.concurrency import run_in_threadpool
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_tenant, get_current_user
+from app.core.config import settings
+from app.core.idempotency import IdempotencyInProgressError, complete, release, reserve
+from app.core.ratelimit import LlmRateLimitError, check_and_record_llm_call
+from app.core.timeutil import local_today
 from app.models.expense import (
     ExpenseChatCreateRequest,
     ExpenseCreate,
     ExpenseInputType,
-)
-from app.services.expense_service import (
-    add_expense,
-    category_summary,
-    categories_monthly_summary,
-    check_session_expense_limit,
-    daily_summary,
-    get_expense_limit_status,
-    list_expenses,
-    monthly_summary,
-    vendors_monthly_summary,
-    yearly_summary,
-    SessionExpenseLimitError,
+    ExpenseUpdate,
 )
 from app.services.expense_chat_service import (
     answer_expense_analysis_query,
@@ -40,20 +36,81 @@ from app.services.expense_extraction_service import (
     extract_expense_payload,
     extract_text_chat_expense_payload,
 )
+from app.services.expense_service import (
+    add_expense,
+    category_summary,
+    categories_monthly_summary,
+    check_session_expense_limit,
+    daily_summary,
+    delete_expense,
+    get_expense,
+    get_expense_limit_status,
+    list_expenses,
+    monthly_summary,
+    SessionExpenseLimitError,
+    update_expense,
+    vendors_monthly_summary,
+    yearly_summary,
+)
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+def _charge_llm_call(user: str) -> None:
+    """Count one Gemini extraction against the user's AI allowance."""
+    check_and_record_llm_call(
+        user,
+        "extraction",
+        max_calls=settings.ANALYTICS_LLM_CALLS_PER_WINDOW,
+        window_minutes=settings.ANALYTICS_LLM_WINDOW_MINUTES,
+    )
+
+
+def _llm_limited(exc: LlmRateLimitError) -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        detail=str(exc),
+        headers={"Retry-After": str(exc.retry_after_seconds)},
+    )
+
+
+def get_idempotency_response(key: str, user: str) -> dict | None:
+    """Claim a key or return its previously successful response."""
+    try:
+        return reserve(key, user)
+    except IdempotencyInProgressError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A request with this Idempotency-Key is still in progress.",
+        ) from exc
+
+
+def _reserve_or_replay(idempotency_key: str | None, user: str) -> dict | None:
+    """Claim the key or return its previously successful response."""
+    if not idempotency_key:
+        return None
+    cached = get_idempotency_response(idempotency_key, user)
+    if cached is not None:
+        logger.info("Returning cached expense response")
+    return cached
 
 
 @router.post("", status_code=201)
 def create_expense(
     payload: ExpenseCreate,
     user: str = Depends(get_current_user),
+    tenant_id: str = Depends(get_current_tenant),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
     """Create a new expense"""
     logger.info("Create expense request received")
+    cached = _reserve_or_replay(idempotency_key, user)
+    if cached is not None:
+        return cached
+    completed = False
     try:
-        check_session_expense_limit(user)
+        check_session_expense_limit(user, tenant_id=tenant_id)
         result = add_expense(
             username=user,
             amount=payload.amount,
@@ -65,7 +122,11 @@ def create_expense(
             description=payload.description,
             expense_date=payload.expense_date,
             line_items=[item.model_dump() for item in payload.line_items],
+            tenant_id=tenant_id,
         )
+        if idempotency_key:
+            complete(idempotency_key, user, result)
+            completed = True
         logger.info("Expense created successfully")
         return result
     except SessionExpenseLimitError as exc:
@@ -90,24 +151,40 @@ def create_expense(
             exc_info=True,
         )
         raise
+    finally:
+        if idempotency_key and not completed:
+            release(idempotency_key, user)
 
 
 @router.post("/extract-and-create", status_code=201)
 async def extract_and_create_expense(
-    text_input: str | None = Form(default=None),
+    text_input: str | None = Form(default=None, max_length=4000),
     image: UploadFile | None = File(default=None),
     input_type: ExpenseInputType | None = Form(default=None),
     user: str = Depends(get_current_user),
+    tenant_id: str = Depends(get_current_tenant),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
     """Extract expense details with Gemini and insert into DB."""
     logger.info("Extract-and-create expense request received")
+    cached = _reserve_or_replay(idempotency_key, user)
+    if cached is not None:
+        return cached
+    completed = False
     try:
         # Enforce limit before reading image bytes or calling Gemini.
-        check_session_expense_limit(user)
+        check_session_expense_limit(user, tenant_id=tenant_id)
+        _charge_llm_call(user)
         raw_image_bytes: bytes | None = None
         if image is not None:
-            # Keep upload untouched: read and forward original bytes as-is.
-            raw_image_bytes = await image.read()
+            max_bytes = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
+            # Read one byte past the cap so oversize uploads are detected
+            # without buffering the whole file.
+            raw_image_bytes = await image.read(max_bytes + 1)
+            if len(raw_image_bytes) > max_bytes:
+                raise ValueError(
+                    f"Image must be {settings.MAX_UPLOAD_SIZE_MB} MB or smaller"
+                )
 
         mime_type = image.content_type if image else None
         extracted, used_llm_model = await run_in_threadpool(
@@ -131,14 +208,19 @@ async def extract_and_create_expense(
             expense_date=date.fromisoformat(extracted["expense_date"]),
             llm_model=used_llm_model,
             line_items=extracted["line_items"],
+            tenant_id=tenant_id,
         )
 
         logger.info("Expense extracted and created successfully")
-        return {
+        response = {
             "expense": result,
             "extracted": extracted,
             "llm_model": used_llm_model,
         }
+        if idempotency_key:
+            complete(idempotency_key, user, response)
+            completed = True
+        return response
     except ValueError as exc:
         logger.warning(f"Invalid extract-and-create request: {str(exc)}")
         raise HTTPException(
@@ -155,6 +237,8 @@ async def extract_and_create_expense(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=str(exc),
         ) from exc
+    except LlmRateLimitError as exc:
+        raise _llm_limited(exc) from exc
     except RuntimeError as exc:
         logger.error(f"Service error in extract-and-create: {str(exc)}")
         raise HTTPException(
@@ -170,15 +254,23 @@ async def extract_and_create_expense(
     finally:
         if image is not None:
             await image.close()
+        if idempotency_key and not completed:
+            release(idempotency_key, user)
 
 
 @router.post("/chat-create", status_code=201)
 async def create_expense_from_chat(
     payload: ExpenseChatCreateRequest,
     user: str = Depends(get_current_user),
+    tenant_id: str = Depends(get_current_tenant),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
     """Extract expense fields from free-form text and create the expense."""
     logger.info("Chat expense create request received")
+    cached = _reserve_or_replay(idempotency_key, user)
+    if cached is not None:
+        return cached
+    completed = False
     try:
         if looks_like_expense_analysis_request(payload.message):
             logger.info("Handling chat request as expense analysis query")
@@ -186,9 +278,11 @@ async def create_expense_from_chat(
                 answer_expense_analysis_query,
                 username=user,
                 message=payload.message,
+                tenant_id=tenant_id,
             )
 
-        check_session_expense_limit(user)
+        check_session_expense_limit(user, tenant_id=tenant_id)
+        _charge_llm_call(user)
         extracted, used_llm_model = await run_in_threadpool(
             extract_text_chat_expense_payload,
             payload.message,
@@ -218,11 +312,12 @@ async def create_expense_from_chat(
             expense_date=date.fromisoformat(extracted["expense_date"]),
             llm_model=used_llm_model,
             line_items=[],
+            tenant_id=tenant_id,
         )
 
         logger.info("Expense created successfully from chat")
         vendor_label = result.get("vendor") or "no vendor"
-        return {
+        chat_response = {
             "expense": result,
             "extracted": extracted,
             "llm_model": used_llm_model,
@@ -231,6 +326,10 @@ async def create_expense_from_chat(
                 f"on {result['expense_date']}."
             ),
         }
+        if idempotency_key:
+            complete(idempotency_key, user, chat_response)
+            completed = True
+        return chat_response
     except ExpenseExtractionValidationError as exc:
         logger.warning(
             "Chat extraction needs more detail for user %s: %s",
@@ -257,6 +356,8 @@ async def create_expense_from_chat(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=str(exc),
         ) from exc
+    except LlmRateLimitError as exc:
+        raise _llm_limited(exc) from exc
     except RuntimeError as exc:
         logger.error("Service error in chat expense create: %s", str(exc))
         raise HTTPException(
@@ -270,6 +371,11 @@ async def create_expense_from_chat(
             exc_info=True,
         )
         raise
+    finally:
+        # Analysis answers and vendor prompts create nothing, so they release
+        # the key too; only a saved expense is replayed.
+        if idempotency_key and not completed:
+            release(idempotency_key, user)
 
 
 def _infer_input_type(
@@ -284,12 +390,24 @@ def _infer_input_type(
 
 
 @router.get("")
-def get_expenses(user: str = Depends(get_current_user)):
-    """Get all expenses for the current user"""
-    logger.info("Get expenses request received")
+def get_expenses(
+    user: str = Depends(get_current_user),
+    tenant_id: str = Depends(get_current_tenant),
+    limit: int = Query(50, ge=1, le=200, description="Max items to return"),
+    offset: int = Query(0, ge=0, description="Number of items to skip"),
+    sort_dir: int = Query(-1, description="Sort direction: -1 desc, 1 asc"),
+):
+    """Get expenses for the current user with pagination.
+
+    Returns { items, total, limit, offset } so the client can render
+    page controls without an extra count request.
+    """
+    logger.info("Get expenses request received (limit=%d, offset=%d)", limit, offset)
     try:
-        result = {"items": list_expenses(user)}
-        logger.info(f"Retrieved {len(result['items'])} expenses")
+        result = list_expenses(
+            user, limit=limit, offset=offset, sort_dir=sort_dir, tenant_id=tenant_id
+        )
+        logger.info("Retrieved %d/%d expenses", len(result["items"]), result["total"])
         return result
     except RuntimeError as exc:
         logger.error(f"Service error fetching expenses: {str(exc)}")
@@ -306,11 +424,14 @@ def get_expenses(user: str = Depends(get_current_user)):
 
 
 @router.get("/limit-status")
-def get_expense_limit_status_route(user: str = Depends(get_current_user)):
+def get_expense_limit_status_route(
+    user: str = Depends(get_current_user),
+    tenant_id: str = Depends(get_current_tenant),
+):
     """Get expense-limit status for the current user."""
     logger.info("Expense limit status request received")
     try:
-        result = get_expense_limit_status(user)
+        result = get_expense_limit_status(user, tenant_id=tenant_id)
         logger.info(
             "Expense limit status retrieved for user %s: %d/%d",
             user,
@@ -338,13 +459,15 @@ def get_expense_limit_status_route(user: str = Depends(get_current_user)):
 
 @router.get("/summary/monthly")
 def get_monthly_summary(
-    year: int = Query(default=date.today().year, ge=2000, le=2100),
+    year: int | None = Query(default=None, ge=2000, le=2100),
     user: str = Depends(get_current_user),
+    tenant_id: str = Depends(get_current_tenant),
 ):
-    """Get monthly expense summary"""
+    """Get monthly expense summary (defaults to the caller's current year)."""
+    year = year or local_today().year
     logger.info(f"Monthly summary request for year: {year}")
     try:
-        result = {"items": monthly_summary(user, year)}
+        result = {"items": monthly_summary(user, year, tenant_id=tenant_id)}
         logger.info(f"Monthly summary retrieved for year {year}")
         return result
     except RuntimeError as exc:
@@ -362,11 +485,14 @@ def get_monthly_summary(
 
 
 @router.get("/summary/yearly")
-def get_yearly_summary(user: str = Depends(get_current_user)):
+def get_yearly_summary(
+    user: str = Depends(get_current_user),
+    tenant_id: str = Depends(get_current_tenant),
+):
     """Get yearly expense summary"""
     logger.info("Yearly summary request received")
     try:
-        result = {"items": yearly_summary(user)}
+        result = {"items": yearly_summary(user, tenant_id=tenant_id)}
         logger.info("Yearly summary retrieved")
         return result
     except RuntimeError as exc:
@@ -388,11 +514,14 @@ def get_category_summary(
     year: int | None = Query(default=None, ge=2000, le=2100),
     month: int | None = Query(default=None, ge=1, le=12),
     user: str = Depends(get_current_user),
+    tenant_id: str = Depends(get_current_tenant),
 ):
     """Get category-wise expense summary"""
     logger.info(f"Category summary request (year={year}, month={month})")
     try:
-        result = {"items": category_summary(user, year=year, month=month)}
+        result = {
+            "items": category_summary(user, year=year, month=month, tenant_id=tenant_id)
+        }
         logger.info(f"Category summary retrieved (year={year}, month={month})")
         return result
     except RuntimeError as exc:
@@ -414,11 +543,12 @@ def get_daily_summary(
     year: int = Query(..., ge=2000, le=2100),
     month: int = Query(..., ge=1, le=12),
     user: str = Depends(get_current_user),
+    tenant_id: str = Depends(get_current_tenant),
 ):
     """Get daily expense totals for a given year and month"""
     logger.info(f"Daily summary request for {year}-{month}")
     try:
-        result = {"items": daily_summary(user, year, month)}
+        result = {"items": daily_summary(user, year, month, tenant_id=tenant_id)}
         logger.info(f"Daily summary retrieved for {year}-{month}")
         return result
     except RuntimeError as exc:
@@ -440,11 +570,14 @@ def get_categories_monthly_summary(
     year: int = Query(..., ge=2000, le=2100),
     month: int = Query(..., ge=1, le=12),
     user: str = Depends(get_current_user),
+    tenant_id: str = Depends(get_current_tenant),
 ):
     """Get category breakdown for a given year and month"""
     logger.info(f"Categories monthly summary request for {year}-{month}")
     try:
-        result = {"items": categories_monthly_summary(user, year, month)}
+        result = {
+            "items": categories_monthly_summary(user, year, month, tenant_id=tenant_id)
+        }
         logger.info(f"Categories monthly summary retrieved for {year}-{month}")
         return result
     except RuntimeError as exc:
@@ -470,11 +603,14 @@ def get_vendors_monthly_summary(
     year: int = Query(..., ge=2000, le=2100),
     month: int = Query(..., ge=1, le=12),
     user: str = Depends(get_current_user),
+    tenant_id: str = Depends(get_current_tenant),
 ):
     """Get vendor breakdown for a given year and month"""
     logger.info(f"Vendors monthly summary request for {year}-{month}")
     try:
-        result = {"items": vendors_monthly_summary(user, year, month)}
+        result = {
+            "items": vendors_monthly_summary(user, year, month, tenant_id=tenant_id)
+        }
         logger.info(f"Vendors monthly summary retrieved for {year}-{month}")
         return result
     except RuntimeError as exc:
@@ -492,3 +628,80 @@ def get_vendors_monthly_summary(
             exc_info=True,
         )
         raise
+
+
+# ---------- Per-expense CRUD ----------
+
+
+@router.get("/{expense_id}")
+def get_expense_by_id(
+    expense_id: str,
+    user: str = Depends(get_current_user),
+    tenant_id: str = Depends(get_current_tenant),
+):
+    """Get a single expense by ID (must be owned by the current user)."""
+    try:
+        expense = get_expense(user, expense_id, tenant_id=tenant_id)
+        if expense is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Expense not found",
+            )
+        return expense
+    except HTTPException:
+        raise
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+
+
+@router.patch("/{expense_id}")
+def patch_expense(
+    expense_id: str,
+    body: ExpenseUpdate,
+    user: str = Depends(get_current_user),
+    tenant_id: str = Depends(get_current_tenant),
+):
+    """Partially update an expense (must be owned by the current user)."""
+    try:
+        updated = update_expense(
+            user, expense_id, body.model_dump(exclude_none=True), tenant_id=tenant_id
+        )
+        if updated is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Expense not found",
+            )
+        return updated
+    except HTTPException:
+        raise
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+
+
+@router.delete("/{expense_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_expense_by_id(
+    expense_id: str,
+    user: str = Depends(get_current_user),
+    tenant_id: str = Depends(get_current_tenant),
+):
+    """Delete an expense by ID (must be owned by the current user)."""
+    try:
+        deleted = delete_expense(user, expense_id, tenant_id=tenant_id)
+        if not deleted:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Expense not found",
+            )
+    except HTTPException:
+        raise
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc

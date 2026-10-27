@@ -12,17 +12,37 @@
   <meta name="application-name" content="FinTrackr" />
   <meta name="msapplication-TileColor" content="#0057ff" />
   <meta name="msapplication-config" content="/browserconfig.xml" />
-  <link rel="icon" href="/assets/app_logo.png" sizes="any" />
+  <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
   <link rel="manifest" href="/manifest.json" crossorigin="use-credentials" />
-  <link rel="apple-touch-icon" sizes="180x180" href="/assets/app_logo.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
 
-  <title>FinTrackr</title>
+  <title>FinTrackr — Personal Finance Tracking</title>
+  <meta name="description"
+    content="FinTrackr helps you capture receipts, categorise spending and visualise where your money goes — with AI-powered expense extraction." />
+  <meta name="color-scheme" content="light dark" />
+
+  <!-- Open Graph (public landing and features pages are shareable) -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="FinTrackr" />
+  <meta property="og:title" content="FinTrackr — Personal Finance Tracking" />
+  <meta property="og:description"
+    content="Capture receipts, categorise spending and visualise where your money goes — with AI-powered expense extraction." />
+  <meta property="og:image" content="/assets/app_logo.png" />
+
+  <!-- Twitter/X card -->
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="FinTrackr — Personal Finance Tracking" />
+  <meta name="twitter:description"
+    content="Capture receipts, categorise spending and visualise where your money goes." />
+  <meta name="twitter:image" content="/assets/app_logo.png" />
 </head>
 
 <body>
   <div id="root"></div>
-  <script type="module" src="/src/pwa/register.js"></script>
-  <script type="module" src="/src/main.jsx"></script>
+  <script src="/runtime-config.js"></script>
+  <script type="module" src="/src/pwa/register.ts"></script>
+  <script type="module" src="/src/main.tsx"></script>
 </body>
 
 </html>

@@ -1,7 +1,7 @@
 """Rate limiting utilities for signup OTP requests."""
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from app.db.mongo import get_users_collection
 
@@ -9,7 +9,10 @@ logger = logging.getLogger(__name__)
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    # MongoDB (and mongomock) stores and returns datetimes as naive UTC.
+    # We use naive UTC here so that DB round-trip arithmetic never mixes
+    # offset-naive and offset-aware datetimes.
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 class OtpRateLimitError(Exception):
@@ -32,15 +35,6 @@ def check_and_record_otp_request(
     """
     try:
         rate_limit_col = get_users_collection().database["signup_otp_attempts"]
-
-        # Create TTL index for auto-cleanup (optional but recommended)
-        try:
-            rate_limit_col.create_index(
-                "created_at",
-                expireAfterSeconds=window_minutes * 60,
-            )
-        except Exception:
-            pass
 
         now = _utcnow()
         window_start = now - timedelta(minutes=window_minutes)
@@ -132,10 +126,6 @@ def check_webauthn_rate_limit(
     """
     try:
         col = get_users_collection().database["webauthn_attempts"]
-        try:
-            col.create_index("created_at", expireAfterSeconds=window_minutes * 60)
-        except Exception:
-            pass
 
         now = _utcnow()
         window_start = now - timedelta(minutes=window_minutes)
@@ -191,6 +181,167 @@ def check_webauthn_rate_limit(
             exc_info=True,
         )
         raise RuntimeError("Failed to check rate limit") from exc
+
+
+class LlmRateLimitError(Exception):
+    """Raised when a user exceeds their allowance of LLM calls."""
+
+    def __init__(self, message: str, retry_after_seconds: int):
+        super().__init__(message)
+        self.retry_after_seconds = retry_after_seconds
+
+
+def check_and_record_llm_call(
+    username: str,
+    feature: str,
+    max_calls: int = 20,
+    window_minutes: int = 10,
+) -> None:
+    """
+    Rate-limit calls to the Gemini API per user.
+
+    The analytics agent fans out across several skills, so one user message can
+    trigger multiple model calls. This is invoked from inside
+    services/gemini_client.py rather than from a route, so no skill or
+    sub-agent can reach the model without passing through it.
+
+    `feature` separates budgets (e.g. 'analytics' vs 'extraction') so a burst
+    of analytics questions cannot starve receipt extraction.
+
+    Raises LlmRateLimitError when the limit is exceeded.
+    """
+    try:
+        col = get_users_collection().database["llm_call_attempts"]
+
+        now = _utcnow()
+        window_start = now - timedelta(minutes=window_minutes)
+        key = f"{username}:{feature}"
+
+        recent_count = col.count_documents(
+            {"key": key, "created_at": {"$gte": window_start}}
+        )
+
+        if recent_count >= max_calls:
+            oldest = col.find_one(
+                {"key": key, "created_at": {"$gte": window_start}},
+                sort=[("created_at", 1)],
+            )
+            if oldest:
+                retry_after = int(
+                    (
+                        oldest["created_at"] + timedelta(minutes=window_minutes) - now
+                    ).total_seconds()
+                )
+                retry_after = max(1, retry_after)
+            else:
+                retry_after = window_minutes * 60
+
+            logger.warning(
+                "LLM rate limit exceeded for %s feature=%s: %d calls in %d minutes",
+                username,
+                feature,
+                recent_count,
+                window_minutes,
+            )
+            raise LlmRateLimitError(
+                f"You have reached the AI request limit. "
+                f"Please try again in {retry_after} seconds.",
+                retry_after,
+            )
+
+        col.insert_one({"key": key, "created_at": now})
+        logger.debug(
+            "LLM call recorded for %s feature=%s: %d/%d",
+            username,
+            feature,
+            recent_count + 1,
+            max_calls,
+        )
+
+    except LlmRateLimitError:
+        raise
+    except Exception as exc:
+        # Unlike OTP, an infrastructure failure here must not hard-fail the
+        # request: the agent has a deterministic fallback path. Log and allow.
+        logger.error(
+            "Error checking LLM rate limit for %s: %s",
+            username,
+            str(exc),
+            exc_info=True,
+        )
+
+
+class LoginRateLimitError(Exception):
+    """Raised when too many failed login attempts are detected."""
+
+    def __init__(self, message: str, retry_after_seconds: int):
+        super().__init__(message)
+        self.retry_after_seconds = retry_after_seconds
+
+
+def check_and_record_login_attempt(
+    username: str,
+    ip_address: str = "",
+    max_attempts: int = 10,
+    window_minutes: int = 15,
+) -> None:
+    """Rate-limit login attempts per username (and optionally IP).
+
+    Raises LoginRateLimitError when the limit is exceeded. Unlike OTP and
+    WebAuthn limiters, a failed login is recorded by the caller only on
+    failure; successful logins should call clear_login_attempts().
+    """
+    try:
+        col = get_users_collection().database["login_attempts"]
+        now = _utcnow()
+        window_start = now - timedelta(minutes=window_minutes)
+        key = username if not ip_address else f"{username}:{ip_address}"
+
+        recent_count = col.count_documents(
+            {"key": key, "created_at": {"$gte": window_start}}
+        )
+
+        if recent_count >= max_attempts:
+            oldest = col.find_one(
+                {"key": key, "created_at": {"$gte": window_start}},
+                sort=[("created_at", 1)],
+            )
+            if oldest:
+                retry_after = int(
+                    (oldest["created_at"] + timedelta(minutes=window_minutes) - now).total_seconds()
+                )
+                retry_after = max(1, retry_after)
+            else:
+                retry_after = window_minutes * 60
+
+            logger.warning(
+                "Login rate limit exceeded for %s: %d attempts in %d minutes",
+                username, recent_count, window_minutes,
+            )
+            raise LoginRateLimitError(
+                f"Too many login attempts. Please try again in {retry_after} seconds.",
+                retry_after,
+            )
+
+        col.insert_one({"key": key, "created_at": now})
+
+    except LoginRateLimitError:
+        raise
+    except Exception as exc:
+        logger.error(
+            "Error checking login rate limit for %s: %s", username, str(exc), exc_info=True
+        )
+        raise RuntimeError("Failed to check rate limit") from exc
+
+
+def clear_login_attempts(username: str, ip_address: str = "") -> None:
+    """Clear login attempts after a successful login."""
+    try:
+        col = get_users_collection().database["login_attempts"]
+        key = username if not ip_address else f"{username}:{ip_address}"
+        col.delete_many({"key": key})
+    except Exception as exc:
+        logger.warning("Failed to clear login attempts for %s: %s", username, str(exc))
 
 
 def clear_otp_attempts(email: str) -> None:

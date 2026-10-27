@@ -1,0 +1,14 @@
+# Build context ignore for Dockerfile.ci (BuildKit uses <dockerfile>.dockerignore).
+# Unlike the app image, KEEP tests/, pyproject.toml and .md so the checklist runs.
+.git/
+node_modules/
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+app/static/
+.env
+.env.*
+!.env.example

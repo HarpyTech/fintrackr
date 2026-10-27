@@ -28,7 +28,6 @@ services:
       - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
       
       # MongoDB Configuration
-      - MONGODB_URI=${MONGODB_URI:-mongodb://localhost:27017}
       - MONGODB_DB=${MONGODB_DB:-finance}
     
     # Alternative: Use Docker secrets (uncomment for production with Docker Swarm)
@@ -37,22 +36,15 @@ services:
     #   - default_password
     
     restart: unless-stopped
-    
+
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 5s
       retries: 3
-    
+
     deploy:
       resources:
         limits:
           cpus: "1.0"
           memory: 512M
-
-# Uncomment for Docker Swarm secrets support
-# secrets:
-#   secret_key:
-#     external: true
-#   default_password:
-#     external: true

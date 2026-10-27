@@ -1,25 +1,37 @@
-from fastapi import APIRouter, HTTPException, Request, Response, status
 import logging
 
+from fastapi import APIRouter, HTTPException, Request, Response, status
+
+from app.api.deps import get_current_user
 from app.core.ratelimit import WebAuthnRateLimitError, check_webauthn_rate_limit
 from app.models.user import (
-    WebAuthnRegisterRequest,
-    WebAuthnRegisterVerifyRequest,
     WebAuthnAuthenticateRequest,
     WebAuthnAuthenticateVerifyRequest,
+    WebAuthnRegisterRequest,
+    WebAuthnRegisterVerifyRequest,
 )
 from app.services.webauthn_service import (
-    generate_registration_challenge,
-    verify_registration,
-    generate_authentication_challenge,
-    verify_authentication,
-    get_user_credentials,
     delete_credential,
+    generate_authentication_challenge,
+    generate_registration_challenge,
+    get_user_credentials,
+    verify_authentication,
+    verify_registration,
 )
-from app.api.deps import get_current_user
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+def _enrolling_user(request: Request, claimed_username: str) -> str:
+    """Return the signed-in user; refuse to enrol a passkey for anyone else."""
+    username = get_current_user(request)
+    if claimed_username.strip().lower() != username.strip().lower():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only register a passkey for your own account.",
+        )
+    return username
 
 
 @router.post("/register", status_code=status.HTTP_200_OK)
@@ -28,8 +40,9 @@ def webauthn_register(payload: WebAuthnRegisterRequest, request: Request):
     Issue a WebAuthn registration challenge.
     Call this after a successful email/password login to enrol a biometric credential.
     """
+    username = _enrolling_user(request, payload.username)
     try:
-        check_webauthn_rate_limit(payload.username, "register")
+        check_webauthn_rate_limit(username, "register")
     except WebAuthnRateLimitError as exc:
         resp = Response(status_code=429)
         resp.headers["Retry-After"] = str(exc.retry_after_seconds)
@@ -41,7 +54,7 @@ def webauthn_register(payload: WebAuthnRegisterRequest, request: Request):
         ) from exc
     try:
         options = generate_registration_challenge(
-            payload.username,
+            username,
             payload.device_id,
             request,
         )
@@ -59,13 +72,16 @@ def webauthn_register(payload: WebAuthnRegisterRequest, request: Request):
 
 
 @router.post("/register/verify", status_code=status.HTTP_200_OK)
-def webauthn_register_verify(payload: WebAuthnRegisterVerifyRequest):
+def webauthn_register_verify(
+    payload: WebAuthnRegisterVerifyRequest, request: Request
+):
     """
     Verify a WebAuthn registration response from the browser and store the credential.
     """
+    username = _enrolling_user(request, payload.username)
     try:
         result = verify_registration(
-            payload.username, payload.device_id, payload.credential, payload.device_name
+            username, payload.device_id, payload.credential, payload.device_name
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))

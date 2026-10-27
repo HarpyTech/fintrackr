@@ -2,6 +2,7 @@
    DASHBOARD — Styles for DashboardPage.
    Includes both legacy dashboard classes and the prototype
    (dashboard-proto-*) layout that matches the design spec.
+   All colours use CSS design tokens — no raw hex values.
    ============================================================ */
 
 /* --- Page shell (legacy layout helpers) --- */
@@ -50,7 +51,7 @@
   justify-self: end;
   max-width: min(360px, 100%);
   background: linear-gradient(120deg, var(--teal), var(--success-strong));
-  color: #fff;
+  color: var(--surface);
   border-radius: 12px;
   padding: 12px 16px;
   box-shadow: 0 12px 32px rgba(11, 125, 90, 0.22);
@@ -111,21 +112,21 @@
 }
 
 .stat-badge-blue {
-  background: #e4eeff;
-  border-color: #c7dbff;
-  color: #1f57be;
+  background: var(--brand-soft);
+  border-color: var(--brand-soft-border);
+  color: var(--brand);
 }
 
 .stat-badge-violet {
-  background: #f0e9ff;
-  border-color: #d9c9ff;
-  color: #6f48bf;
+  background: var(--violet-soft);
+  border-color: var(--violet-soft-border);
+  color: var(--violet);
 }
 
 .stat-badge-green {
-  background: #e7f8ec;
-  border-color: #bfe9cb;
-  color: #217d41;
+  background: var(--teal-soft);
+  border-color: var(--success-soft-border);
+  color: var(--teal);
 }
 
 .panel-grid {
@@ -139,9 +140,48 @@
 }
 
 /* --- Chart and table utilities --- */
-.chart-box {
+/* ------------------------------------------------------------------
+   Chart frames
+
+   Charts get their height from these rules only. Every ResponsiveContainer
+   inside a .chart-frame is height:100%, so the SVG and its container can
+   never disagree — the previous arrangement (fixed-px ResponsiveContainer
+   inside a differently-sized .chart-box) clipped on mobile.
+   ------------------------------------------------------------------ */
+.chart-frame {
   width: 100%;
-  height: 280px;
+  height: var(--chart-h-md);
+}
+
+.chart-frame-sm {
+  height: var(--chart-h-sm);
+}
+
+.chart-frame-md {
+  height: var(--chart-h-md);
+}
+
+.chart-frame-lg {
+  height: var(--chart-h-lg);
+}
+
+/* Horizontal track for grouped multi-series charts, which are scrolled
+   rather than compressed once the series count grows. */
+.chart-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.chart-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.chart-scroll::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: var(--radius-pill);
 }
 
 .table-wrap {
@@ -245,8 +285,8 @@
   height: 30px;
   border-radius: 999px;
   padding: 0;
-  background: #d12d3f;
-  color: #fff;
+  background: var(--danger);
+  color: var(--surface);
   border: none;
   display: inline-grid;
   place-items: center;
@@ -285,7 +325,7 @@
 .dashboard-mini-bar {
   width: 100%;
   border-radius: 10px 10px 0 0;
-  background: linear-gradient(180deg, #1f66ff, #114cc0);
+  background: linear-gradient(180deg, var(--brand), var(--brand-strong));
   min-height: 8px;
 }
 
@@ -319,29 +359,19 @@
 
 /* ============================================================
    DASHBOARD — Prototype layout (dashboard-proto-*)
-   Matches design_code/src/app/pages/DashboardPage.tsx exactly.
+   All colours via CSS tokens — no raw hex values.
    ============================================================ */
 
 .dashboard-proto {
-  min-height: 100vh;
+  min-height: 100%;
   padding: 0 0 80px;
-  background: #f9fafb;
-}
-
-:root[data-theme='dark'] .dashboard-proto {
-  background: #111827;
+  background: var(--surface-soft);
 }
 
 .dashboard-proto-container {
   width: min(1280px, 100% - 48px);
   margin: 0 auto;
   padding-top: 32px;
-}
-
-.dashboard-proto-title {
-  margin: 0 0 32px;
-  font-size: 1.875rem;
-  color: var(--heading);
 }
 
 /* --- Stat cards --- */
@@ -353,15 +383,11 @@
 }
 
 .dashboard-proto-card {
-  background: #ffffff;
+  background: var(--surface);
   border: none;
   border-radius: 12px;
   padding: 24px;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
-}
-
-:root[data-theme='dark'] .dashboard-proto-card {
-  background: #1f2937;
 }
 
 .dashboard-proto-card h2 {
@@ -384,11 +410,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #4b5563;
-}
-
-:root[data-theme='dark'] .dashboard-proto-stat-head {
-  color: #9ca3af;
+  color: var(--muted-strong);
 }
 
 /* --- Stat icons --- */
@@ -403,33 +425,33 @@
 }
 
 .dashboard-proto-icon.blue {
-  background: #dbeafe;
-  color: #2563eb;
+  background: var(--brand-soft);
+  color: var(--brand);
 }
 
 .dashboard-proto-icon.violet {
-  background: #f3e8ff;
-  color: #9333ea;
+  background: var(--violet-soft);
+  color: var(--violet);
 }
 
 .dashboard-proto-icon.green {
-  background: #dcfce7;
-  color: #16a34a;
+  background: var(--teal-soft);
+  color: var(--teal);
 }
 
 :root[data-theme='dark'] .dashboard-proto-icon.blue {
   background: rgba(30, 58, 138, 0.3);
-  color: #60a5fa;
+  color: var(--brand-on-dark);
 }
 
 :root[data-theme='dark'] .dashboard-proto-icon.violet {
-  background: rgba(107, 33, 168, 0.28);
-  color: #c4b5fd;
+  background: var(--violet-soft);
+  color: var(--violet);
 }
 
 :root[data-theme='dark'] .dashboard-proto-icon.green {
   background: rgba(20, 83, 45, 0.34);
-  color: #4ade80;
+  color: var(--success-on-dark);
 }
 
 /* --- Action button --- */
@@ -438,14 +460,14 @@
   padding: 0 16px;
   border-radius: 6px;
   border: none;
-  background: #2563eb;
-  color: #fff;
+  background: var(--brand);
+  color: var(--surface);
   font-weight: 500;
   width: auto;
 }
 
 .dashboard-proto-action-btn:hover {
-  background: #1d4ed8;
+  background: var(--brand-strong);
 }
 
 .dashboard-proto-mobile-only .dashboard-proto-action-btn {
@@ -458,7 +480,21 @@
   font-size: 1.875rem;
   font-weight: 700;
   color: var(--ink);
+  font-variant-numeric: tabular-nums;
 }
+
+.dashboard-proto-stat-sub {
+  margin-top: 6px;
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--muted-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboard-proto-stat-sub-label {
+  font-weight: 700;
+}
+
 
 /* --- Mobile / Desktop visibility --- */
 .dashboard-proto-mobile-only {
@@ -483,7 +519,7 @@
   padding: 10px 16px;
   border-radius: 10px;
   text-decoration: none;
-  color: #fff;
+  color: var(--surface);
   background: linear-gradient(120deg, var(--brand), var(--brand-strong));
   font-weight: 600;
 }
@@ -503,7 +539,7 @@
 }
 
 .dashboard-proto-capture-zone:hover {
-  border-color: #3b82f6;
+  border-color: var(--brand);
 }
 
 .dashboard-proto-capture-zone input {
@@ -555,8 +591,8 @@
   border-radius: 999px;
   border: none;
   padding: 0;
-  background: #cf3348;
-  color: #fff;
+  background: var(--danger);
+  color: var(--surface);
   display: inline-grid;
   place-items: center;
 }
@@ -590,7 +626,7 @@
   width: 100%;
   min-height: 10px;
   border-radius: 4px 4px 0 0;
-  background: #2563eb;
+  background: var(--brand);
 }
 
 .dashboard-proto-bar-text {
@@ -598,11 +634,11 @@
 }
 
 .dashboard-proto-bar-text.month {
-  color: #4b5563;
+  color: var(--muted-strong);
 }
 
 .dashboard-proto-bar-text.amount {
-  color: #6b7280;
+  color: var(--muted);
 }
 
 /* --- Category donut chart --- */
@@ -638,7 +674,7 @@
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: #4b5563;
+  color: var(--muted-strong);
 }
 
 .dashboard-proto-color {
@@ -690,10 +726,80 @@
   display: grid;
   place-items: center;
   text-align: center;
-  color: #97a3b5;
+  color: var(--muted);
   padding: 10px;
 }
 
 .dashboard-proto-span-2 {
   grid-column: span 2;
+}
+
+/* --- Chart card header (title + info icon row) --- */
+.chart-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.chart-card-header h3 {
+  margin: 0;
+  flex: 1;
+}
+
+/* Info icon button — resets browser button styles */
+.chart-info-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 50%;
+  color: var(--accent);
+  cursor: default;
+  position: relative;
+}
+
+.chart-info-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Tooltip bubble shown on hover / focus-visible */
+.chart-info-btn .chart-info-tip {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  width: 220px;
+  padding: 8px 10px;
+  background: var(--surface-raised, var(--surface));
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  color: var(--fg);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: left;
+  white-space: normal;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.chart-info-btn:hover .chart-info-tip,
+.chart-info-btn:focus-visible .chart-info-tip {
+  display: block;
+}
+
+/* Skeleton for chart card title while data loads */
+.chart-card-title-skeleton {
+  height: 18px;
+  width: 140px;
+  border-radius: 6px;
+  margin-bottom: 8px;
 }

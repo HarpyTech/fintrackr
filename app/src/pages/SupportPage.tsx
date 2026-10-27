@@ -1,0 +1,222 @@
+import { useState, FormEvent } from 'react';
+import { isBillingEnabled } from '../lib/featureFlags';
+import { Mail, MessageCircle, FileText, Phone, Clock, Send } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import SiteFooter from '../components/SiteFooter';
+import PublicHeader from '../components/PublicHeader';
+
+import { SUPPORT_EMAIL } from '../lib/supportEmail';
+
+interface SupportChannel {
+  Icon: LucideIcon;
+  title: string;
+  description: string;
+  detail: string;
+  color: string;
+  action: string;
+  href: string;
+}
+
+const SUPPORT_CHANNELS: SupportChannel[] = [
+  { Icon: Mail, title: 'Email Support', description: 'Get help via email', detail: SUPPORT_EMAIL, color: 'blue', action: 'Send Email', href: `mailto:${SUPPORT_EMAIL}` },
+  { Icon: Phone, title: 'Request a Callback', description: 'Ask us to arrange a call', detail: 'Email us to schedule — we will reply within one business day', color: 'purple', action: 'Request Callback', href: `mailto:${SUPPORT_EMAIL}?subject=Call%20Request` },
+  { Icon: FileText, title: 'Help Center', description: 'Browse guides & FAQs', detail: 'Common questions answered below', color: 'orange', action: 'View FAQs', href: '#faqs' },
+];
+
+interface Faq {
+  question: string;
+  answer: string;
+  billingOnly?: boolean;
+}
+
+const FAQS: Faq[] = [
+  {
+    question: 'How do I reset my password?',
+    answer: "Go to the login page and click 'Forgot Password'. Enter your email address and we'll send you a reset link.",
+  },
+  {
+    question: 'Can I export my expense data?',
+    answer: 'Yes! Go to the Report page and use the toolbar Export button to download your expenses as a CSV file.',
+  },
+  {
+    question: 'How does AI receipt scanning work?',
+    answer: 'Our AI uses OCR (Optical Character Recognition) to read receipt images and automatically extract vendor, amount, date, and line items.',
+  },
+  {
+    question: 'Is my financial data secure?',
+    answer: 'Absolutely. We use encryption in transit (HTTPS) and at rest to protect your data. Your information is never shared with third parties.',
+  },
+  {
+    question: 'How do I upgrade my plan?',
+    answer: 'Go to the Billing page from the sidebar. You can view available plans and upgrade directly from there.',
+    billingOnly: true,
+  },
+  {
+    question: 'Can I change my plan anytime?',
+    answer: 'Yes, you can upgrade or downgrade your plan at any time from the Billing page. Changes take effect immediately.',
+    billingOnly: true,
+  },
+];
+
+export default function SupportPage() {
+  const [formData, setFormData] = useState({ name: '', email: '', subject: '', message: '' });
+  const [submitted, setSubmitted] = useState(false);
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    const subject = encodeURIComponent(`[Support] ${formData.subject || 'General Inquiry'} — ${formData.name}`);
+    const body = encodeURIComponent(
+      `Name: ${formData.name}\nEmail: ${formData.email}\nSubject: ${formData.subject}\n\n${formData.message}`
+    );
+    window.location.href = `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
+    setSubmitted(true);
+    setTimeout(() => setSubmitted(false), 4000);
+  }
+
+  return (
+    <div className="support-proto">
+      <PublicHeader />
+
+      <div className="support-proto-container">
+        {/* Page header */}
+        <div className="support-proto-page-header">
+          <h1 className="support-proto-title">How Can We Help?</h1>
+          <p className="support-proto-subtitle">Get the support you need, when you need it</p>
+        </div>
+
+        {/* Support Channels */}
+        <div className="support-proto-channels">
+          {SUPPORT_CHANNELS.map((ch, idx) => (
+            <div key={idx} className="support-proto-channel-card">
+              <div className={`support-proto-channel-icon support-proto-icon-${ch.color}`}>
+                <ch.Icon size={24} />
+              </div>
+              <h3 className="support-proto-channel-title">{ch.title}</h3>
+              <p className="support-proto-channel-desc">{ch.description}</p>
+              <p className="support-proto-channel-detail">{ch.detail}</p>
+              <a href={ch.href} className="support-proto-channel-action">{ch.action}</a>
+            </div>
+          ))}
+        </div>
+
+        {/* Contact form + Office info */}
+        <div className="support-proto-main-grid">
+          {/* Contact Form */}
+          <div className="support-proto-card">
+            <h2 className="support-proto-card-title">Send Us a Message</h2>
+            {submitted ? (
+              <div className="support-proto-form-success">
+                Your email client will open with this message pre-filled. Send it from there to reach us.
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="support-proto-form">
+                <label className="support-proto-form-label">
+                  Name
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={e => setFormData({ ...formData, name: e.target.value })}
+                    className="support-proto-form-input"
+                    required
+                  />
+                </label>
+                <label className="support-proto-form-label">
+                  Email
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={e => setFormData({ ...formData, email: e.target.value })}
+                    className="support-proto-form-input"
+                    required
+                  />
+                </label>
+                <label className="support-proto-form-label">
+                  Subject
+                  <select
+                    value={formData.subject}
+                    onChange={e => setFormData({ ...formData, subject: e.target.value })}
+                    className="support-proto-form-select"
+                    required
+                  >
+                    <option value="">Select a topic</option>
+                    <option value="technical">Technical Issue</option>
+                    <option value="billing">Billing Question</option>
+                    <option value="feature">Feature Request</option>
+                    <option value="other">Other</option>
+                  </select>
+                </label>
+                <label className="support-proto-form-label">
+                  Message
+                  <textarea
+                    value={formData.message}
+                    onChange={e => setFormData({ ...formData, message: e.target.value })}
+                    className="support-proto-form-textarea"
+                    rows={4}
+                    required
+                  />
+                </label>
+                <button type="submit" className="support-proto-form-submit">
+                  <Send size={16} />
+                  Open Email App
+                </button>
+              </form>
+            )}
+          </div>
+
+          {/* Office info */}
+          <div className="support-proto-info-stack">
+            <div className="support-proto-card">
+              <h2 className="support-proto-card-title">Office Hours</h2>
+              <div className="support-proto-info-items">
+                <div className="support-proto-info-item">
+                  <Clock size={20} className="support-proto-info-icon" />
+                  <div>
+                    <p className="support-proto-info-item-title">Support Hours</p>
+                    <p className="support-proto-info-item-detail">
+                      Monday – Friday: 9:00 AM – 6:00 PM PST<br />
+                      Saturday: 10:00 AM – 4:00 PM PST<br />
+                      Sunday: Closed
+                    </p>
+                  </div>
+                </div>
+                <div className="support-proto-info-item">
+                  <Mail size={20} className="support-proto-info-icon" />
+                  <div>
+                    <p className="support-proto-info-item-title">Contact</p>
+                    <p className="support-proto-info-item-detail">
+                      <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="support-proto-urgent">
+              <h3 className="support-proto-urgent-title">Need Immediate Help?</h3>
+              <p className="support-proto-urgent-text">
+                For urgent issues, email us and mark the subject “Urgent” so we can prioritise it.
+              </p>
+              <a href={`mailto:${SUPPORT_EMAIL}`} className="support-proto-urgent-btn">
+                <MessageCircle size={16} />
+                Email Us Now
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {/* FAQs */}
+        <div id="faqs" className="support-proto-faq">
+          <h2 className="support-proto-faq-title">Frequently Asked Questions</h2>
+          <div className="support-proto-faq-list">
+            {FAQS.filter((faq) => !faq.billingOnly || isBillingEnabled).map((faq, idx) => (
+              <div key={idx} className="support-proto-faq-item">
+                <h3 className="support-proto-faq-question">{faq.question}</h3>
+                <p className="support-proto-faq-answer">{faq.answer}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      <SiteFooter />
+    </div>
+  );
+}

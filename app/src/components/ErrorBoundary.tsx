@@ -1,0 +1,98 @@
+import { Component, ErrorInfo, ReactNode } from 'react';
+import { AlertTriangle } from 'lucide-react';
+
+interface ErrorBoundaryProps {
+  children: ReactNode;
+  fallback?: ReactNode;
+  label?: string;
+  title?: string;
+  body?: string;
+  /** Lets a caller reset the boundary without remounting its subtree via `key`. */
+  resetKey?: unknown;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+}
+
+/**
+ * Catches render-time exceptions in the subtree.
+ *
+ * The charts already handle `loading` and `error` props, but those only cover
+ * failed requests. A malformed row reaching Recharts throws during render,
+ * and without a boundary React unmounts the whole tree — which previously
+ * turned one bad chart into a blank dashboard.
+ *
+ * Must be a class component: there is no hook equivalent of
+ * componentDidCatch / getDerivedStateFromError.
+ */
+export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+    this.handleRetry = this.handleRetry.bind(this);
+  }
+
+  static getDerivedStateFromError(): ErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidUpdate(prevProps: ErrorBoundaryProps) {
+    // Lets a caller reset the boundary without remounting its subtree via
+    // `key` — App.tsx needs this so route changes clear a stale crash
+    // without also tearing down the AnimatePresence tree used for page
+    // transitions.
+    if (
+      this.state.hasError &&
+      this.props.resetKey !== undefined &&
+      this.props.resetKey !== prevProps.resetKey
+    ) {
+      this.setState({ hasError: false });
+    }
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `[ErrorBoundary] ${this.props.label || 'component'} failed to render`,
+      error,
+      info,
+    );
+  }
+
+  handleRetry() {
+    this.setState({ hasError: false });
+  }
+
+  render() {
+    if (!this.state.hasError) {
+      return this.props.children;
+    }
+
+    if (this.props.fallback) {
+      return this.props.fallback;
+    }
+
+    return (
+      <div className="error-boundary" role="alert">
+        <span className="error-boundary-icon" aria-hidden="true">
+          <AlertTriangle />
+        </span>
+        <p className="error-boundary-title">
+          {this.props.title || 'Something went wrong here'}
+        </p>
+        <p className="error-boundary-body">
+          {this.props.body ||
+            'This section could not be displayed. The rest of the page is unaffected.'}
+        </p>
+        <button
+          type="button"
+          className="secondary-button error-boundary-retry"
+          onClick={this.handleRetry}
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
+}

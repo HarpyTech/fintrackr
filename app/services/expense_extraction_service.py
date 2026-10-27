@@ -1,10 +1,14 @@
-from __future__ import annotations
+from __future__ import annotations  # noqa: I001
 
-from datetime import date, datetime
-from io import BytesIO
+# Gemini payloads are validated dynamically by Pydantic before use.
+# mypy cannot infer the narrowed shape of those dictionaries.
+# mypy: disable-error-code="arg-type, union-attr, operator"
+
 import json
 import logging
 import re
+from datetime import date, datetime
+from io import BytesIO
 from typing import Any
 
 import google.generativeai as genai
@@ -12,6 +16,7 @@ from PIL import Image, UnidentifiedImageError
 from pydantic import ValidationError
 
 from app.core.config import settings
+from app.core.timeutil import local_today
 from app.models.expense import ExpenseCreate
 
 logger = logging.getLogger(__name__)
@@ -46,8 +51,8 @@ _NO_VENDOR_PHRASES = frozenset(
 
 def _build_prompt() -> str:
     """Build the extraction prompt with today's date injected."""
-    today = date.today().isoformat()
-    today_year = date.today().year
+    today = local_today().isoformat()
+    today_year = local_today().year
     return f"""
                 Help me organize this purchase info.
                 I need it in JSON format so I can track my spending.
@@ -237,12 +242,20 @@ def _generate_and_parse_json_with_retries(
     raise RuntimeError("Could not obtain valid JSON from Gemini after 2 retries")
 
 
+_GEMINI_TIMEOUT_SECONDS = 30
+
+
 def _generate_model_text(
     model: genai.GenerativeModel,
     parts: list[Any],
 ) -> str:
     """Generate raw text from Gemini."""
-    response = model.generate_content(parts)
+    try:
+        response = model.generate_content(
+            parts, request_options={"timeout": _GEMINI_TIMEOUT_SECONDS}
+        )
+    except Exception as exc:  # the SDK raises many transport error types
+        raise RuntimeError("Gemini request failed or timed out") from exc
 
     if response.candidates and response.candidates[0].finish_reason == 2:
         raise ValueError(
@@ -281,7 +294,7 @@ def _parse_json_from_model(raw_text: str) -> dict[str, Any]:
 
     match = _JSON_OBJECT_PATTERN.search(cleaned)
     if not match:
-        logger.warning(f"No JSON object found in model output: {raw_text}")
+        logger.warning("No JSON object found in model output")
         raise RuntimeError("Could not find a JSON object in model output")
 
     return json.loads(match.group(0))
@@ -323,6 +336,7 @@ def _normalize_payload(
     )
 
     expense_date = _normalize_date(raw.get("expense_date") or raw.get("date"))
+    expense_date = expense_date or local_today()
 
     payload = {
         "amount": round(amount, 2),
@@ -391,7 +405,7 @@ def _normalize_text_chat_payload(
         ),
         "vendor": vendor,
         "description": description,
-        "expense_date": (expense_date or date.today()).isoformat(),
+        "expense_date": (expense_date or local_today()).isoformat(),
         "line_items": [],
     }
 
@@ -434,6 +448,9 @@ def _normalize_line_items(raw_items: Any) -> list[dict[str, Any]]:
         if invalid_row:
             continue
 
+        if total is None:
+            continue
+
         if unit_price is None:
             unit_price = total / quantity
 
@@ -451,11 +468,11 @@ def _normalize_line_items(raw_items: Any) -> list[dict[str, Any]]:
 
 def _normalize_date(value: Any, default_to_today: bool = True) -> date | None:
     if not value:
-        return date.today() if default_to_today else None
+        return local_today() if default_to_today else None
 
     raw = str(value).strip()
     if not raw:
-        return date.today() if default_to_today else None
+        return local_today() if default_to_today else None
 
     try:
         return date.fromisoformat(raw[:10])
@@ -463,14 +480,14 @@ def _normalize_date(value: Any, default_to_today: bool = True) -> date | None:
         try:
             return datetime.fromisoformat(raw).date()
         except ValueError:
-            return date.today() if default_to_today else None
+            return local_today() if default_to_today else None
 
 
 def _to_float(value: Any) -> float | None:
     if value is None:
         return None
 
-    if isinstance(value, (int, float)):
+    if isinstance(value, int | float):
         return float(value)
 
     text = str(value).strip()

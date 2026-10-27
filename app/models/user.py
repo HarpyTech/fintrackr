@@ -28,6 +28,7 @@ class UserPublic(BaseModel):
 class UserInDB(UserPublic):
     password_hash: str
     email_verified: bool = False
+    tenant_id: str = ""
 
 
 class UserProfile(BaseModel):
@@ -37,6 +38,11 @@ class UserProfile(BaseModel):
     last_name: str | None = None
     phone: str | None = None
     address: str | None = None
+    plan: str = "free"
+    expense_limit: int = 15
+    disable_rate_limit: bool = False
+    # IANA zone the user picked; None means "follow the browser".
+    timezone: str | None = None
 
 
 class UserProfileUpdate(BaseModel):
@@ -44,6 +50,7 @@ class UserProfileUpdate(BaseModel):
     last_name: str | None = Field(default=None, max_length=80)
     phone: str | None = Field(default=None, max_length=30)
     address: str | None = Field(default=None, max_length=250)
+    timezone: str | None = Field(default=None, max_length=64)
 
 
 class ForgotPasswordRequest(BaseModel):

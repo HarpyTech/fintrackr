@@ -1,13 +1,15 @@
 import json
 import logging
-from typing import Any
+import os
+from typing import Annotated, Any
 
-from pydantic import field_validator
-from pydantic_settings import BaseSettings
+from pydantic import field_validator, model_validator
+from pydantic_settings import BaseSettings, NoDecode
 
 # Configure logging before any other code runs
+_log_level = os.getenv("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
-    level=logging.INFO,
+    level=getattr(logging, _log_level, logging.INFO),
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 
@@ -18,11 +20,28 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Secure FastAPI"
     API_V1_STR: str = "/api/v1"
 
+    # Deployment environment. Drives docs exposure and security headers.
+    # Accepted values: development | staging | production
+    #
+    # Left empty by default, which means "auto-detect". The Cloud Run deploy
+    # pipeline builds its env file from a fixed allow-list of secrets and has
+    # no entry for this key, so it can never be supplied there — detection
+    # falls back to the K_SERVICE name Cloud Run injects. See is_production.
+    ENVIRONMENT: str = ""
+
     SECRET_KEY: str
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    # Active cookie sessions slide, but never past this long after sign-in.
+    SESSION_MAX_HOURS: int = 12
+
+    # Used for "today" when the browser sends no valid X-Timezone header.
+    DEFAULT_TIMEZONE: str = "Asia/Kolkata"
+
+    # Emails that always get the platform admin role (comma-separated).
+    ADMIN_EMAILS: Annotated[list[str], NoDecode] = []
     ALGORITHM: str = "HS256"
 
-    CORS_ORIGINS: list[str] = [
+    CORS_ORIGINS: Annotated[list[str], NoDecode] = [
         "http://localhost:3000",
         "http://localhost:5173",
         "http://127.0.0.1:3000",
@@ -47,8 +66,35 @@ class Settings(BaseSettings):
     GEMINI_MODEL: str = "gemini-2.5-flash"
     BUILD_VERSION: str = "dev"
 
+    # --- Analytics agent -------------------------------------------------
+    # The Cloud Run deploy workflow builds its env file from a fixed APP_*
+    # allow-list, so none of these can be supplied there. Each default must
+    # therefore be safe to run with as-is.
+    ANALYTICS_AGENT_ENABLED: bool = True
+    # Per-user Gemini call allowance for the analytics feature.
+    ANALYTICS_LLM_CALLS_PER_WINDOW: int = 20
+    ANALYTICS_LLM_WINDOW_MINUTES: int = 10
+    # Ceiling on model calls for a single question (1 author + 1 repair).
+    ANALYTICS_MAX_LLM_CALLS_PER_MESSAGE: int = 2
+    # Narration is template-driven by default; enabling this spends an extra
+    # model call per question.
+    ANALYTICS_NARRATIVE_LLM: bool = False
+    # Timeout for a single Gemini request, in seconds.
+    ANALYTICS_LLM_TIMEOUT_SECONDS: int = 12
+
+    # OpenTelemetry — OTLP export endpoint (e.g. http://otel-collector:4318)
+    # Leave empty to disable OTel entirely (default: no-op).
+    OTEL_EXPORTER_OTLP_ENDPOINT: str = ""
+
     SIGNUP_OTP_EXPIRY_MINUTES: int = 2
     SIGNUP_OTP_LENGTH: int = 6
+    SIGNUP_OTP_MAX_ATTEMPTS: int = 3
+    SIGNUP_OTP_WINDOW_MINUTES: int = 10
+
+    # Observability
+    LOG_LEVEL: str = "INFO"
+    SENTRY_DSN: str = ""
+    MAX_UPLOAD_SIZE_MB: int = 10
 
     SMTP_HOST: str | None = None
     SMTP_PORT: int = 587
@@ -58,7 +104,34 @@ class Settings(BaseSettings):
     SMTP_USE_SSL: bool = False
     SMTP_TIMEOUT_SECONDS: int = 15
     SMTP_FROM_EMAIL: str = "no-reply@my-finance.local"
-    SMTP_BCC_EMAILS: list[str] = ["no-reply@harpytechco.in"]
+    SMTP_BCC_EMAILS: Annotated[list[str], NoDecode] = []
+
+    # --- Frontend runtime config ------------------------------------------
+    # Public, non-secret values served to the SPA at /runtime-config.js so a
+    # flag change needs only a redeploy, not an image rebuild.
+    FEATURE_SUPPORT_PAGE_ENABLED: bool = True
+    FEATURE_BILLING_ENABLED: bool = False
+    FEATURE_ADMIN_ENABLED: bool = False
+    # Also gates the /auth/google endpoints server-side, not just the button.
+    FEATURE_GOOGLE_SIGNIN_ENABLED: bool = False
+    SUPPORT_EMAIL: str = ""
+
+    # --- Google OAuth2 ---------------------------------------------------
+    GOOGLE_CLIENT_ID: str | None = None
+    GOOGLE_CLIENT_SECRET: str | None = None
+    # Redirect URI must match what is registered in Google Cloud Console.
+    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/v1/auth/google/callback"
+    # Restrict sign-in to these domains (comma-separated). Empty = any account.
+    GOOGLE_ALLOWED_DOMAINS: Annotated[list[str], NoDecode] = []
+
+    @field_validator("GOOGLE_ALLOWED_DOMAINS", "ADMIN_EMAILS", mode="before")
+    @classmethod
+    def parse_google_allowed_domains(cls, value: Any) -> Any:
+        if not value:
+            return []
+        if not isinstance(value, str):
+            return value
+        return [d.strip().lower() for d in value.split(",") if d.strip()]
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
@@ -109,11 +182,62 @@ class Settings(BaseSettings):
 
         return [email.strip() for email in normalized.split(",") if email.strip()]
 
-    model_config = {"env_file": ".env", "case_sensitive": True}
+    @property
+    def cloud_run_service(self) -> str:
+        """
+        Cloud Run injects K_SERVICE into every container it starts. Empty
+        string when running anywhere else (local, docker-compose, CI).
+        """
+        return os.getenv("K_SERVICE", "")
+
+    @property
+    def is_cloud_run(self) -> bool:
+        return bool(self.cloud_run_service)
+
+    @property
+    def is_production(self) -> bool:
+        """
+        True when running in a production deployment.
+
+        An explicit ENVIRONMENT always wins. When it is unset the value is
+        inferred from the Cloud Run service name, which the deploy workflow
+        suffixes with -prod on main and -dev on develop.
+        """
+        explicit = self.ENVIRONMENT.strip().lower()
+        if explicit:
+            return explicit in {"production", "prod"}
+
+        return self.cloud_run_service.endswith("-prod")
+
+    @model_validator(mode="after")
+    def _harden_cookies_when_deployed(self) -> "Settings":
+        """
+        Force Secure cookies on Cloud Run.
+
+        Cloud Run terminates TLS in front of every revision, so the service is
+        only ever reachable over HTTPS. COOKIE_SECURE cannot be delivered
+        through the deploy pipeline, and its False default would otherwise
+        leave the session and WebAuthn cookies without the Secure flag in a
+        deployed environment.
+        """
+        if self.is_cloud_run and not self.COOKIE_SECURE:
+            self.COOKIE_SECURE = True
+            logger.info("Cloud Run detected — forcing COOKIE_SECURE=True")
+        return self
+
+    model_config = {
+        "env_file": ".env",
+        "case_sensitive": True,
+        # The .env file is shared with the Vite frontend (VITE_*) and holds
+        # keys consumed outside this model, so unknown entries must not fail
+        # startup.
+        "extra": "ignore",
+    }
 
 
 try:
-    settings = Settings()
+    settings_factory: Any = Settings
+    settings = settings_factory()
     logger.info("Configuration loaded successfully")
     logger.info(f"Project: {settings.PROJECT_NAME}")
     logger.info(f"MongoDB Database: {settings.MONGODB_DB}")

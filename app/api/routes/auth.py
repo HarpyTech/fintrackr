@@ -1,24 +1,36 @@
-from fastapi import APIRouter, HTTPException, Request, Response, status
 import logging
+import secrets
 
+from fastapi import APIRouter, HTTPException, Request, Response, status
+from fastapi.responses import RedirectResponse
+
+from app.core.admins import resolve_role
 from app.core.config import settings
-from app.core.security import create_access_token
-from app.core.ratelimit import OtpRateLimitError
-from app.services.auth_service import (
-    authenticate_user,
-    register_user,
-    resend_signup_otp,
-    verify_user_signup_otp,
-    request_password_reset,
-    reset_password_with_otp,
+from app.core.ratelimit import (
+    LoginRateLimitError,
+    OtpRateLimitError,
+    check_and_record_login_attempt,
+    clear_login_attempts,
 )
+from app.core.security import create_access_token
 from app.models.user import (
+    ForgotPasswordRequest,
+    ResetPasswordPayload,
     UserCreate,
     UserLogin,
     UserResendOtp,
     UserVerifySignup,
-    ForgotPasswordRequest,
-    ResetPasswordPayload,
+)
+from app.services.auth_service import (
+    authenticate_user,
+    build_google_auth_url,
+    exchange_google_code,
+    oauth_login_or_create,
+    register_user,
+    request_password_reset,
+    resend_signup_otp,
+    reset_password_with_otp,
+    verify_user_signup_otp,
 )
 
 router = APIRouter()
@@ -40,12 +52,35 @@ def _set_session_cookie(response: Response, token: str) -> None:
     )
 
 
+def _client_ip(request: Request) -> str:
+    """Best-effort client address. Cloud Run's front end appends the connecting
+    address to X-Forwarded-For, so only the last hop is not client-supplied."""
+    hops = [
+        h.strip()
+        for h in request.headers.get("x-forwarded-for", "").split(",")
+        if h.strip()
+    ]
+    if hops:
+        return hops[-1]
+    return request.client.host if request.client else ""
+
+
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 def api_register(payload: UserCreate):
     """Start registration by generating OTP and sending it to email"""
     logger.info("Registration OTP request received")
     try:
         user = register_user(payload.username, payload.password)
+    except ValueError as exc:
+        if str(exc) == "ACCOUNT_DELETED":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "An account with this email was recently deleted. "
+                    "Check your email for a reactivation link, or contact support."
+                ),
+            ) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except OtpRateLimitError as exc:
         logger.warning(f"Rate limit exceeded for registration: {payload.username}")
         response = Response(status_code=429)
@@ -167,8 +202,10 @@ async def api_login(request: Request, response: Response):
         logger.debug("JSON login attempt received")
     else:
         form = await request.form()
-        username = form.get("username", "")
-        password = form.get("password", "")
+        form_username = form.get("username", "")
+        form_password = form.get("password", "")
+        username = form_username if isinstance(form_username, str) else ""
+        password = form_password if isinstance(form_password, str) else ""
         logger.debug("Form login attempt received")
 
     if not username or not password:
@@ -176,6 +213,17 @@ async def api_login(request: Request, response: Response):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="username and password are required",
+        )
+
+    try:
+        # Lockout is per account, so rotating source addresses cannot reset it.
+        check_and_record_login_attempt(username)
+        check_and_record_login_attempt(f"ip:{_client_ip(request)}", max_attempts=50)
+    except LoginRateLimitError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=exc.args[0],
+            headers={"Retry-After": str(exc.retry_after_seconds)},
         )
 
     try:
@@ -194,6 +242,8 @@ async def api_login(request: Request, response: Response):
             detail="Invalid credentials",
         )
 
+    clear_login_attempts(username)
+
     if user.get("requires_verification"):
         logger.warning("Login failed: User email not verified")
         raise HTTPException(
@@ -201,7 +251,13 @@ async def api_login(request: Request, response: Response):
             detail="Email not verified. Please verify your email using OTP.",
         )
 
-    token = create_access_token({"username": user["username"], "role": user["role"]})
+    token = create_access_token(
+        {
+            "username": user["username"],
+            "role": user["role"],
+            "tenant_id": user.get("tenant_id", user["username"]),
+        }
+    )
 
     _set_session_cookie(response, token)
 
@@ -341,103 +397,89 @@ def get_csrf_token(request: Request):
     return {"csrf_token": token}
 
 
-@router.get("/test-email")
-def test_email_delivery(to_email: str):
-    """Test SMTP email delivery (development only).
+# ---------------------------------------------------------------------------
+# Google OAuth2
+# ---------------------------------------------------------------------------
 
-    Public endpoint that sends a test email to the provided address.
-    Returns success/failure status and helpful debug info.
-    """
-    from app.core.config import settings
-    import socket
-    import smtplib
-    from email.message import EmailMessage
 
-    logger.info(f"Testing email delivery for {to_email}")
+_GOOGLE_SIGNIN_UNAVAILABLE_URL = "/login?error=oauth_unavailable"
 
-    if not settings.SMTP_HOST:
-        return {
-            "status": "not_configured",
-            "message": (
-                "SMTP is not configured. Configure SMTP_HOST "
-                "in environment to send real emails."
-            ),
-            "smtp_host": None,
-        }
 
-    try:
-        subject = "FinTrackr - Test Email"
-        body = (
-            "This is a test email from FinTrackr. "
-            "If you received this, SMTP is working correctly!"
+@router.get("/google")
+def google_auth_redirect(response: Response):
+    """Redirect the browser to Google's OAuth2 consent screen."""
+    if not settings.FEATURE_GOOGLE_SIGNIN_ENABLED:
+        return RedirectResponse(url=_GOOGLE_SIGNIN_UNAVAILABLE_URL, status_code=302)
+    if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_CLIENT_SECRET:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Google OAuth is not configured",
+        )
+    state = secrets.token_urlsafe(16)
+    url = build_google_auth_url(state)
+    resp = RedirectResponse(url=url, status_code=302)
+    resp.set_cookie(
+        "oauth_state",
+        state,
+        httponly=True,
+        secure=settings.COOKIE_SECURE,
+        samesite="lax",
+        max_age=300,
+    )
+    return resp
+
+
+@router.get("/google/callback")
+def google_auth_callback(
+    request: Request,
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+):
+    """Handle the OAuth2 callback: exchange code, issue JWT, set cookie."""
+    if not settings.FEATURE_GOOGLE_SIGNIN_ENABLED:
+        return RedirectResponse(url=_GOOGLE_SIGNIN_UNAVAILABLE_URL, status_code=302)
+
+    if error:
+        logger.warning("Google OAuth error: %s", error)
+        return RedirectResponse(url="/login?error=oauth_denied", status_code=302)
+
+    if not code:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Missing authorization code",
         )
 
-        logger.info("Preparing test email message")
-
-        message = EmailMessage()
-        message["Subject"] = subject
-        message["From"] = settings.SMTP_FROM_EMAIL
-        message["To"] = to_email
-        if settings.SMTP_BCC_EMAILS:
-            message["Bcc"] = ", ".join(settings.SMTP_BCC_EMAILS)
-        message.set_content(body)
-
-        smtp_client = smtplib.SMTP_SSL if settings.SMTP_USE_SSL else smtplib.SMTP
-
-        with smtp_client(
-            settings.SMTP_HOST,
-            settings.SMTP_PORT,
-            timeout=settings.SMTP_TIMEOUT_SECONDS,
-        ) as server:
-            if not settings.SMTP_USE_SSL:
-                server.ehlo()
-                if settings.SMTP_USE_TLS:
-                    if not server.has_extn("STARTTLS"):
-                        raise HTTPException(
-                            status_code=status.HTTP_502_BAD_GATEWAY,
-                            detail=(
-                                "SMTP server does not support STARTTLS. "
-                                "Disable SMTP_USE_TLS "
-                                "or use a TLS-capable server."
-                            ),
-                        )
-                    server.starttls()
-                    server.ehlo()
-            if settings.SMTP_USERNAME and settings.SMTP_PASSWORD:
-                server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
-            server.send_message(message)
-
-        logger.info(f"Test email sent successfully to {to_email}")
-        return {
-            "status": "success",
-            "message": f"Test email sent to {to_email}",
-            "smtp_host": settings.SMTP_HOST,
-            "smtp_port": settings.SMTP_PORT,
-            "from_email": settings.SMTP_FROM_EMAIL,
-        }
-
-    except HTTPException:
-        raise
-    except (
-        TimeoutError,
-        socket.timeout,
-        smtplib.SMTPServerDisconnected,
-    ) as exc:
-        logger.error(f"Failed to send test email: {str(exc)}", exc_info=True)
-        mode = "ssl" if settings.SMTP_USE_SSL else "plain/starttls"
+    stored_state = request.cookies.get("oauth_state")
+    if not state or state != stored_state:
         raise HTTPException(
-            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-            detail=(
-                "SMTP connection timed out or was closed by server. "
-                f"host={settings.SMTP_HOST} "
-                f"port={settings.SMTP_PORT} "
-                f"mode={mode}. "
-                "Verify SMTP_HOST/SMTP_PORT and TLS/SSL settings."
-            ),
-        ) from exc
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid OAuth state — possible CSRF",
+        )
+
+    try:
+        userinfo = exchange_google_code(code)
+        user = oauth_login_or_create(userinfo)
+    except PermissionError as exc:
+        logger.warning("Google OAuth domain not allowed: %s", str(exc))
+        return RedirectResponse(
+            url="/login?error=domain_not_allowed",
+            status_code=302,
+        )
     except Exception as exc:
-        logger.error(f"Failed to send test email: {str(exc)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Failed to send test email: {str(exc)}",
-        ) from exc
+        logger.error("Google OAuth callback failed: %s", str(exc), exc_info=True)
+        return RedirectResponse(url="/login?error=oauth_failed", status_code=302)
+
+    token = create_access_token(
+        {
+            "username": user["username"],
+            "role": resolve_role(user["username"], user.get("role")),
+            "tenant_id": user.get("tenant_id", user["username"]),
+        }
+    )
+
+    resp = RedirectResponse(url="/dashboard", status_code=302)
+    _set_session_cookie(resp, token)
+    resp.delete_cookie("oauth_state")
+    logger.info("Google OAuth login successful for %s", user["username"])
+    return resp

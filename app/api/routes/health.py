@@ -1,5 +1,7 @@
-from fastapi import APIRouter
 import logging
+
+from fastapi import APIRouter
+from fastapi.responses import JSONResponse
 
 from app.core.config import settings
 from app.db.mongo import ping_database
@@ -31,24 +33,25 @@ def build_health_check():
     logger.info("Build health check requested")
     try:
         mongo_up = ping_database()
-        if mongo_up:
-            logger.info("Health check: All systems operational")
-        else:
-            logger.warning("Health check: MongoDB is DOWN")
-        return {
+        payload = {
             "status": "UP" if mongo_up else "DEGRADED",
             "build_ready": mongo_up,
             "mongo": "UP" if mongo_up else "DOWN",
             "service": settings.PROJECT_NAME,
             "build_version": settings.BUILD_VERSION,
         }
+        if mongo_up:
+            logger.info("Health check: All systems operational")
+            return payload
+        logger.warning("Health check: MongoDB is DEGRADED")
+        return JSONResponse(status_code=503, content=payload)
     except Exception as exc:
-        logger.error(f"Health check failed with error: {str(exc)}", exc_info=True)
-        return {
+        logger.error(f"Health check failed: {type(exc).__name__}", exc_info=True)
+        payload = {
             "status": "DOWN",
             "build_ready": False,
             "mongo": "ERROR",
             "service": settings.PROJECT_NAME,
             "build_version": settings.BUILD_VERSION,
-            "error": str(exc),
         }
+        return JSONResponse(status_code=503, content=payload)

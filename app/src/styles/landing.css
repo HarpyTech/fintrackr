@@ -211,3 +211,8 @@
   max-width: 640px;
   color: var(--muted);
 }
+
+a.landing-brand-row {
+  color: inherit;
+  text-decoration: none;
+}

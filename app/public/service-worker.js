@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = '__CACHE_VERSION__';
 const CORE_CACHE = `fintrackr-core-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `fintrackr-runtime-${CACHE_VERSION}`;
 const API_CACHE = `fintrackr-api-${CACHE_VERSION}`;
@@ -74,8 +74,15 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // API responses are per-user financial data: never cache them, so nothing
+  // survives logout or is served to the next person on a shared device.
   if (url.pathname.startsWith('/api/')) {
-    event.respondWith(networkFirst(request, API_CACHE));
+    return;
+  }
+
+  // Feature flags change per deploy; never serve a stale copy while online.
+  if (url.pathname === '/runtime-config.js') {
+    event.respondWith(networkFirst(request, RUNTIME_CACHE));
     return;
   }
 
@@ -273,14 +280,47 @@ async function deleteQueuedRequest(id) {
   });
 }
 
+async function currentCsrfToken() {
+  // The CSRF cookie is readable by the page, not the worker; /auth/csrf echoes
+  // it back. The first call may only set the cookie, so ask twice.
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const response = await fetch(new URL('/api/v1/auth/csrf', self.location.origin), {
+      credentials: 'include',
+    });
+    const { csrf_token: token } = await response.json();
+    if (token) return token;
+  }
+  return '';
+}
+
+async function currentSessionUser() {
+  const response = await fetch(new URL('/api/v1/auth/session', self.location.origin), {
+    credentials: 'include',
+  });
+  if (!response.ok) return null;
+  const { user } = await response.json();
+  return user || null;
+}
+
 async function syncQueuedRequests() {
   const queuedRequests = await getQueuedRequests();
+  if (queuedRequests.length === 0) return;
 
-  for (const item of queuedRequests.sort((left, right) => left.queuedAt - right.queuedAt)) {
+  // Replay only for the person who queued each write, so an expense never
+  // lands in whichever account happens to be signed in later.
+  const sessionUser = await currentSessionUser();
+  if (!sessionUser) {
+    throw new Error('Not signed in; queued expenses will sync after sign-in.');
+  }
+  const csrfToken = await currentCsrfToken();
+  const ownedRequests = queuedRequests.filter((item) => !item.owner || item.owner === sessionUser);
+
+  for (const item of ownedRequests.sort((left, right) => left.queuedAt - right.queuedAt)) {
     try {
       const response = await fetch(item.url, {
         method: item.method,
-        headers: item.headers,
+        // The CSRF value captured at queue time may have rotated since.
+        headers: { ...item.headers, 'x-csrf-token': csrfToken },
         body: item.body,
         credentials: 'include',
       });
@@ -294,7 +334,11 @@ async function syncQueuedRequests() {
         continue;
       }
 
-      if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+      // 401/403 mean "signed out" or "stale CSRF", not "bad expense": keep the
+      // item and retry after the user signs in again.
+      // 409 means the same Idempotency-Key is still being processed.
+      const retryable = [401, 403, 409, 429].includes(response.status);
+      if (response.status >= 400 && response.status < 500 && !retryable) {
         await deleteQueuedRequest(item.id);
         await notifyClients({
           type: 'FINTRACKR_OFFLINE_REQUEST_FAILED',

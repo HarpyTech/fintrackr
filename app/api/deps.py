@@ -1,9 +1,25 @@
-from fastapi import Depends, HTTPException, status, Request
+from fastapi import HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import jwt, JWTError
-from app.core.config import settings
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+
+
+def get_current_tenant(request: Request):
+    """Get the current user's tenant_id from request state.
+
+    Falls back to username for tokens issued before tenant_id was added.
+    """
+    tenant_id = getattr(request.state, "tenant_id", None)
+    if not tenant_id:
+        user = getattr(request.state, "user", None)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Not authenticated",
+            )
+        return user
+    return tenant_id
+
 
 def get_current_user(request: Request):
     """
@@ -37,7 +53,7 @@ def require_admin(request: Request):
     """
     Dependency to require admin role.
     Use this in endpoints that should only be accessible to admins.
-    
+
     Example:
         @router.get("/admin-only")
         def admin_endpoint(user: str = Depends(require_admin)):
@@ -55,7 +71,7 @@ def require_admin(request: Request):
 def require_role(required_role: str):
     """
     Factory function to create a role-based authorization dependency.
-    
+
     Example:
         @router.get("/moderator-only")
         def moderator_endpoint(user: str = Depends(require_role("moderator"))):
@@ -69,5 +85,5 @@ def require_role(required_role: str):
                 detail=f"{required_role.capitalize()} access required"
             )
         return role
-    
+
     return check_role
