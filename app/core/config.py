@@ -1,10 +1,10 @@
 import json
 import logging
 import os
-from typing import Any
+from typing import Annotated, Any
 
 from pydantic import field_validator, model_validator
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, NoDecode
 
 # Configure logging before any other code runs
 _log_level = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -38,10 +38,10 @@ class Settings(BaseSettings):
     DEFAULT_TIMEZONE: str = "Asia/Kolkata"
 
     # Emails that always get the platform admin role (comma-separated).
-    ADMIN_EMAILS: list[str] = []
+    ADMIN_EMAILS: Annotated[list[str], NoDecode] = []
     ALGORITHM: str = "HS256"
 
-    CORS_ORIGINS: list[str] = [
+    CORS_ORIGINS: Annotated[list[str], NoDecode] = [
         "http://localhost:3000",
         "http://localhost:5173",
         "http://127.0.0.1:3000",
@@ -104,7 +104,7 @@ class Settings(BaseSettings):
     SMTP_USE_SSL: bool = False
     SMTP_TIMEOUT_SECONDS: int = 15
     SMTP_FROM_EMAIL: str = "no-reply@my-finance.local"
-    SMTP_BCC_EMAILS: list[str] = []
+    SMTP_BCC_EMAILS: Annotated[list[str], NoDecode] = []
 
     # --- Frontend runtime config ------------------------------------------
     # Public, non-secret values served to the SPA at /runtime-config.js so a
@@ -122,7 +122,7 @@ class Settings(BaseSettings):
     # Redirect URI must match what is registered in Google Cloud Console.
     GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/v1/auth/google/callback"
     # Restrict sign-in to these domains (comma-separated). Empty = any account.
-    GOOGLE_ALLOWED_DOMAINS: list[str] = []
+    GOOGLE_ALLOWED_DOMAINS: Annotated[list[str], NoDecode] = []
 
     @field_validator("GOOGLE_ALLOWED_DOMAINS", "ADMIN_EMAILS", mode="before")
     @classmethod
