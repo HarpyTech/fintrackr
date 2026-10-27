@@ -259,9 +259,29 @@ jobs:
         run: |
           URL=$(gcloud run services describe "${SERVICE_NAME}" --region="${REGION}" --format='value(status.url)')
           echo "Service URL: ${URL}"
-          STATUS=$(curl -sf "${URL}/health" | python3 -c "import sys,json; d=json.load(sys.stdin); sys.exit(0 if d.get('status')=='UP' else 1)" && echo "UP" || echo "FAIL")
-          if [ "${STATUS}" != "UP" ]; then
-            echo "ERROR: Health check did not return status=UP"
+          if ! RESPONSE=$(curl --silent --show-error --fail-with-body \
+            --retry 5 --retry-connrefused --retry-delay 2 \
+            --write-out '\n%{http_code}' "${URL}/health"); then
+            HTTP_STATUS=${RESPONSE##*$'\n'}
+            BODY=${RESPONSE%$'\n'*}
+            echo "ERROR: Health endpoint returned HTTP ${HTTP_STATUS}"
+            echo "Response body: ${BODY}"
+            exit 1
+          fi
+          HTTP_STATUS=${RESPONSE##*$'\n'}
+          BODY=${RESPONSE%$'\n'*}
+          if [ "${HTTP_STATUS}" != "200" ] || \
+            ! printf '%s' "${BODY}" | python3 -c '
+          import json, sys
+          try:
+              healthy = json.load(sys.stdin).get("status") == "UP"
+          except (json.JSONDecodeError, ValueError):
+              healthy = False
+          sys.exit(0 if healthy else 1)
+          '; then
+            echo "ERROR: Health endpoint did not return HTTP 200 with status=UP"
+            echo "HTTP status: ${HTTP_STATUS}"
+            echo "Response body: ${BODY}"
             exit 1
           fi
           echo "Smoke test passed: ${URL}/health"
